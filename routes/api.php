@@ -25,11 +25,19 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+Route::group(['middleware' => 'api', 'prefix' => 'auth'], function ($router) {
+    Route::post('login', [AuthController::class, 'login'])->middleware('api');
+    Route::post('logout', [AuthController::class, 'logout'])->middleware('api');
+});
+Route::middleware(['auth:sanctum'])->group(function () {
+    // User Management
+    Route::group(['prefix' => '/user/'], function () {
+
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-Route::post('/login', [AuthController::class, 'login']);
+// Route::post('/login', [AuthController::class, 'login']);
 Route::post('/find_sensus', [DataSensusController::class, 'cari_data']);
 
 Route::middleware(['auth:sanctum'])->group(function () {
@@ -40,7 +48,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('edit', [UserController::class, 'edit'])->middleware('role:1');
         Route::post('update', [UserController::class, 'update'])->middleware('role:1');
         Route::delete('delete', [UserController::class, 'delete'])->middleware('role:1');
-        Route::post('logout', [AuthController::class, 'logout']);
     });
 
     // Logs
