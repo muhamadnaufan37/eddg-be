@@ -7,15 +7,33 @@ use App\Models\logs;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
 use Jenssegers\Agent\Agent;
 use Spatie\Permission\Models\Role;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class AuthController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('auth:api', ['except' => ['login', 'logout']]);
+    }
+
     public function login(Request $request)
     {
         $user = User::where('username', $request->username)->first();
         $agent = new Agent();
+
+        // set validation
+        $validator = Validator::make($request->all(), [
+            'username' => 'required',
+            'password' => 'required',
+        ]);
+
+        // if validation fails
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
 
         if (empty($user)) {
             return response()->json([
@@ -101,11 +119,21 @@ class AuthController extends Controller
             'akses_kelompok' => $user['role_kelompok'],
         ];
 
-        $token = $user->createToken('token')->plainTextToken;
+        // get credentials from request
+        $credentials = $request->only('username', 'password');
+
+        // if auth failed
+        if (!$token = auth()->guard('api')->attempt($credentials)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Username atau Password Anda salah',
+            ], 401);
+        }
 
         return response()->json([
             'message' => 'Login Berhasil',
             'user' => $user_balikan,
+            'user1' => auth()->guard('api')->user(),
             'token' => $token,
             'success' => true,
         ], 200);
@@ -113,12 +141,21 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        $user = $request->user();
-        $user->currentAccessToken()->delete();
+        // $user = $request->user();
+        // $user->currentAccessToken()->delete();
+        $removeToken = JWTAuth::invalidate(JWTAuth::getToken());
 
-        return response()->json([
-            'message' => 'Berhasil logout',
-            'success' => true,
-        ]);
+        if ($removeToken) {
+            // return response JSON
+            return response()->json([
+                'success' => true,
+                'message' => 'Logout Berhasil!',
+            ]);
+        }
+
+        // return response()->json([
+        //     'message' => 'Berhasil logout',
+        //     'success' => true,
+        // ]);
     }
 }
