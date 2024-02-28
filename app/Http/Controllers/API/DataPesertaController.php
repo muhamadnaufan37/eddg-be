@@ -9,14 +9,12 @@ use App\Models\dataKelompok;
 use App\Models\dataSensusPeserta;
 use App\Models\User;
 use Carbon\Carbon;
-use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class DataPesertaController extends Controller
 {
-
     public function dashboard_sensus(Request $request)
     {
         $user = $request->user();
@@ -25,24 +23,24 @@ class DataPesertaController extends Controller
         $dataKelompok = $request->get('data-kelompok', $user->role_kelompok);
 
         $query = dataSensusPeserta::select([
-            DB::raw("COALESCE(EXTRACT(MONTH FROM data_peserta.created_at), 1) AS month"),
+            DB::raw('COALESCE(EXTRACT(MONTH FROM data_peserta.created_at), 1) AS month'),
             DB::raw('COUNT(*) AS total_data'),
-            DB::raw("
+            DB::raw('
                 SUM(CASE
                     WHEN EXTRACT(YEAR FROM AGE(current_date, data_peserta.tanggal_lahir)) <= 13 THEN 1
                     ELSE 0
-                END) AS total_pra_remaja"),
-            DB::raw("
+                END) AS total_pra_remaja'),
+            DB::raw('
                 SUM(CASE
                     WHEN EXTRACT(YEAR FROM AGE(current_date, data_peserta.tanggal_lahir)) > 13
                     AND EXTRACT(YEAR FROM AGE(current_date, data_peserta.tanggal_lahir)) <= 16 THEN 1
                     ELSE 0
-                END) AS total_remaja"),
-            DB::raw("
+                END) AS total_remaja'),
+            DB::raw('
                 SUM(CASE
                     WHEN EXTRACT(YEAR FROM AGE(current_date, data_peserta.tanggal_lahir)) > 16 THEN 1
                     ELSE 0
-                END) AS total_muda_mudi_usia_nikah"),
+                END) AS total_muda_mudi_usia_nikah'),
             DB::raw('SUM(CASE WHEN data_peserta.jenis_kelamin = \'LAKI-LAKI\' THEN 1 ELSE 0 END) AS total_laki'),
             DB::raw('SUM(CASE WHEN data_peserta.jenis_kelamin = \'PEREMPUAN\' THEN 1 ELSE 0 END) AS total_perempuan'),
         ])
@@ -67,7 +65,7 @@ class DataPesertaController extends Controller
 
         // Inisialisasi array untuk menyimpan data bulan
         $dataBulan = [];
-        for ($i = 1; $i <= 12; $i++) {
+        for ($i = 1; $i <= 12; ++$i) {
             $dataBulan[$i] = [
                 'month' => $i,
                 'total_data' => 0,
@@ -98,11 +96,10 @@ class DataPesertaController extends Controller
         return response()->json([
             'message' => 'Success',
             'data_sensus_thl' => $data_sensus_thl,
-            'success' => true
+            'success' => true,
         ], 200);
 
         // Lakukan apa pun yang perlu Anda lakukan dengan $dataBulan
-
     }
 
     public function list_daerah()
@@ -111,9 +108,9 @@ class DataPesertaController extends Controller
             ->groupBy('nama_daerah')->orderBy('nama_daerah')->get();
 
         return response()->json([
-            'message'       => 'Sukses',
-            'data_tempat_sambung'    => $sensus,
-            'success'       => true
+            'message' => 'Sukses',
+            'data_tempat_sambung' => $sensus,
+            'success' => true,
         ], 200);
     }
 
@@ -123,9 +120,9 @@ class DataPesertaController extends Controller
             ->groupBy('nama_desa')->orderBy('nama_desa')->get();
 
         return response()->json([
-            'message'       => 'Sukses',
-            'data_tempat_sambung'    => $sensus,
-            'success'       => true
+            'message' => 'Sukses',
+            'data_tempat_sambung' => $sensus,
+            'success' => true,
         ], 200);
     }
 
@@ -135,9 +132,9 @@ class DataPesertaController extends Controller
             ->groupBy('nama_kelompok')->orderBy('nama_kelompok')->get();
 
         return response()->json([
-            'message'       => 'Sukses',
-            'data_tempat_sambung'    => $sensus,
-            'success'       => true
+            'message' => 'Sukses',
+            'data_tempat_sambung' => $sensus,
+            'success' => true,
         ], 200);
     }
 
@@ -183,7 +180,7 @@ class DataPesertaController extends Controller
                 WHEN EXTRACT(YEAR FROM AGE(current_date, data_peserta.tanggal_lahir)) <= 13 THEN 'Pra-remaja'
                 WHEN EXTRACT(YEAR FROM AGE(current_date, data_peserta.tanggal_lahir)) <= 16 THEN 'Remaja'
                 ELSE 'Muda-mudi / Usia Nikah'
-            END AS status_kelas")
+            END AS status_kelas"),
         ])
             ->join('tabel_daerah', 'tabel_daerah.id', '=', DB::raw('CAST(data_peserta.tmpt_daerah AS BIGINT)'))
             ->join('tabel_desa', 'tabel_desa.id', '=', DB::raw('CAST(data_peserta.tmpt_desa AS BIGINT)'))
@@ -210,18 +207,18 @@ class DataPesertaController extends Controller
 
         if (!empty($keyword) && empty($kolom)) {
             $query->where(function ($q) use ($keyword) {
-                $q->where('data_peserta.nama_lengkap', 'ILIKE', '%' . $keyword . '%')
-                    ->orWhere('data_peserta.kode_cari_data', 'ILIKE', '%' . $keyword . '%')
-                    ->orWhere('data_peserta.nama_panggilan', 'ILIKE', '%' . $keyword . '%');
+                $q->where('data_peserta.nama_lengkap', 'ILIKE', '%'.$keyword.'%')
+                    ->orWhere('data_peserta.kode_cari_data', 'ILIKE', '%'.$keyword.'%')
+                    ->orWhere('data_peserta.nama_panggilan', 'ILIKE', '%'.$keyword.'%');
             });
-        } else if (!empty($keyword) && !empty($kolom)) {
+        } elseif (!empty($keyword) && !empty($kolom)) {
             if ($kolom == 'kode_cari_data') {
                 $kolom = 'data_peserta.kode_cari_data';
             } else {
                 $kolom = 'data_peserta.kode_cari_data';
             }
 
-            $query->where($kolom, 'ILIKE', '%' . $keyword . '%');
+            $query->where($kolom, 'ILIKE', '%'.$keyword.'%');
         }
 
         $sensus = $query->paginate($perPage);
@@ -231,9 +228,9 @@ class DataPesertaController extends Controller
         ]);
 
         return response()->json([
-            'message'   => 'Sukses',
+            'message' => 'Sukses',
             'data_sensus' => $sensus,
-            'success'   => true
+            'success' => true,
         ], 200);
     }
 
@@ -280,7 +277,7 @@ class DataPesertaController extends Controller
                 WHEN EXTRACT(YEAR FROM AGE(current_date, data_peserta.tanggal_lahir)) <= 13 THEN 'Pra-remaja'
                 WHEN EXTRACT(YEAR FROM AGE(current_date, data_peserta.tanggal_lahir)) <= 16 THEN 'Remaja'
                 ELSE 'Muda-mudi / Usia Nikah'
-            END AS status_kelas")
+            END AS status_kelas"),
         ])
             ->join('tabel_daerah', 'tabel_daerah.id', '=', DB::raw('CAST(data_peserta.tmpt_daerah AS BIGINT)'))
             ->join('tabel_desa', 'tabel_desa.id', '=', DB::raw('CAST(data_peserta.tmpt_desa AS BIGINT)'))
@@ -307,18 +304,18 @@ class DataPesertaController extends Controller
 
         if (!empty($keyword) && empty($kolom)) {
             $query->where(function ($q) use ($keyword) {
-                $q->where('data_peserta.nama_lengkap', 'ILIKE', '%' . $keyword . '%')
-                    ->orWhere('data_peserta.kode_cari_data', 'ILIKE', '%' . $keyword . '%')
-                    ->orWhere('data_peserta.nama_panggilan', 'ILIKE', '%' . $keyword . '%');
+                $q->where('data_peserta.nama_lengkap', 'ILIKE', '%'.$keyword.'%')
+                    ->orWhere('data_peserta.kode_cari_data', 'ILIKE', '%'.$keyword.'%')
+                    ->orWhere('data_peserta.nama_panggilan', 'ILIKE', '%'.$keyword.'%');
             });
-        } else if (!empty($keyword) && !empty($kolom)) {
+        } elseif (!empty($keyword) && !empty($kolom)) {
             if ($kolom == 'kode_cari_data') {
                 $kolom = 'data_peserta.kode_cari_data';
             } else {
                 $kolom = 'data_peserta.kode_cari_data';
             }
 
-            $query->where($kolom, 'ILIKE', '%' . $keyword . '%');
+            $query->where($kolom, 'ILIKE', '%'.$keyword.'%');
         }
 
         $sensus = $query->paginate($perPage);
@@ -328,9 +325,9 @@ class DataPesertaController extends Controller
         ]);
 
         return response()->json([
-            'message'   => 'Sukses',
+            'message' => 'Sukses',
             'data_sensus' => $sensus,
-            'success'   => true
+            'success' => true,
         ], 200);
     }
 
@@ -366,16 +363,17 @@ class DataPesertaController extends Controller
             'tmpt_daerah' => 'integer|digits_between:1,1',
             'tmpt_desa' => 'integer|digits_between:1,1',
             'tmpt_kelompok' => 'integer|digits_between:1,1',
+            'img_sensus' => 'required|nullable|image|mimes:png|max:4096',
             'user_id' => 'required|integer',
         ], $customMessages);
 
-        $tabel_sensus = new dataSensusPeserta;
+        $tabel_sensus = new dataSensusPeserta();
 
         $tanggalSekarang = Carbon::now();
         $bulan = $tanggalSekarang->format('m'); // Mendapatkan bulan saat ini (format 2 digit)
         $tahun = $tanggalSekarang->format('Y'); // Mendapatkan tahun saat ini (format 4 digit)
 
-        $tabel_sensus->kode_cari_data = $bulan . Str::random(4) . $tahun;
+        $tabel_sensus->kode_cari_data = $bulan.Str::random(4).$tahun;
         $tabel_sensus->nama_lengkap = $request->nama_lengkap;
         $tabel_sensus->nama_panggilan = $request->nama_panggilan;
         $tabel_sensus->tempat_lahir = $request->tempat_lahir;
@@ -396,6 +394,21 @@ class DataPesertaController extends Controller
         $tabel_sensus->status_pernikahan = 0;
         $tabel_sensus->user_id = $request->user_id;
 
+        // Menyimpan gambar jika diunggah
+        if ($request->hasFile('img_sensus')) {
+            // Dapatkan file foto dari permintaan
+            $foto = $request->file('img_sensus');
+
+            // Bangun nama file yang disimpan
+            $namaFile = Str::slug($tabel_sensus->nama_lengkap).'.'.$foto->getClientOriginalExtension();
+
+            // Simpan gambar ke penyimpanan dengan nama file yang disesuaikan
+            $path = $foto->storeAs('public/images/sensus', $namaFile);
+
+            // Anda dapat menyimpan path file ini di database jika diperlukan
+            $tabel_sensus->img_sensus = $path;
+        }
+
         try {
             $tabel_daerah = dataDaerah::find($request->tmpt_daerah);
             $tabel_desa = dataDesa::find($request->tmpt_desa);
@@ -405,52 +418,52 @@ class DataPesertaController extends Controller
             if (!$tabel_daerah) {
                 return response()->json([
                     'message' => 'Daerah tidak ditemukan',
-                    'success' => false
+                    'success' => false,
                 ], 404);
             }
 
             if (!$tabel_desa) {
                 return response()->json([
                     'message' => 'Desa tidak ditemukan',
-                    'success' => false
+                    'success' => false,
                 ], 404);
             }
 
             if (!$tabel_kelompok) {
                 return response()->json([
                     'message' => 'Kelompok tidak ditemukan',
-                    'success' => false
+                    'success' => false,
                 ], 404);
             }
 
             if (!$sensuss) {
                 return response()->json([
                     'message' => 'Data Petugas tidak ditemukan',
-                    'success' => false
+                    'success' => false,
                 ], 404);
             }
 
             $tabel_sensus->save();
-        } catch (Exception $exception) {
+        } catch (\Exception $exception) {
             return response()->json([
-                'message'   => 'Gagal menambah data sensus' . $exception->getMessage(),
-                'success'   => false
+                'message' => 'Gagal menambah data sensus'.$exception->getMessage(),
+                'success' => false,
             ], 500);
         }
 
         unset($tabel_sensus->created_at, $tabel_sensus->updated_at);
 
         return response()->json([
-            'message'   => 'Data sensus berhasil ditambahkan',
+            'message' => 'Data sensus berhasil ditambahkan',
             'data_sensus' => $tabel_sensus,
-            'success'   => true
+            'success' => true,
         ], 200);
     }
 
     public function edit(Request $request)
     {
         $request->validate([
-            'id' => 'required|numeric|digits_between:1,5'
+            'id' => 'required|numeric|digits_between:1,5',
         ]);
 
         $sensus = dataSensusPeserta::select([
@@ -486,7 +499,7 @@ class DataPesertaController extends Controller
             WHEN EXTRACT(YEAR FROM AGE(current_date, data_peserta.tanggal_lahir)) <= 16 THEN 'Remaja'
             ELSE 'Muda-mudi / Usia Nikah'
         END AS status_kelas
-        ")
+        "),
         ])->join('tabel_daerah', function ($join) {
             $join->on('tabel_daerah.id', '=', DB::raw('CAST(data_peserta.tmpt_daerah AS BIGINT)'));
         })->join('tabel_desa', function ($join) {
@@ -498,16 +511,22 @@ class DataPesertaController extends Controller
         })->where('data_peserta.id', '=', $request->id)->first();
 
         if (!empty($sensus)) {
+            if ($sensus->img_sensus) {
+                $sensus->image_url = asset($sensus->img_sensus);
+            } else {
+                $sensus->image_url = '';
+            }
+
             return response()->json([
-                'message'   => 'Sukses',
+                'message' => 'Sukses',
                 'data_sensus' => $sensus,
-                'success'   => true
+                'success' => true,
             ], 200);
         }
 
         return response()->json([
-            'message'   => 'Data Sensus tidak ditemukan',
-            'success'   => false
+            'message' => 'Data Sensus tidak ditemukan',
+            'success' => false,
         ], 200);
     }
 
@@ -527,13 +546,13 @@ class DataPesertaController extends Controller
 
         $request->validate([
             'id' => 'required|numeric|digits_between:1,5',
-            'nama_lengkap' => 'sometimes|required|string|unique:data_peserta,nama_lengkap,' . $request->id . ',id',
+            'nama_lengkap' => 'sometimes|required|string|unique:data_peserta,nama_lengkap,'.$request->id.',id',
             'nama_panggilan' => 'required|string',
             'tempat_lahir' => 'required|string',
             'tanggal_lahir' => 'required|date',
             'alamat' => 'required|string',
             'jenis_kelamin' => 'required|in:LAKI-LAKI,PEREMPUAN',
-            'no_telepon' => 'sometimes|required|string|digits_between:8,13|unique:data_peserta,no_telepon,' . $request->id . ',id',
+            'no_telepon' => 'sometimes|required|string|digits_between:8,13|unique:data_peserta,no_telepon,'.$request->id.',id',
             'nama_ayah' => 'required|string',
             'nama_ibu' => 'required|string',
             'hoby' => 'required|string',
@@ -542,7 +561,7 @@ class DataPesertaController extends Controller
             'kriteria_pasangan' => 'nullable|string',
             'status_sambung' => 'integer',
             'status_pernikahan' => 'boolean',
-            'user_id' => 'required|integer'
+            'user_id' => 'required|integer',
         ], $customMessages);
 
         $sensus = dataSensusPeserta::where('id', '=', $request->id)
@@ -567,56 +586,63 @@ class DataPesertaController extends Controller
                     'kriteria_pasangan' => $request->kriteria_pasangan,
                     'status_sambung' => $request->status_sambung,
                     'status_pernikahan' => $request->status_pernikahan,
-                    'user_id' => $request->user_id
+                    'user_id' => $request->user_id,
                 ]);
-            } catch (Exception $exception) {
+            } catch (\Exception $exception) {
                 return response()->json([
-                    'message'   => 'Gagal mengupdate data sensus' . $exception->getMessage(),
-                    'success'   => false
+                    'message' => 'Gagal mengupdate data sensus'.$exception->getMessage(),
+                    'success' => false,
                 ], 500);
             }
 
             return response()->json([
-                'message'   => 'Data Sensus berhasil diupdate',
+                'message' => 'Data Sensus berhasil diupdate',
                 'data_sensus' => $sensus,
-                'success'   => true
+                'success' => true,
             ], 200);
         }
 
         return response()->json([
-            'message'   => 'Data Sensus tidak ditemukan',
-            'success'   => false
+            'message' => 'Data Sensus tidak ditemukan',
+            'success' => false,
         ], 200);
     }
 
     public function delete(Request $request)
     {
         $request->validate([
-            'id' => 'required|numeric|digits_between:1,5'
+            'id' => 'required|numeric|digits_between:1,5',
         ]);
 
-        $sensus = dataSensusPeserta::where('id', '=', $request->id)
-            ->first();
+        $sensus = dataSensusPeserta::find($request->id);
 
         if (!empty($sensus)) {
+            $filePath = public_path($sensus->img_sensus);
+
             try {
-                $sensus = dataSensusPeserta::where('id', '=', $request->id)
-                    ->delete();
+                // Hapus entri dari database
+                $sensus->delete();
+
+                // Periksa dan hapus file jika ada
+                if (file_exists($filePath)) {
+                    unlink($filePath);
+                }
+
                 return response()->json([
-                    'message'   => 'Data Sensus berhasil dihapus',
-                    'success'   => true
+                    'message' => 'Data Sensus berhasil dihapus beserta file gambar',
+                    'success' => true,
                 ], 200);
-            } catch (Exception $exception) {
+            } catch (\Exception $exception) {
                 return response()->json([
-                    'message'   => 'Gagal menghapus data sensus' . $exception->getMessage(),
-                    'success'   => false
+                    'message' => 'Gagal menghapus data sensus: '.$exception->getMessage(),
+                    'success' => false,
                 ], 500);
             }
         }
 
         return response()->json([
-            'message'   => 'Data Sensus tidak ditemukan',
-            'success'   => false
+            'message' => 'Data Sensus tidak ditemukan',
+            'success' => false,
         ], 200);
     }
 }
