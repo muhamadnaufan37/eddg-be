@@ -363,7 +363,7 @@ class DataPesertaController extends Controller
             'tmpt_daerah' => 'integer|digits_between:1,1',
             'tmpt_desa' => 'integer|digits_between:1,1',
             'tmpt_kelompok' => 'integer|digits_between:1,1',
-            'img_sensus' => 'required|nullable|image|mimes:png|max:4096',
+            'img_sensus' => 'nullable|image|mimes:png|max:4096',
             'user_id' => 'required|integer',
         ], $customMessages);
 
