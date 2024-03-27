@@ -10,6 +10,7 @@ use App\Http\Controllers\API\LogsController;
 use App\Http\Controllers\API\ProfileController;
 use App\Http\Controllers\API\RolesController;
 use App\Http\Controllers\API\UserController;
+use App\Http\Controllers\API\WalletKasController;
 use App\Http\Controllers\DataSensusController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -104,9 +105,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Pengumuman
     Route::group(['prefix' => '/boardcast/'], function () {
-        Route::get('list', [BoardCastController::class, 'list'])->middleware('role:1,2');
+        Route::get('list', [BoardCastController::class, 'list'])->middleware('role:1,2,3');
         Route::post('create', [BoardCastController::class, 'create'])->middleware('role:1');
-        Route::post('edit', [BoardCastController::class, 'edit'])->middleware('role:1,2');
+        Route::post('edit', [BoardCastController::class, 'edit'])->middleware('role:1,2,3');
         Route::post('update', [BoardCastController::class, 'update'])->middleware('role:1');
         Route::delete('delete', [BoardCastController::class, 'delete'])->middleware('role:1');
     });
@@ -117,5 +118,17 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('update', [ProfileController::class, 'update']);
         Route::post('cek_password', [ProfileController::class, 'cek_password']);
         Route::post('update_password', [ProfileController::class, 'update_password']);
+    });
+
+    // Kas Management
+    Route::group(['prefix' => '/wallet_kas/'], function () {
+        Route::get('getDataTahun', [WalletKasController::class, 'getDataTahun'])->middleware('role:1,3');
+        Route::get('getDataTotal', [WalletKasController::class, 'getDataTotal'])->middleware('role:1,3');
+        Route::get('totalSaldoPemasukan', [WalletKasController::class, 'totalSaldoPemasukan'])->middleware('role:1,3');
+        Route::get('list', [WalletKasController::class, 'list'])->middleware('role:1,3');
+        Route::post('create', [WalletKasController::class, 'create'])->middleware('role:1,3');
+        Route::post('edit', [WalletKasController::class, 'edit'])->middleware('role:1,3');
+        Route::post('update', [WalletKasController::class, 'update'])->middleware('role:1,3');
+        Route::delete('delete', [WalletKasController::class, 'delete'])->middleware('role:1,3');
     });
 });

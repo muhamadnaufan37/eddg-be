@@ -22,6 +22,8 @@ class DataPesertaController extends Controller
         $dataDesa = $request->get('data-desa', $user->role_desa);
         $dataKelompok = $request->get('data-kelompok', $user->role_kelompok);
 
+        $currentYear = Carbon::now()->year;
+
         $query = dataSensusPeserta::select([
             DB::raw('COALESCE(EXTRACT(MONTH FROM data_peserta.created_at), 1) AS month'),
             DB::raw('COUNT(*) AS total_data'),
@@ -44,6 +46,7 @@ class DataPesertaController extends Controller
             DB::raw('SUM(CASE WHEN data_peserta.jenis_kelamin = \'LAKI-LAKI\' THEN 1 ELSE 0 END) AS total_laki'),
             DB::raw('SUM(CASE WHEN data_peserta.jenis_kelamin = \'PEREMPUAN\' THEN 1 ELSE 0 END) AS total_perempuan'),
         ])
+        ->whereYear('data_peserta.created_at', '=', $currentYear)
             ->leftJoin('tabel_daerah', 'tabel_daerah.id', '=', DB::raw('CAST(data_peserta.tmpt_daerah AS BIGINT)'))
             ->leftJoin('tabel_desa', 'tabel_desa.id', '=', DB::raw('CAST(data_peserta.tmpt_desa AS BIGINT)'))
             ->leftJoin('tabel_kelompok', 'tabel_kelompok.id', '=', DB::raw('CAST(data_peserta.tmpt_kelompok AS BIGINT)'))
