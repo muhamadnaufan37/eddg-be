@@ -3,12 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\dataSensusPeserta;
+use App\Models\logs;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Jenssegers\Agent\Agent;
-use App\Models\logs;
-use Exception;
 use Illuminate\Support\Facades\Http;
+use Jenssegers\Agent\Agent;
 
 class DataSensusController extends Controller
 {
@@ -17,14 +16,14 @@ class DataSensusController extends Controller
         $agent = new Agent();
 
         $request->validate([
-            'kode_cari_data' => 'required'
+            'kode_cari_data' => 'required',
         ]);
 
         // Tambahkan tanggal pencarian
         $tanggalPencarian = now()->format('Y-m-d H:i:s');
 
         // Lakukan panggilan HTTP untuk mendapatkan informasi IP
-        $response = Http::get("https://www.trackip.net/ip?json");
+        $response = Http::get('https://www.trackip.net/ip?json');
 
         // Periksa apakah panggilan berhasil
         if ($response->successful()) {
@@ -38,7 +37,7 @@ class DataSensusController extends Controller
 
             // Buat log dengan informasi IP dari respons
             $logAccount = [
-                'user_id' =>  0,
+                'user_id' => 0,
                 'ip_address' => $ipFromResponse,
                 'aktifitas' => '[Cari Data Sensus]',
                 'status_logs' => 'successfully',
@@ -52,8 +51,8 @@ class DataSensusController extends Controller
             logs::create($logAccount);
         } else {
             return response()->json([
-                'message'   => 'Data Sensus tidak ditemukan' . $response->status(),
-                'success'   => false
+                'message' => 'Data Sensus tidak ditemukan'.$response->status(),
+                'success' => false,
             ], 200);
         }
 
@@ -87,7 +86,7 @@ class DataSensusController extends Controller
             WHEN EXTRACT(YEAR FROM AGE(current_date, data_peserta.tanggal_lahir)) <= 16 THEN 'Remaja'
             ELSE 'Muda-mudi / Usia Nikah'
         END AS status_kelas
-        ")
+        "),
         ])->join('tabel_daerah', function ($join) {
             $join->on('tabel_daerah.id', '=', DB::raw('CAST(data_peserta.tmpt_daerah AS BIGINT)'));
         })->join('tabel_desa', function ($join) {
@@ -100,23 +99,29 @@ class DataSensusController extends Controller
 
         try {
             if (!empty($sensus)) {
+                if ($sensus->img_sensus) {
+                    $sensus->image_url = asset($sensus->img_sensus);
+                } else {
+                    $sensus->image_url = '';
+                }
+
                 return response()->json([
-                    'success'   => true,
-                    'message'   => 'Data Berhasil Ditemukan',
+                    'success' => true,
+                    'message' => 'Data Berhasil Ditemukan',
                     'tanggal_pencarian' => $tanggalPencarian,
                     'data_sensus' => $sensus,
-                    'digital' => $logAccount
+                    'digital' => $logAccount,
                 ], 200);
             } else {
                 return response()->json([
-                    'success'   => false,
-                    'message'   => 'Data Sensus tidak ditemukan / tidak ada'
+                    'success' => false,
+                    'message' => 'Data Sensus tidak ditemukan / tidak ada',
                 ], 200);
             }
-        } catch (Exception $exception) {
+        } catch (\Exception $exception) {
             return response()->json([
-                'success'   => false,
-                'message'   => 'Data Sensus tidak ditemukan' . $exception->getMessage()
+                'success' => false,
+                'message' => 'Data Sensus tidak ditemukan'.$exception->getMessage(),
             ], 200);
         }
     }
