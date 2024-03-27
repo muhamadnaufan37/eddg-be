@@ -105,9 +105,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Pengumuman
     Route::group(['prefix' => '/boardcast/'], function () {
-        Route::get('list', [BoardCastController::class, 'list'])->middleware('role:1,2');
+        Route::get('list', [BoardCastController::class, 'list'])->middleware('role:1,2,3');
         Route::post('create', [BoardCastController::class, 'create'])->middleware('role:1');
-        Route::post('edit', [BoardCastController::class, 'edit'])->middleware('role:1,2');
+        Route::post('edit', [BoardCastController::class, 'edit'])->middleware('role:1,2,3');
         Route::post('update', [BoardCastController::class, 'update'])->middleware('role:1');
         Route::delete('delete', [BoardCastController::class, 'delete'])->middleware('role:1');
     });
@@ -122,6 +122,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Kas Management
     Route::group(['prefix' => '/wallet_kas/'], function () {
+        Route::get('getDataTahun', [WalletKasController::class, 'getDataTahun'])->middleware('role:1,3');
         Route::get('getDataTotal', [WalletKasController::class, 'getDataTotal'])->middleware('role:1,3');
         Route::get('totalSaldoPemasukan', [WalletKasController::class, 'totalSaldoPemasukan'])->middleware('role:1,3');
         Route::get('list', [WalletKasController::class, 'list'])->middleware('role:1,3');

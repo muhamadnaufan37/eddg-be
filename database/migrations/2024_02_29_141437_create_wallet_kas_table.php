@@ -14,7 +14,7 @@ return new class() extends Migration {
             $table->id();
             $table->string('id_user', 255);
             $table->enum('jenis_transaksi', ['PEMASUKAN', 'PENGELUARAN']);
-            $table->string('tgl_transaksi', 255);
+            $table->date('tgl_transaksi');
             $table->text('keterangan');
             $table->integer('jumlah');
             $table->timestamps();

@@ -15,5 +15,6 @@ class WalletKas extends Model
         'tgl_transaksi',
         'keterangan',
         'jumlah',
+        'created_at',
     ];
 }

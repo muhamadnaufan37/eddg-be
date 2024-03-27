@@ -12,6 +12,28 @@ use Illuminate\Validation\Rule;
 
 class WalletKasController extends Controller
 {
+    public function getDataTahun(Request $request)
+    {
+        $roleId = $request->user()->role_id;
+
+        $walletKasQuery = WalletKas::selectRaw('EXTRACT(YEAR FROM tgl_transaksi) as tahun')
+            ->groupByRaw('EXTRACT(YEAR FROM tgl_transaksi)')
+            ->orderByRaw('EXTRACT(YEAR FROM tgl_transaksi)');
+
+        if ($roleId != 1) {
+            // Jika role_id bukan 1, tambahkan kondisi id_user
+            $walletKasQuery->where('id_user', $request->user()->id);
+        }
+
+        $walletKas = $walletKasQuery->get();
+
+        return response()->json([
+            'message' => 'Sukses',
+            'data_wallet_kas' => $walletKas,
+            'success' => true,
+        ], 200);
+    }
+
     public function getDataTotal()
     {
         try {
@@ -38,7 +60,8 @@ class WalletKasController extends Controller
     }
 
     public function totalSaldoPemasukan(Request $request)
-    {// Validasi permintaan, termasuk tahun yang wajib diisi
+    {
+        $roleId = $request->user()->role_id;
         $request->validate([
             'tahun' => 'required|integer',
         ]);
@@ -52,6 +75,71 @@ class WalletKasController extends Controller
                     'message' => 'Tahun harus diisi',
                     'success' => false,
                 ], 404);
+            }
+
+            // Mendapatkan tanggal awal dan akhir tahun yang diberikan
+            $startOfYear = Carbon::create($tahun, 1, 1)->startOfYear()->toDateString();
+            $endOfYear = Carbon::create($tahun, 12, 31)->endOfYear()->toDateString();
+
+            $bulanDataPemasukan = WalletKas::select(
+                DB::raw('EXTRACT(MONTH FROM tgl_transaksi) as bulan'),
+                DB::raw('COALESCE(SUM(jumlah), 0) as total_jumlah')
+            )
+            ->where(function ($query) use ($roleId, $request) {
+                if ($roleId == 1) {
+                    // Jika role_id adalah 1, tidak perlu menambahkan kondisi id_user
+                    return $query;
+                } else {
+                    // Jika role_id bukan 1, tambahkan kondisi id_user
+                    return $query->where('id_user', $request->user()->id);
+                }
+            })
+            ->where('jenis_transaksi', 'PEMASUKAN')
+            ->whereBetween('tgl_transaksi', [$startOfYear, $endOfYear])
+            ->groupBy(DB::raw('EXTRACT(MONTH FROM tgl_transaksi)'))
+            ->orderBy('bulan')
+            ->pluck('total_jumlah', 'bulan')
+            ->map(function ($jumlah) {
+                return (int) $jumlah; // Mengubah ke tipe data integer
+            })
+            ->toArray();
+
+            $bulanDataPengeluaran = WalletKas::select(
+                DB::raw('EXTRACT(MONTH FROM tgl_transaksi) as bulan'),
+                DB::raw('COALESCE(SUM(jumlah), 0) as total_jumlah')
+            )
+            ->where(function ($query) use ($roleId, $request) {
+                if ($roleId == 1) {
+                    // Jika role_id adalah 1, tidak perlu menambahkan kondisi id_user
+                    return $query;
+                } else {
+                    // Jika role_id bukan 1, tambahkan kondisi id_user
+                    return $query->where('id_user', $request->user()->id);
+                }
+            })
+            ->where('jenis_transaksi', 'PENGELUARAN')
+            ->whereBetween('tgl_transaksi', [$startOfYear, $endOfYear])
+            ->groupBy(DB::raw('EXTRACT(MONTH FROM tgl_transaksi)'))
+            ->orderBy('bulan')
+            ->pluck('total_jumlah', 'bulan')
+            ->map(function ($jumlah) {
+                return (int) $jumlah; // Mengubah ke tipe data integer
+            })
+            ->toArray();
+
+            $semuaBulan = range(1, 12);
+
+            $dataPerkembangan = [];
+
+            foreach ($semuaBulan as $bulan) {
+                $jumlahPemasukan = isset($bulanDataPemasukan[$bulan]) ? $bulanDataPemasukan[$bulan] : 0;
+                $jumlahPengeluaran = isset($bulanDataPengeluaran[$bulan]) ? $bulanDataPengeluaran[$bulan] : 0;
+
+                $dataPerkembangan[] = [
+                    'bulan' => $bulan,
+                    'total_jumlah_pemasukan' => $jumlahPemasukan,
+                    'total_jumlah_pengeluaran' => $jumlahPengeluaran,
+                ];
             }
 
             // Mendapatkan tanggal awal dan akhir tahun yang diberikan
@@ -78,11 +166,12 @@ class WalletKasController extends Controller
             }
 
             return response()->json([
-                'message' => 'Total Pemasukan berhasil diambil',
+                'message' => 'Data berhasil diambil',
                 'total_pemasukan_tahun_ini' => intval($totalPemasukanTahunIni),
                 'total_pengeluaran' => intval($totalPengeluaran),
                 'target_pemasukan_tahunan' => intval($targetPemasukanTahunan),
                 'persentase_keuntungan' => $persentaseKeuntungan,
+                'data_perkembangan' => $dataPerkembangan,
                 'success' => true,
             ], 200);
         } catch (\Exception $exception) {
@@ -95,6 +184,7 @@ class WalletKasController extends Controller
 
     public function list(Request $request)
     {
+        $roleId = $request->user()->role_id;
         $keyword = $request->get('keyword', null);
         $perPage = $request->get('per-page', 10);
         $kolom = $request->get('kolom', null);
@@ -119,6 +209,11 @@ class WalletKasController extends Controller
             });
 
         $model->orderByRaw('wallet_kas.created_at DESC NULLS LAST');
+
+        if ($roleId != 1) {
+            // Jika role_id bukan 1, tambahkan kondisi id_user
+            $model->where('wallet_kas.id_user', $request->user()->id);
+        }
 
         if (!is_null($jnsTransaksi)) {
             $model->where('wallet_kas.jenis_transaksi', '=', $jnsTransaksi);
