@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
-use App\Models\dataDaerah;
+use App\Models\tblKelasPeserta;
 use Illuminate\Http\Request;
 
-class DaerahController extends Controller
+class KelasPesertaController extends Controller
 {
     public function list(Request $request)
     {
@@ -17,24 +17,24 @@ class DaerahController extends Controller
             $perPage = 100;
         }
 
-        $model = dataDaerah::select([
+        $model = tblKelasPeserta::select([
             'id',
-            'nama_daerah',
+            'nama_kelas',
         ]);
 
         if (!empty($keyword)) {
-            $table_daerah = $model->where('nama_daerah', 'ILIKE', '%'.$keyword.'%')
+            $table_kelas = $model->where('nama_kelas', 'ILIKE', '%'.$keyword.'%')
                 ->orWhere('id', 'ILIKE', '%'.$keyword.'%')
                 ->paginate($perPage);
         } else {
-            $table_daerah = $model->paginate($perPage);
+            $table_kelas = $model->paginate($perPage);
         }
 
-        $table_daerah->appends(['per-page' => $perPage]);
+        $table_kelas->appends(['per-page' => $perPage]);
 
         return response()->json([
             'message' => 'Sukses',
-            'data_daerah' => $table_daerah,
+            'data_kelas' => $table_kelas,
             'success' => true,
         ], 200);
     }
@@ -54,25 +54,25 @@ class DaerahController extends Controller
         ];
 
         $request->validate([
-            'nama_daerah' => 'required|max:225|unique:tabel_daerah',
+            'nama_kelas' => 'required|max:225|unique:kelas_peserta_didik',
         ], $customMessages);
 
-        $tabel_daerah = new dataDaerah();
-        $tabel_daerah->nama_daerah = $request->nama_daerah;
+        $table_kelas = new tblKelasPeserta();
+        $table_kelas->nama_kelas = $request->nama_kelas;
         try {
-            $tabel_daerah->save();
+            $table_kelas->save();
         } catch (\Exception $exception) {
             return response()->json([
-                'message' => 'Gagal menambah data Daerah'.$exception->getMessage(),
+                'message' => 'Gagal menambah Data Kelas Peserta'.$exception->getMessage(),
                 'success' => false,
             ], 500);
         }
 
-        unset($tabel_daerah->created_at, $tabel_daerah->updated_at);
+        unset($table_kelas->created_at, $table_kelas->updated_at);
 
         return response()->json([
-            'message' => 'Data Daerah berhasil ditambahkan',
-            'data_daerah' => $tabel_daerah,
+            'message' => 'Data Kelas Peserta berhasil ditambahkan',
+            'data_kelas' => $table_kelas,
             'success' => true,
         ], 200);
     }
@@ -83,20 +83,20 @@ class DaerahController extends Controller
             'id' => 'required|numeric|digits_between:1,5',
         ]);
 
-        $tabel_daerah = dataDaerah::where('id', '=', $request->id)->first();
+        $table_kelas = tblKelasPeserta::where('id', '=', $request->id)->first();
 
-        unset($tabel_daerah->created_at, $tabel_daerah->updated_at);
+        unset($table_kelas->created_at, $table_kelas->updated_at);
 
-        if (!empty($tabel_daerah)) {
+        if (!empty($table_kelas)) {
             return response()->json([
                 'message' => 'Sukses',
-                'data_daerah' => $tabel_daerah,
+                'data_kelas' => $table_kelas,
                 'success' => true,
             ], 200);
         }
 
         return response()->json([
-            'message' => 'Data Daerah tidak ditemukan',
+            'message' => 'Data Kelas Peserta tidak ditemukan',
             'success' => false,
         ], 200);
     }
@@ -117,34 +117,34 @@ class DaerahController extends Controller
 
         $request->validate([
             'id' => 'required|numeric|digits_between:1,5',
-            'nama_daerah' => 'required|max:225',
+            'nama_kelas' => 'sometimes|required|max:225|string|unique:kelas_peserta_didik,nama_kelas,'.$request->id.',id',
         ], $customMessages);
 
-        $tabel_daerah = dataDaerah::where('id', '=', $request->id)
+        $table_kelas = tblKelasPeserta::where('id', '=', $request->id)
             ->first();
 
-        if (!empty($tabel_daerah)) {
+        if (!empty($table_kelas)) {
             try {
-                $tabel_daerah->update([
+                $table_kelas->update([
                     'id' => $request->id,
-                    'nama_daerah' => $request->nama_daerah,
+                    'nama_kelas' => $request->nama_kelas,
                 ]);
             } catch (\Exception $exception) {
                 return response()->json([
-                    'message' => 'Gagal mengupdate data Daerah'.$exception->getMessage(),
+                    'message' => 'Gagal mengupdate Data Kelas Peserta'.$exception->getMessage(),
                     'success' => false,
                 ], 500);
             }
 
             return response()->json([
-                'message' => 'Data Daerah berhasil diupdate',
-                'data_daerah' => $tabel_daerah,
+                'message' => 'Data Kelas Peserta berhasil diupdate',
+                'data_kelas' => $table_kelas,
                 'success' => true,
             ], 200);
         }
 
         return response()->json([
-            'message' => 'Data Daerah tidak ditemukan',
+            'message' => 'Data Kelas Peserta tidak ditemukan',
             'success' => false,
         ], 200);
     }
@@ -155,28 +155,28 @@ class DaerahController extends Controller
             'id' => 'required|numeric|digits_between:1,5',
         ]);
 
-        $tabel_daerah = dataDaerah::where('id', '=', $request->id)
+        $table_kelas = tblKelasPeserta::where('id', '=', $request->id)
             ->first();
 
-        if (!empty($tabel_daerah)) {
+        if (!empty($table_kelas)) {
             try {
-                $tabel_daerah = dataDaerah::where('id', '=', $request->id)
+                $table_kelas = tblKelasPeserta::where('id', '=', $request->id)
                     ->delete();
 
                 return response()->json([
-                    'message' => 'Data Daerah berhasil dihapus',
+                    'message' => 'Data Kelas Peserta berhasil dihapus',
                     'success' => true,
                 ], 200);
             } catch (\Exception $exception) {
                 return response()->json([
-                    'message' => 'Gagal menghapus data Daerah'.$exception->getMessage(),
+                    'message' => 'Gagal menghapus Data Kelas Peserta'.$exception->getMessage(),
                     'success' => false,
                 ], 500);
             }
         }
 
         return response()->json([
-            'message' => 'Data Daerah tidak ditemukan',
+            'message' => 'Data Kelas Peserta tidak ditemukan',
             'success' => false,
         ], 200);
     }

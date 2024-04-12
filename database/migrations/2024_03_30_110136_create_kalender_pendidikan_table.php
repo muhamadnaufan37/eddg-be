@@ -10,9 +10,11 @@ return new class() extends Migration {
      */
     public function up(): void
     {
-        Schema::create('desa', function (Blueprint $table) {
+        Schema::create('kalender_pendidikan', function (Blueprint $table) {
             $table->id();
-            $table->string('nama_desa', 255);
+            $table->string('tahun_pelajaran', 255);
+            $table->string('semester_pelajaran', 255);
+            $table->boolean('status_pelajaran');
             $table->timestamps();
         });
     }
@@ -22,6 +24,6 @@ return new class() extends Migration {
      */
     public function down(): void
     {
-        Schema::dropIfExists('desa');
+        Schema::dropIfExists('kalender_pendidikan');
     }
 };

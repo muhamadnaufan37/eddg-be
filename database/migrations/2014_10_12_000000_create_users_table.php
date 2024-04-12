@@ -20,9 +20,9 @@ return new class() extends Migration {
             $table->rememberToken();
             $table->foreignId('role_id');
             $table->enum('status', [-1, 1, 0]);
-            $table->id('role_daerah')->nullable();
-            $table->id('role_desa')->nullable();
-            $table->id('role_kelompok')->nullable();
+            $table->foreignId('role_daerah')->nullable();
+            $table->foreignId('role_desa')->nullable();
+            $table->foreignId('role_kelompok')->nullable();
             $table->timestamp('login_terakhir')->nullable();
             $table->timestamps();
         });
