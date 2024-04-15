@@ -377,8 +377,8 @@ class DataPesertaController extends Controller
         $tahun = $tanggalSekarang->format('Y'); // Mendapatkan tahun saat ini (format 4 digit)
 
         $tabel_sensus->kode_cari_data = $bulan.Str::random(4).$tahun;
-        $tabel_sensus->nama_lengkap = $request->nama_lengkap;
-        $tabel_sensus->nama_panggilan = $request->nama_panggilan;
+        $tabel_sensus->nama_lengkap = ucwords(strtolower($request->nama_lengkap));
+        $tabel_sensus->nama_panggilan = ucwords(strtolower($request->nama_panggilan));
         $tabel_sensus->tempat_lahir = $request->tempat_lahir;
         $tabel_sensus->tanggal_lahir = $request->tanggal_lahir;
         $tabel_sensus->alamat = $request->alamat;
@@ -574,8 +574,8 @@ class DataPesertaController extends Controller
             try {
                 $sensus->update([
                     'id' => $request->id,
-                    'nama_lengkap' => $request->nama_lengkap,
-                    'nama_panggilan' => $request->nama_panggilan,
+                    'nama_lengkap' => ucwords(strtolower($request->nama_lengkap)),
+                    'nama_panggilan' => ucwords(strtolower($request->nama_panggilan)),
                     'tempat_lahir' => $request->tempat_lahir,
                     'tanggal_lahir' => $request->tanggal_lahir,
                     'alamat' => $request->alamat,

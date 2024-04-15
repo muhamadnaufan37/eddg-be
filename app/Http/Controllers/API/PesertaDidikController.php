@@ -124,7 +124,7 @@ class PesertaDidikController extends Controller
         ], $customMessages);
 
         $table_peserta_didik = new tblPesertaDidik();
-        $table_peserta_didik->nama_lengkap = $request->nama_lengkap;
+        $table_peserta_didik->nama_lengkap = ucwords(strtolower($request->nama_lengkap));
         $table_peserta_didik->tempat_lahir = $request->tempat_lahir;
         $table_peserta_didik->tanggal_lahir = $request->tanggal_lahir;
         $table_peserta_didik->jenis_kelamin = $request->jenis_kelamin;
@@ -379,7 +379,7 @@ class PesertaDidikController extends Controller
 
                 $table_peserta_didik->update([
                     'id' => $request->id,
-                    'nama_lengkap' => $request->nama_lengkap,
+                    'nama_lengkap' => ucwords(strtolower($request->nama_lengkap)),
                     'tempat_lahir' => $request->tempat_lahir,
                     'tanggal_lahir' => $request->tanggal_lahir,
                     'jenis_kelamin' => $request->jenis_kelamin,
