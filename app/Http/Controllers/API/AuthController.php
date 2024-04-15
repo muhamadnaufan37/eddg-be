@@ -12,6 +12,54 @@ use Spatie\Permission\Models\Role;
 
 class AuthController extends Controller
 {
+    public function register(Request $request)
+    {
+        $customMessages = [
+            'required' => 'Kolom :attribute wajib diisi.',
+            'unique' => ':attribute sudah terdaftar di sistem',
+            'email' => ':attribute harus berupa alamat email yang valid.',
+            'max' => ':attribute tidak boleh lebih dari :max karakter.',
+            'confirmed' => 'Konfirmasi :attribute tidak cocok.',
+            'min' => ':attribute harus memiliki setidaknya :min karakter.',
+            'regex' => ':attribute harus mengandung setidaknya satu huruf kapital dan satu angka.',
+            'numeric' => ':attribute harus berupa angka.',
+            'digits_between' => ':attribute harus memiliki panjang antara :min dan :max digit.',
+        ];
+
+        $request->validate([
+            'nama_lengkap' => 'required|unique:users',
+            'email' => 'required|email|unique:users',
+            'username' => 'required|unique:users',
+            'password' => 'required',
+            'role_id' => 'required|max:1',
+            'status' => 'required|max:1',
+        ], $customMessages);
+
+        $register_akun = new User();
+        $register_akun->nama_lengkap = $request->nama_lengkap;
+        $register_akun->email = $request->email;
+        $register_akun->username = $request->username;
+        $register_akun->password = bcrypt($request->password);
+        $register_akun->role_id = $request->role_id;
+        $register_akun->status = $request->status;
+        try {
+            $register_akun->save();
+        } catch (\Exception $exception) {
+            return response()->json([
+                'message' => 'Gagal menambah Akun'.$exception->getMessage(),
+                'success' => false,
+            ], 500);
+        }
+
+        unset($register_akun->created_at, $register_akun->updated_at);
+
+        return response()->json([
+            'message' => 'Akun berhasil ditambahkan',
+            'data_kelompok' => $register_akun,
+            'success' => true,
+        ], 200);
+    }
+
     public function login(Request $request)
     {
         $user = User::where('username', $request->username)->first();

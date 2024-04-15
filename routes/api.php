@@ -2,12 +2,19 @@
 
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\BoardCastController;
+use App\Http\Controllers\API\CalonPPDBController;
 use App\Http\Controllers\API\DaerahController;
 use App\Http\Controllers\API\DataPesertaController;
 use App\Http\Controllers\API\DesaController;
+use App\Http\Controllers\API\KalenderPesertaController;
+use App\Http\Controllers\API\KelasPesertaController;
 use App\Http\Controllers\API\KelompokController;
 use App\Http\Controllers\API\LogsController;
+use App\Http\Controllers\API\PekerjaanPesertaController;
+use App\Http\Controllers\API\PengajarPesertaController;
+use App\Http\Controllers\API\PesertaDidikController;
 use App\Http\Controllers\API\ProfileController;
+use App\Http\Controllers\API\RerataNilaiController;
 use App\Http\Controllers\API\RolesController;
 use App\Http\Controllers\API\UserController;
 use App\Http\Controllers\API\WalletKasController;
@@ -31,6 +38,7 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/register_akun', [AuthController::class, 'register']);
 Route::post('/find_sensus', [DataSensusController::class, 'cari_data']);
 
 Route::middleware(['auth:sanctum'])->group(function () {
@@ -130,5 +138,69 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('edit', [WalletKasController::class, 'edit'])->middleware('role:1,3');
         Route::post('update', [WalletKasController::class, 'update'])->middleware('role:1,3');
         Route::delete('delete', [WalletKasController::class, 'delete'])->middleware('role:1,3');
+    });
+
+    // Pekerjaan Management
+    Route::group(['prefix' => '/pekerjaan/'], function () {
+        Route::get('list', [PekerjaanPesertaController::class, 'list'])->middleware('role:1,4');
+        Route::post('create', [PekerjaanPesertaController::class, 'create'])->middleware('role:1,4');
+        Route::post('edit', [PekerjaanPesertaController::class, 'edit'])->middleware('role:1,4');
+        Route::post('update', [PekerjaanPesertaController::class, 'update'])->middleware('role:1,4');
+        Route::delete('delete', [PekerjaanPesertaController::class, 'delete'])->middleware('role:1,4');
+    });
+
+    // Pekerjaan Management
+    Route::group(['prefix' => '/kelas_peserta/'], function () {
+        Route::get('list', [KelasPesertaController::class, 'list'])->middleware('role:1,4');
+        Route::post('create', [KelasPesertaController::class, 'create'])->middleware('role:1,4');
+        Route::post('edit', [KelasPesertaController::class, 'edit'])->middleware('role:1,4');
+        Route::post('update', [KelasPesertaController::class, 'update'])->middleware('role:1,4');
+        Route::delete('delete', [KelasPesertaController::class, 'delete'])->middleware('role:1,4');
+    });
+
+    // Pekerjaan Management
+    Route::group(['prefix' => '/kalender_pendidikan/'], function () {
+        Route::get('list', [KalenderPesertaController::class, 'list'])->middleware('role:1,4');
+        Route::post('create', [KalenderPesertaController::class, 'create'])->middleware('role:1,4');
+        Route::post('edit', [KalenderPesertaController::class, 'edit'])->middleware('role:1,4');
+        Route::post('update', [KalenderPesertaController::class, 'update'])->middleware('role:1,4');
+        Route::delete('delete', [KalenderPesertaController::class, 'delete'])->middleware('role:1,4');
+    });
+
+    // Pengajar Management
+    Route::group(['prefix' => '/pengajar/'], function () {
+        Route::get('data_pengajar', [PengajarPesertaController::class, 'data_pengajar'])->middleware('role:1,4');
+        Route::get('list', [PengajarPesertaController::class, 'list'])->middleware('role:1,4');
+        Route::post('create', [PengajarPesertaController::class, 'create'])->middleware('role:1,4');
+        Route::post('edit', [PengajarPesertaController::class, 'edit'])->middleware('role:1,4');
+        Route::post('update', [PengajarPesertaController::class, 'update'])->middleware('role:1,4');
+        Route::delete('delete', [PengajarPesertaController::class, 'delete'])->middleware('role:1,4');
+    });
+
+    // Peserta Didik Management
+    Route::group(['prefix' => '/peserta_didik/'], function () {
+        Route::get('list', [PesertaDidikController::class, 'list'])->middleware('role:1,4');
+        Route::post('create', [PesertaDidikController::class, 'create'])->middleware('role:1,4');
+        Route::post('edit', [PesertaDidikController::class, 'edit'])->middleware('role:1,4');
+        Route::post('update', [PesertaDidikController::class, 'update'])->middleware('role:1,4');
+        Route::delete('delete', [PesertaDidikController::class, 'delete'])->middleware('role:1,4');
+    });
+
+    // Rerata Nilai Peserta Didik Management
+    Route::group(['prefix' => '/rerata_nilai/'], function () {
+        Route::get('list', [RerataNilaiController::class, 'list'])->middleware('role:1,4');
+        Route::post('create', [RerataNilaiController::class, 'create'])->middleware('role:1,4');
+        Route::post('edit', [RerataNilaiController::class, 'edit'])->middleware('role:1,4');
+        Route::post('update', [RerataNilaiController::class, 'update'])->middleware('role:1,4');
+        Route::delete('delete', [RerataNilaiController::class, 'delete'])->middleware('role:1,4');
+    });
+
+    // Calon Pendaftaran Peserta Didik Management
+    Route::group(['prefix' => '/calon_ppdb/'], function () {
+        Route::get('list', [CalonPPDBController::class, 'list'])->middleware('role:1,4');
+        Route::post('create', [CalonPPDBController::class, 'create'])->middleware('role:1,4');
+        Route::post('edit', [CalonPPDBController::class, 'edit'])->middleware('role:1,4');
+        Route::post('update', [CalonPPDBController::class, 'update'])->middleware('role:1,4');
+        Route::delete('delete', [CalonPPDBController::class, 'delete'])->middleware('role:1,4');
     });
 });

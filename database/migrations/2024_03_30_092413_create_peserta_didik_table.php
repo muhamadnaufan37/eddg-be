@@ -10,28 +10,29 @@ return new class() extends Migration {
      */
     public function up(): void
     {
-        Schema::create('data_peserta', function (Blueprint $table) {
+        Schema::create('peserta_didik', function (Blueprint $table) {
             $table->id();
-            $table->string('kode_cari_data', 255);
             $table->string('nama_lengkap', 255);
-            $table->string('nama_panggilan', 255);
             $table->string('tempat_lahir', 255);
             $table->date('tanggal_lahir', 255);
-            $table->text('alamat', 255);
             $table->enum('jenis_kelamin', ['LAKI-LAKI', 'PEREMPUAN']);
-            $table->string('no_telepon', 15);
-            $table->string('nama_ayah', 255);
-            $table->string('nama_ibu', 255);
+            $table->string('status_keluarga', 255);
             $table->string('hoby', 255);
-            $table->string('pekerjaan', 255);
-            $table->string('usia_menikah', 255)->nullable();
-            $table->string('kriteria_pasangan', 255)->nullable();
-            $table->boolean('status_pernikahan');
-            $table->integer('status_sambung');
+            $table->string('anak_ke', 255);
+            $table->string('nama_ayah', 255);
+            $table->string('pekerjaan_ayah', 255);
+            $table->string('nama_ibu', 255);
+            $table->string('pekerjaan_ibu', 255);
+            $table->string('no_telepon_org_tua', 15);
+            $table->string('nama_wali', 255)->nullable();
+            $table->string('pekerjaan_wali', 255)->nullable();
+            $table->string('no_telepon_wali', 15)->nullable();
+            $table->text('alamat', 255);
+            $table->boolean('status_peserta_didik');
             $table->foreignId('tmpt_daerah');
             $table->foreignId('tmpt_desa')->nullable();
             $table->foreignId('tmpt_kelompok')->nullable();
-            $table->foreignId('user_id');
+            $table->foreignId('add_by_user_id');
             $table->timestamps();
         });
     }
@@ -41,6 +42,6 @@ return new class() extends Migration {
      */
     public function down(): void
     {
-        Schema::dropIfExists('data_peserta');
+        Schema::dropIfExists('peserta_didik');
     }
 };

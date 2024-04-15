@@ -10,9 +10,14 @@ return new class() extends Migration {
      */
     public function up(): void
     {
-        Schema::create('desa', function (Blueprint $table) {
+        Schema::create('pengajar', function (Blueprint $table) {
             $table->id();
-            $table->string('nama_desa', 255);
+            $table->string('nama_pengajar', 255);
+            $table->boolean('status_pengajar');
+            $table->foreignId('tmpt_daerah');
+            $table->foreignId('tmpt_desa')->nullable();
+            $table->foreignId('tmpt_kelompok')->nullable();
+            $table->foreignId('add_by_user_id');
             $table->timestamps();
         });
     }
@@ -22,6 +27,6 @@ return new class() extends Migration {
      */
     public function down(): void
     {
-        Schema::dropIfExists('desa');
+        Schema::dropIfExists('pengajar');
     }
 };
