@@ -12,9 +12,24 @@ use Illuminate\Support\Facades\Auth;
 
 class PengajarPesertaController extends Controller
 {
+    public function data_pengajar()
+    {
+        $tabel_data_pengajar = tblPengajar::select(['nama_pengajar'])
+            ->where('status_pengajar', true) // Memfilter hasil berdasarkan status_pengajar
+            ->groupBy('nama_pengajar') // Mengelompokkan hasil berdasarkan nama_pengajar
+            ->orderBy('nama_pengajar')
+            ->get();
+
+        return response()->json([
+            'message' => 'Sukses',
+            'data_pengajar' => $tabel_data_pengajar,
+            'success' => true,
+        ], 200);
+    }
+
     public function list(Request $request)
     {
-        $userID = Auth::id();
+        $roleId = $request->user()->role_id;
         $keyword = $request->get('keyword', null);
         $perPage = $request->get('per-page', 10);
 
@@ -26,7 +41,6 @@ class PengajarPesertaController extends Controller
             'pengajar.id',
             'pengajar.nama_pengajar',
             'pengajar.status_pengajar',
-            'pengajar.add_by_user_id',
             'users.nama_lengkap AS nama_user', // Kolom baru untuk nama pengguna
             'tabel_daerah.nama_daerah AS nama_daerah', // Kolom baru untuk nama daerah
             'tabel_desa.nama_desa AS nama_desa', // Kolom baru untuk nama desa
@@ -36,15 +50,19 @@ class PengajarPesertaController extends Controller
             ->leftJoin('users', 'pengajar.add_by_user_id', '=', 'users.id')
             ->leftJoin('tabel_daerah', 'pengajar.tmpt_daerah', '=', 'tabel_daerah.id')
             ->leftJoin('tabel_desa', 'pengajar.tmpt_desa', '=', 'tabel_desa.id')
-            ->leftJoin('tabel_kelompok', 'pengajar.tmpt_kelompok', '=', 'tabel_kelompok.id')
-            ->where('pengajar.add_by_user_id', $userID); // Filter berdasarkan ID pengguna yang sedang login
+            ->leftJoin('tabel_kelompok', 'pengajar.tmpt_kelompok', '=', 'tabel_kelompok.id');
 
-        $model->where('pengajar.status_pengajar', '=', true);
+        // $model->where('pengajar.status_pengajar', '=', true);
         $model->orderByRaw('pengajar.created_at DESC NULLS LAST');
 
+        if ($roleId != 1) {
+            // Jika role_id bukan 1, tambahkan kondisi id_user
+            $model->where('pengajar.add_by_user_id', $request->user()->id);
+        }
+
         if (!empty($keyword)) {
-            $table_pengajar = $model->where('nama_pengajar', 'ILIKE', '%'.$keyword.'%')
-                ->orWhere('id', 'ILIKE', '%'.$keyword.'%')
+            $table_pengajar = $model->where('pengajar.nama_pengajar', 'ILIKE', '%'.$keyword.'%')
+                ->orWhere('pengajar.id', 'ILIKE', '%'.$keyword.'%')
                 ->paginate($perPage);
         } else {
             $table_pengajar = $model->paginate($perPage);
@@ -87,7 +105,7 @@ class PengajarPesertaController extends Controller
         ], $customMessages);
 
         $table_pengajar = new tblPengajar();
-        $table_pengajar->nama_pengajar = $request->nama_pengajar;
+        $table_pengajar->nama_pengajar = ucwords(strtolower($request->nama_pengajar));
         $table_pengajar->status_pengajar = $request->status_pengajar;
         $table_pengajar->add_by_user_id = $userId;
         $table_pengajar->tmpt_daerah = $request->tmpt_daerah;
@@ -145,7 +163,23 @@ class PengajarPesertaController extends Controller
             'id' => 'required|numeric|digits_between:1,5',
         ]);
 
-        $table_pengajar = tblPengajar::where('id', '=', $request->id)->first();
+        $table_pengajar = tblPengajar::select([
+            'pengajar.id',
+            'pengajar.nama_pengajar',
+            'pengajar.status_pengajar',
+            'pengajar.tmpt_daerah',
+            'pengajar.tmpt_desa',
+            'pengajar.tmpt_kelompok',
+            'users.nama_lengkap AS nama_user', // Kolom baru untuk nama pengguna
+            'tabel_daerah.nama_daerah AS nama_daerah', // Kolom baru untuk nama daerah
+            'tabel_desa.nama_desa AS nama_desa', // Kolom baru untuk nama desa
+            'tabel_kelompok.nama_kelompok AS nama_kelompok', // Kolom baru untuk nama kelompok
+            'pengajar.created_at',
+        ])
+            ->leftJoin('users', 'pengajar.add_by_user_id', '=', 'users.id')
+            ->leftJoin('tabel_daerah', 'pengajar.tmpt_daerah', '=', 'tabel_daerah.id')
+            ->leftJoin('tabel_desa', 'pengajar.tmpt_desa', '=', 'tabel_desa.id')
+            ->leftJoin('tabel_kelompok', 'pengajar.tmpt_kelompok', '=', 'tabel_kelompok.id')->first();
 
         unset($table_pengajar->created_at, $table_pengajar->updated_at);
 
@@ -168,7 +202,6 @@ class PengajarPesertaController extends Controller
         $tabel_daerah = dataDaerah::find($request->tmpt_daerah);
         $tabel_desa = dataDesa::find($request->tmpt_desa);
         $tabel_kelompok = dataKelompok::find($request->tmpt_kelompok);
-        $userId = Auth::id();
 
         $customMessages = [
             'required' => 'Kolom :attribute wajib diisi.',
@@ -217,16 +250,9 @@ class PengajarPesertaController extends Controller
                     ], 404);
                 }
 
-                if (!$userId) {
-                    return response()->json([
-                        'message' => 'Data Petugas tidak ditemukan',
-                        'success' => false,
-                    ], 404);
-                }
-
                 $table_pengajar->update([
                     'id' => $request->id,
-                    'nama_pengajar' => $request->nama_pengajar,
+                    'nama_pengajar' => ucwords(strtolower($request->nama_pengajar)),
                     'status_pengajar' => $request->status_pengajar,
                     'tmpt_daerah' => $request->tmpt_daerah,
                     'tmpt_desa' => $request->tmpt_desa,

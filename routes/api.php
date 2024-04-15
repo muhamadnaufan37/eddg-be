@@ -169,6 +169,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Pengajar Management
     Route::group(['prefix' => '/pengajar/'], function () {
+        Route::get('data_pengajar', [PengajarPesertaController::class, 'data_pengajar'])->middleware('role:1,4');
         Route::get('list', [PengajarPesertaController::class, 'list'])->middleware('role:1,4');
         Route::post('create', [PengajarPesertaController::class, 'create'])->middleware('role:1,4');
         Route::post('edit', [PengajarPesertaController::class, 'edit'])->middleware('role:1,4');
