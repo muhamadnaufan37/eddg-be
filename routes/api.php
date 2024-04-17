@@ -10,6 +10,7 @@ use App\Http\Controllers\API\KalenderPesertaController;
 use App\Http\Controllers\API\KelasPesertaController;
 use App\Http\Controllers\API\KelompokController;
 use App\Http\Controllers\API\LogsController;
+use App\Http\Controllers\API\MappingTempatSambungController;
 use App\Http\Controllers\API\PekerjaanPesertaController;
 use App\Http\Controllers\API\PengajarPesertaController;
 use App\Http\Controllers\API\PesertaDidikController;
@@ -63,6 +64,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Role Management
     Route::group(['prefix' => '/role/'], function () {
+        Route::get('list_data_roles', [RolesController::class, 'list_data_roles'])->middleware('role:1');
         Route::get('list', [RolesController::class, 'list'])->middleware('role:1');
         Route::post('create', [RolesController::class, 'create'])->middleware('role:1');
         Route::post('edit', [RolesController::class, 'edit'])->middleware('role:1');
@@ -97,9 +99,16 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::delete('delete', [KelompokController::class, 'delete'])->middleware('role:1');
     });
 
+    // Mapping Tempat Sambung
+    Route::group(['prefix' => '/mapping_tempat_sambung/'], function () {
+        Route::get('list_data_desa', [MappingTempatSambungController::class, 'list_data_desa'])->middleware('role:1,2,3,4');
+        Route::get('list_data_kelompok', [MappingTempatSambungController::class, 'list_data_kelompok'])->middleware('role:1,2,3,4');
+    });
+
     // Sensus Management
     Route::group(['prefix' => '/sensus/'], function () {
         Route::get('dashboard_sensus', [DataPesertaController::class, 'dashboard_sensus'])->middleware('role:1,2');
+        Route::get('list_pekerjaan', [DataPesertaController::class, 'list_pekerjaan'])->middleware('role:1,2');
         Route::get('list_daerah', [DataPesertaController::class, 'list_daerah'])->middleware('role:1,2');
         Route::get('list_desa', [DataPesertaController::class, 'list_desa'])->middleware('role:1,2');
         Route::get('list_kelompok', [DataPesertaController::class, 'list_kelompok'])->middleware('role:1,2');

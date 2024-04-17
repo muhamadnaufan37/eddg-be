@@ -4,7 +4,6 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use Exception;
 use Illuminate\Http\Request;
 use Spatie\Permission\Models\Role;
 
@@ -31,7 +30,7 @@ class UserController extends Controller
                 'users.nama_lengkap',
                 'roles.name as role_id',
                 'users.status',
-                'users.login_terakhir'
+                'users.login_terakhir',
             ]);
 
         if (!is_null($role)) {
@@ -45,20 +44,20 @@ class UserController extends Controller
         $model->orderByRaw('users.created_at DESC NULLS LAST');
 
         if (!empty($keyword) && empty($kolom)) {
-            $user = $model->where('users.username', 'ILIKE', '%' . $keyword . '%')
-                ->orWhere('users.email', 'ILIKE', '%' . $keyword . '%')
-                ->orWhere('users.nama_lengkap', 'ILIKE', '%' . $keyword . '%')
+            $user = $model->where('users.username', 'ILIKE', '%'.$keyword.'%')
+                ->orWhere('users.email', 'ILIKE', '%'.$keyword.'%')
+                ->orWhere('users.nama_lengkap', 'ILIKE', '%'.$keyword.'%')
                 ->paginate($perPage);
-        } else if (!empty($keyword) && !empty($kolom)) {
+        } elseif (!empty($keyword) && !empty($kolom)) {
             if ($kolom == 'username') {
                 $kolom = 'users.username';
-            } else if ($kolom == 'email') {
+            } elseif ($kolom == 'email') {
                 $kolom = 'users.email';
             } else {
                 $kolom = 'users.nama_lengkap';
             }
 
-            $user = $model->where($kolom, 'ILIKE', '%' . $keyword . '%')
+            $user = $model->where($kolom, 'ILIKE', '%'.$keyword.'%')
                 ->paginate($perPage);
         } else {
             $user = $model->paginate($perPage);
@@ -67,9 +66,9 @@ class UserController extends Controller
         $user->appends(['per-page' => $perPage]);
 
         return response()->json([
-            'message'   => 'Sukses',
+            'message' => 'Sukses',
             'data_user' => $user,
-            'success'   => true
+            'success' => true,
         ], 200);
     }
 
@@ -90,21 +89,21 @@ class UserController extends Controller
 
         $request->validate([
             'username' => 'required|max:30|unique:users',
-            'password' => 'required|max:30',
+            'password' => 'required|min:8|max:30|regex:/^(?=.*[A-Z])(?=.*\d)/',
             'email' => 'required|email|max:50|unique:users',
             'nama_lengkap' => 'required|max:50|unique:users',
-            'role_id' => 'required|numeric|digits_between:1,1',
-            'status' => 'required|numeric|digits_between:1,1',
-            'role_daerah' => 'numeric|nullable|digits_between:1,1',
-            'role_desa' => 'numeric|nullable|digits_between:1,1',
-            'role_kelompok' => 'numeric|nullable|digits_between:1,1',
+            'role_id' => 'required|numeric|digits_between:1,5',
+            'status' => 'required|numeric|digits_between:1,5',
+            'role_daerah' => 'numeric|nullable|digits_between:1,5',
+            'role_desa' => 'numeric|nullable|digits_between:1,5',
+            'role_kelompok' => 'numeric|nullable|digits_between:1,5',
         ], $customMessages);
 
-        $user = new User;
+        $user = new User();
         $user->username = $request->username;
         $user->password = bcrypt($request->password);
         $user->email = $request->email;
-        $user->nama_lengkap = $request->nama_lengkap;
+        $user->nama_lengkap = ucwords(strtolower($request->nama_lengkap));
         $user->role_id = $request->role_id;
         $user->status = $request->status;
         $user->email_verified_at = now();
@@ -113,14 +112,13 @@ class UserController extends Controller
         $user->role_kelompok = $request->role_kelompok;
 
         try {
-
             // Periksa apakah role_id valid
             $role = Role::find($request->role_id);
 
             if (!$role) {
                 return response()->json([
                     'message' => 'Role dengan ID yang diberikan tidak ditemukan',
-                    'success' => false
+                    'success' => false,
                 ], 404);
             }
 
@@ -130,19 +128,19 @@ class UserController extends Controller
 
             // $user->sendEmailVerificationNotification();
             $user->save();
-        } catch (Exception $exception) {
+        } catch (\Exception $exception) {
             return response()->json([
-                'message'   => 'Gagal menambah data User ' . $exception->getMessage(),
-                'success'   => false
+                'message' => 'Gagal menambah data User '.$exception->getMessage(),
+                'success' => false,
             ], 500);
         }
 
         unset($user->password);
 
         return response()->json([
-            'message'   => 'Data User berhasil ditambahkan',
+            'message' => 'Data User berhasil ditambahkan',
             'data_user' => $user,
-            'success'   => true
+            'success' => true,
         ], 200);
     }
 
@@ -150,7 +148,7 @@ class UserController extends Controller
     public function edit(Request $request)
     {
         $request->validate([
-            'id' => 'required|numeric|digits_between:1,5'
+            'id' => 'required|numeric|digits_between:1,5',
         ]);
 
         $user = User::leftjoin('roles', 'roles.id', '=', 'users.role_id')
@@ -169,15 +167,15 @@ class UserController extends Controller
 
         if (!empty($user)) {
             return response()->json([
-                'message'   => 'Sukses',
+                'message' => 'Sukses',
                 'data_user' => $user,
-                'success'   => true
+                'success' => true,
             ], 200);
         }
 
         return response()->json([
-            'message'   => 'Data User tidak ditemukan',
-            'success'   => false
+            'message' => 'Data User tidak ditemukan',
+            'success' => false,
         ], 200);
     }
 
@@ -198,19 +196,15 @@ class UserController extends Controller
 
         $request->validate([
             'id' => 'required|numeric|digits_between:1,5',
-            'username' => 'required|max:30',
-            'password' => [
-                'required',
-                'min:8',
-                'regex:/^(?=.*[A-Z])(?=.*\d)/',
-            ],
-            'email' => 'required|email|max:50',
-            'nama_lengkap' => 'required|max:50',
-            'role_id' => 'required|numeric|digits_between:1,1',
-            'status' => 'required|numeric|digits_between:1,1',
-            'role_daerah' => 'numeric|nullable|digits_between:1,1',
-            'role_desa' => 'numeric|nullable|digits_between:1,1',
-            'role_kelompok' => 'numeric|nullable|digits_between:1,1',
+            'username' => 'sometimes|required|max:30|unique:users,username,'.$request->id.',id',
+            'password' => 'sometimes|max:30',
+            'email' => 'sometimes|required|email|max:50|unique:users,email,'.$request->id.',id',
+            'nama_lengkap' => 'sometimes|required|max:50|unique:users,nama_lengkap,'.$request->id.',id',
+            'role_id' => 'required|numeric|digits_between:1,5',
+            'status' => 'required|numeric|digits_between:1,5',
+            'role_daerah' => 'numeric|nullable|digits_between:1,5',
+            'role_desa' => 'numeric|nullable|digits_between:1,5',
+            'role_kelompok' => 'numeric|nullable|digits_between:1,5',
         ], $customMessages);
 
         $user = User::where('id', '=', $request->id)->first();
@@ -221,32 +215,32 @@ class UserController extends Controller
                     'password' => bcrypt($request->password),
                     'username' => $request->username,
                     'email' => $request->email,
-                    'nama' => $request->nama,
+                    'nama_lengkap' => ucwords(strtolower($request->nama_lengkap)),
                     'role_id' => $request->role_id,
                     'status' => $request->status,
                     'role_daerah' => $request->role_daerah,
                     'role_desa' => $request->role_desa,
                     'role_kelompok' => $request->role_kelompok,
                 ]);
-            } catch (Exception $exception) {
+            } catch (\Exception $exception) {
                 return response()->json([
-                    'message'   => 'Gagal mengupdate data User' . $exception->getMessage(),
-                    'success'   => false
+                    'message' => 'Gagal mengupdate data User'.$exception->getMessage(),
+                    'success' => false,
                 ], 500);
             }
 
             unset($user->password);
 
             return response()->json([
-                'message'   => 'Data User berhasil diupdate',
+                'message' => 'Data User berhasil diupdate',
                 'data_user' => $user,
-                'success'   => true
+                'success' => true,
             ], 200);
         }
 
         return response()->json([
-            'message'   => 'Data User tidak ditemukan',
-            'success'   => false
+            'message' => 'Data User tidak ditemukan',
+            'success' => false,
         ], 200);
     }
 
@@ -254,7 +248,7 @@ class UserController extends Controller
     public function delete(Request $request)
     {
         $request->validate([
-            'id' => 'required|numeric|digits_between:1,5'
+            'id' => 'required|numeric|digits_between:1,5',
         ]);
 
         $user = User::where('id', '=', $request->id)
@@ -264,21 +258,22 @@ class UserController extends Controller
             try {
                 $user = User::where('id', '=', $request->id)
                     ->delete();
+
                 return response()->json([
-                    'message'   => 'Data User berhasil dihapus',
-                    'success'   => true
+                    'message' => 'Data User berhasil dihapus',
+                    'success' => true,
                 ], 200);
-            } catch (Exception $exception) {
+            } catch (\Exception $exception) {
                 return response()->json([
-                    'message'   => 'Gagal menghapus data User' . $exception->getMessage(),
-                    'success'   => false
+                    'message' => 'Gagal menghapus data User'.$exception->getMessage(),
+                    'success' => false,
                 ], 500);
             }
         }
 
         return response()->json([
-            'message'   => 'Data User tidak ditemukan',
-            'success'   => false
+            'message' => 'Data User tidak ditemukan',
+            'success' => false,
         ], 200);
     }
 }

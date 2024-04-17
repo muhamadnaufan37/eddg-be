@@ -3,13 +3,26 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
-use Exception;
 use Illuminate\Http\Request;
-use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\DB;
+use Spatie\Permission\Models\Role;
 
 class RolesController extends Controller
 {
+    public function list_data_roles()
+    {
+        $roles = Role::select(['id', 'name']) // Include the 'id' column
+        ->groupBy('id', 'name') // Group by both 'id' and 'name'
+        ->orderBy('name') // Order by the role name
+        ->get();
+
+        return response()->json([
+            'message' => 'Sukses',
+            'data_role' => $roles,
+            'success' => true,
+        ], 200);
+    }
+
     // List data Role
     public function list(Request $request)
     {
@@ -26,21 +39,21 @@ class RolesController extends Controller
             'name',
             'guard_name',
             'description',
-            DB::raw('(SELECT COUNT(*) FROM users WHERE users.role_id = roles.id) as users_count')
+            DB::raw('(SELECT COUNT(*) FROM users WHERE users.role_id = roles.id) as users_count'),
         ]);
 
         if (!empty($keyword) && empty($kolom)) {
-            $role = $model->where('name', 'ILIKE', '%' . $keyword . '%')
-                ->orWhere('description', 'ILIKE', '%' . $keyword . '%')
+            $role = $model->where('name', 'ILIKE', '%'.$keyword.'%')
+                ->orWhere('description', 'ILIKE', '%'.$keyword.'%')
                 ->paginate($perPage);
-        } else if (!empty($keyword) && !empty($kolom)) {
+        } elseif (!empty($keyword) && !empty($kolom)) {
             if ($kolom == 'name') {
                 $kolom = 'name';
             } else {
                 $kolom = 'description';
             }
 
-            $role = $model->where($kolom, 'ILIKE', '%' . $keyword . '%')
+            $role = $model->where($kolom, 'ILIKE', '%'.$keyword.'%')
                 ->paginate($perPage);
         } else {
             $role = $model->paginate($perPage);
@@ -49,9 +62,9 @@ class RolesController extends Controller
         $role->appends(['per-page' => $perPage]);
 
         return response()->json([
-            'message'   => 'Sukses',
+            'message' => 'Sukses',
             'data_role' => $role,
-            'success'   => true
+            'success' => true,
         ], 200);
     }
 
@@ -72,28 +85,28 @@ class RolesController extends Controller
 
         $request->validate([
             'name' => 'required|max:225|unique:roles',
-            'description' => 'required|max:225'
+            'description' => 'required|max:225',
         ], $customMessages);
 
-        $role = new Role;
+        $role = new Role();
         $role->name = $request->name;
-        $role->guard_name = "api";
+        $role->guard_name = 'api';
         $role->description = $request->description;
         try {
             $role->save();
-        } catch (Exception $exception) {
+        } catch (\Exception $exception) {
             return response()->json([
-                'message'   => 'Gagal menambah data Role' . $exception->getMessage(),
-                'success'   => false
+                'message' => 'Gagal menambah data Role'.$exception->getMessage(),
+                'success' => false,
             ], 500);
         }
 
         unset($role->created_at, $role->updated_at);
 
         return response()->json([
-            'message'   => 'Data Role berhasil ditambahkan',
+            'message' => 'Data Role berhasil ditambahkan',
             'data_role' => $role,
-            'success'   => true
+            'success' => true,
         ], 200);
     }
 
@@ -101,7 +114,7 @@ class RolesController extends Controller
     public function edit(Request $request)
     {
         $request->validate([
-            'id' => 'required|numeric|digits_between:1,5'
+            'id' => 'required|numeric|digits_between:1,5',
         ]);
 
         $role = Role::where('id', '=', $request->id)->first();
@@ -110,15 +123,15 @@ class RolesController extends Controller
 
         if (!empty($role)) {
             return response()->json([
-                'message'   => 'Sukses',
+                'message' => 'Sukses',
                 'data_role' => $role,
-                'success'   => true
+                'success' => true,
             ], 200);
         }
 
         return response()->json([
-            'message'   => 'Data Role tidak ditemukan',
-            'success'   => false
+            'message' => 'Data Role tidak ditemukan',
+            'success' => false,
         ], 200);
     }
 
@@ -140,7 +153,7 @@ class RolesController extends Controller
         $request->validate([
             'id' => 'required|numeric|digits_between:1,5',
             'name' => 'required|max:225',
-            'description' => 'required|max:225'
+            'description' => 'required|max:225',
         ], $customMessages);
 
         $role = Role::where('id', '=', $request->id)
@@ -151,25 +164,25 @@ class RolesController extends Controller
                 $role->update([
                     'id' => $request->id,
                     'name' => $request->name,
-                    'description' => $request->description
+                    'description' => $request->description,
                 ]);
-            } catch (Exception $exception) {
+            } catch (\Exception $exception) {
                 return response()->json([
-                    'message'   => 'Gagal mengupdate data Role' . $exception->getMessage(),
-                    'success'   => false
+                    'message' => 'Gagal mengupdate data Role'.$exception->getMessage(),
+                    'success' => false,
                 ], 500);
             }
 
             return response()->json([
-                'message'   => 'Data Role berhasil diupdate',
+                'message' => 'Data Role berhasil diupdate',
                 'data_role' => $role,
-                'success'   => true
+                'success' => true,
             ], 200);
         }
 
         return response()->json([
-            'message'   => 'Data Role tidak ditemukan',
-            'success'   => false
+            'message' => 'Data Role tidak ditemukan',
+            'success' => false,
         ], 200);
     }
 
@@ -177,7 +190,7 @@ class RolesController extends Controller
     public function delete(Request $request)
     {
         $request->validate([
-            'id' => 'required|numeric|digits_between:1,5'
+            'id' => 'required|numeric|digits_between:1,5',
         ]);
 
         $role = Role::where('id', '=', $request->id)
@@ -187,21 +200,22 @@ class RolesController extends Controller
             try {
                 $role = Role::where('id', '=', $request->id)
                     ->delete();
+
                 return response()->json([
-                    'message'   => 'Data Role berhasil dihapus',
-                    'success'   => true
+                    'message' => 'Data Role berhasil dihapus',
+                    'success' => true,
                 ], 200);
-            } catch (Exception $exception) {
+            } catch (\Exception $exception) {
                 return response()->json([
-                    'message'   => 'Gagal menghapus data Role' . $exception->getMessage(),
-                    'success'   => false
+                    'message' => 'Gagal menghapus data Role'.$exception->getMessage(),
+                    'success' => false,
                 ], 500);
             }
         }
 
         return response()->json([
-            'message'   => 'Data Role tidak ditemukan',
-            'success'   => false
+            'message' => 'Data Role tidak ditemukan',
+            'success' => false,
         ], 200);
     }
 }

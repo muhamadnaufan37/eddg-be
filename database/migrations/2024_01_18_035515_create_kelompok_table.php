@@ -10,9 +10,10 @@ return new class() extends Migration {
      */
     public function up(): void
     {
-        Schema::create('kelompok', function (Blueprint $table) {
+        Schema::create('tabel_kelompok', function (Blueprint $table) {
             $table->id();
             $table->string('nama_kelompok', 255);
+            $table->foreignId('desa_id');
             $table->timestamps();
         });
     }
@@ -22,6 +23,6 @@ return new class() extends Migration {
      */
     public function down(): void
     {
-        Schema::dropIfExists('kelompok');
+        Schema::dropIfExists('tabel_kelompok');
     }
 };

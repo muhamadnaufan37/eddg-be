@@ -7,6 +7,7 @@ use App\Models\dataDaerah;
 use App\Models\dataDesa;
 use App\Models\dataKelompok;
 use App\Models\dataSensusPeserta;
+use App\Models\tblPekerjaan;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -105,6 +106,18 @@ class DataPesertaController extends Controller
         // Lakukan apa pun yang perlu Anda lakukan dengan $dataBulan
     }
 
+    public function list_pekerjaan()
+    {
+        $sensus = tblPekerjaan::select(['id', 'nama_pekerjaan'])
+            ->groupBy('id', 'nama_pekerjaan')->orderBy('nama_pekerjaan')->get();
+
+        return response()->json([
+            'message' => 'Sukses',
+            'data_tempat_sambung' => $sensus,
+            'success' => true,
+        ], 200);
+    }
+
     public function list_daerah()
     {
         $sensus = dataDaerah::select(['nama_daerah'])
@@ -182,7 +195,7 @@ class DataPesertaController extends Controller
             CASE
                 WHEN EXTRACT(YEAR FROM AGE(current_date, data_peserta.tanggal_lahir)) <= 13 THEN 'Pra-remaja'
                 WHEN EXTRACT(YEAR FROM AGE(current_date, data_peserta.tanggal_lahir)) <= 16 THEN 'Remaja'
-                ELSE 'Muda-mudi / Usia Nikah'
+                ELSE 'Muda - mudi / Usia Nikah'
             END AS status_kelas"),
         ])
             ->join('tabel_daerah', 'tabel_daerah.id', '=', DB::raw('CAST(data_peserta.tmpt_daerah AS BIGINT)'))
@@ -279,7 +292,7 @@ class DataPesertaController extends Controller
             CASE
                 WHEN EXTRACT(YEAR FROM AGE(current_date, data_peserta.tanggal_lahir)) <= 13 THEN 'Pra-remaja'
                 WHEN EXTRACT(YEAR FROM AGE(current_date, data_peserta.tanggal_lahir)) <= 16 THEN 'Remaja'
-                ELSE 'Muda-mudi / Usia Nikah'
+                ELSE 'Muda - mudi / Usia Nikah'
             END AS status_kelas"),
         ])
             ->join('tabel_daerah', 'tabel_daerah.id', '=', DB::raw('CAST(data_peserta.tmpt_daerah AS BIGINT)'))
@@ -360,10 +373,10 @@ class DataPesertaController extends Controller
             'nama_ayah' => 'required|string',
             'nama_ibu' => 'required|string',
             'hoby' => 'required|string',
-            'pekerjaan' => 'required|string',
+            'pekerjaan' => 'required|integer',
             'usia_menikah' => 'nullable|string',
             'kriteria_pasangan' => 'nullable|string',
-            'tmpt_daerah' => 'integer|digits_between:1,5',
+            'tmpt_daerah' => 'required|integer|digits_between:1,5',
             'tmpt_desa' => 'integer|digits_between:1,5',
             'tmpt_kelompok' => 'integer|digits_between:1,5',
             'img_sensus' => 'nullable|image|mimes:png|max:4096',
@@ -377,15 +390,15 @@ class DataPesertaController extends Controller
         $tahun = $tanggalSekarang->format('Y'); // Mendapatkan tahun saat ini (format 4 digit)
 
         $tabel_sensus->kode_cari_data = $bulan.Str::random(4).$tahun;
-        $tabel_sensus->nama_lengkap = $request->nama_lengkap;
-        $tabel_sensus->nama_panggilan = $request->nama_panggilan;
-        $tabel_sensus->tempat_lahir = $request->tempat_lahir;
+        $tabel_sensus->nama_lengkap = ucwords(strtolower($request->nama_lengkap));
+        $tabel_sensus->nama_panggilan = ucwords(strtolower($request->nama_panggilan));
+        $tabel_sensus->tempat_lahir = ucwords(strtolower($request->tempat_lahir));
         $tabel_sensus->tanggal_lahir = $request->tanggal_lahir;
-        $tabel_sensus->alamat = $request->alamat;
+        $tabel_sensus->alamat = ucwords(strtolower($request->alamat));
         $tabel_sensus->jenis_kelamin = $request->jenis_kelamin;
         $tabel_sensus->no_telepon = $request->no_telepon;
-        $tabel_sensus->nama_ayah = $request->nama_ayah;
-        $tabel_sensus->nama_ibu = $request->nama_ibu;
+        $tabel_sensus->nama_ayah = ucwords(strtolower($request->nama_ayah));
+        $tabel_sensus->nama_ibu = ucwords(strtolower($request->nama_ibu));
         $tabel_sensus->hoby = $request->hoby;
         $tabel_sensus->pekerjaan = $request->pekerjaan;
         $tabel_sensus->usia_menikah = $request->usia_menikah;
@@ -500,7 +513,7 @@ class DataPesertaController extends Controller
         CASE
             WHEN EXTRACT(YEAR FROM AGE(current_date, data_peserta.tanggal_lahir)) <= 13 THEN 'Pra-remaja'
             WHEN EXTRACT(YEAR FROM AGE(current_date, data_peserta.tanggal_lahir)) <= 16 THEN 'Remaja'
-            ELSE 'Muda-mudi / Usia Nikah'
+            ELSE 'Muda - mudi / Usia Nikah'
         END AS status_kelas
         "),
         ])->join('tabel_daerah', function ($join) {
@@ -559,7 +572,7 @@ class DataPesertaController extends Controller
             'nama_ayah' => 'required|string',
             'nama_ibu' => 'required|string',
             'hoby' => 'required|string',
-            'pekerjaan' => 'required|string',
+            'pekerjaan' => 'required|integer',
             'usia_menikah' => 'nullable|string',
             'kriteria_pasangan' => 'nullable|string',
             'status_sambung' => 'integer',
@@ -574,15 +587,15 @@ class DataPesertaController extends Controller
             try {
                 $sensus->update([
                     'id' => $request->id,
-                    'nama_lengkap' => $request->nama_lengkap,
-                    'nama_panggilan' => $request->nama_panggilan,
-                    'tempat_lahir' => $request->tempat_lahir,
+                    'nama_lengkap' => ucwords(strtolower($request->nama_lengkap)),
+                    'nama_panggilan' => ucwords(strtolower($request->nama_panggilan)),
+                    'tempat_lahir' => ucwords(strtolower($request->tempat_lahir)),
                     'tanggal_lahir' => $request->tanggal_lahir,
-                    'alamat' => $request->alamat,
+                    'alamat' => ucwords(strtolower($request->alamat)),
                     'jenis_kelamin' => $request->jenis_kelamin,
                     'no_telepon' => $request->no_telepon,
-                    'nama_ayah' => $request->nama_ayah,
-                    'nama_ibu' => $request->nama_ibu,
+                    'nama_ayah' => ucwords(strtolower($request->nama_ayah)),
+                    'nama_ibu' => ucwords(strtolower($request->nama_ibu)),
                     'hoby' => $request->hoby,
                     'pekerjaan' => $request->pekerjaan,
                     'usia_menikah' => $request->usia_menikah,
@@ -617,34 +630,28 @@ class DataPesertaController extends Controller
             'id' => 'required|numeric|digits_between:1,5',
         ]);
 
-        $sensus = dataSensusPeserta::find($request->id);
+        $sensus = dataSensusPeserta::where('id', '=', $request->id)
+            ->first();
 
         if (!empty($sensus)) {
-            $filePath = public_path($sensus->img_sensus);
-
             try {
-                // Hapus entri dari database
-                $sensus->delete();
-
-                // Periksa dan hapus file jika ada
-                if (file_exists($filePath)) {
-                    unlink($filePath);
-                }
+                $sensus = dataSensusPeserta::where('id', '=', $request->id)
+                    ->delete();
 
                 return response()->json([
-                    'message' => 'Data Sensus berhasil dihapus beserta file gambar',
+                    'message' => 'Data berhasil dihapus',
                     'success' => true,
                 ], 200);
             } catch (\Exception $exception) {
                 return response()->json([
-                    'message' => 'Gagal menghapus data sensus: '.$exception->getMessage(),
+                    'message' => 'Gagal menghapus Data'.$exception->getMessage(),
                     'success' => false,
                 ], 500);
             }
         }
 
         return response()->json([
-            'message' => 'Data Sensus tidak ditemukan',
+            'message' => 'Data tidak ditemukan',
             'success' => false,
         ], 200);
     }

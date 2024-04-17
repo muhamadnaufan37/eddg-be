@@ -305,18 +305,18 @@ class CalonPPDBController extends Controller
                     'id_peserta' => $request->id_peserta,
                     'id_petugas' => $request->id_petugas,
                 ]);
+
+                return response()->json([
+                    'message' => 'Data PPDB berhasil diupdate',
+                    'data_ppdb' => $table_calon_ppdb,
+                    'success' => true,
+                ], 200);
             } catch (\Exception $exception) {
                 return response()->json([
                     'message' => 'Gagal mengupdate Data PPDB'.$exception->getMessage(),
                     'success' => false,
                 ], 500);
             }
-
-            return response()->json([
-                'message' => 'Data PPDB berhasil diupdate',
-                'data_ppdb' => $table_calon_ppdb,
-                'success' => true,
-            ], 200);
         }
 
         return response()->json([
