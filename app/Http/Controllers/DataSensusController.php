@@ -84,7 +84,7 @@ class DataSensusController extends Controller
         CASE
             WHEN EXTRACT(YEAR FROM AGE(current_date, data_peserta.tanggal_lahir)) <= 13 THEN 'Pra-remaja'
             WHEN EXTRACT(YEAR FROM AGE(current_date, data_peserta.tanggal_lahir)) <= 16 THEN 'Remaja'
-            ELSE 'Muda-mudi / Usia Nikah'
+            ELSE 'Muda - mudi / Usia Nikah'
         END AS status_kelas
         "),
         ])->join('tabel_daerah', function ($join) {

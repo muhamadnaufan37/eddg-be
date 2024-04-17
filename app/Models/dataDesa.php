@@ -13,5 +13,6 @@ class dataDesa extends Model
 
     protected $fillable = [
         'nama_desa',
+        'daerah_id', // tambahkan field daerah_id untuk merepresentasikan kunci asing ke tabel daerah
     ];
 }
