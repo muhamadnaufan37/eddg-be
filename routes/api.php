@@ -74,6 +74,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Daerah Management
     Route::group(['prefix' => '/daerah/'], function () {
+        Route::get('list_daerah', [DaerahController::class, 'list_daerah'])->middleware('role:1');
         Route::get('list', [DaerahController::class, 'list'])->middleware('role:1,2');
         Route::post('create', [DaerahController::class, 'create'])->middleware('role:1');
         Route::post('edit', [DaerahController::class, 'edit'])->middleware('role:1');
@@ -83,6 +84,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Desa Management
     Route::group(['prefix' => '/desa/'], function () {
+        Route::get('list_desa', [DesaController::class, 'list_desa'])->middleware('role:1');
         Route::get('list', [DesaController::class, 'list'])->middleware('role:1,2');
         Route::post('create', [DesaController::class, 'create'])->middleware('role:1');
         Route::post('edit', [DesaController::class, 'edit'])->middleware('role:1');

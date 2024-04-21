@@ -377,8 +377,8 @@ class DataPesertaController extends Controller
             'usia_menikah' => 'nullable|string',
             'kriteria_pasangan' => 'nullable|string',
             'tmpt_daerah' => 'required|integer|digits_between:1,5',
-            'tmpt_desa' => 'integer|digits_between:1,5',
-            'tmpt_kelompok' => 'integer|digits_between:1,5',
+            'tmpt_desa' => 'required|integer|digits_between:1,5',
+            'tmpt_kelompok' => 'required|integer|digits_between:1,5',
             'img_sensus' => 'nullable|image|mimes:png|max:4096',
             'user_id' => 'required|integer',
         ], $customMessages);

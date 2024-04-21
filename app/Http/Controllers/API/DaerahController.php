@@ -8,6 +8,20 @@ use Illuminate\Http\Request;
 
 class DaerahController extends Controller
 {
+    public function list_daerah()
+    {
+        $table_daerah = dataDaerah::select(['id', 'nama_daerah'])
+        ->groupBy('id', 'nama_daerah') // Menambahkan id ke dalam grup by
+        ->orderBy('nama_daerah')
+        ->get();
+
+        return response()->json([
+            'message' => 'Sukses',
+            'data_daerah' => $table_daerah,
+            'success' => true,
+        ], 200);
+    }
+
     public function list(Request $request)
     {
         $keyword = $request->get('keyword', null);
@@ -58,7 +72,7 @@ class DaerahController extends Controller
         ], $customMessages);
 
         $tabel_daerah = new dataDaerah();
-        $tabel_daerah->nama_daerah = $request->nama_daerah;
+        $tabel_daerah->nama_daerah = ucwords(strtolower($request->nama_daerah));
         try {
             $tabel_daerah->save();
         } catch (\Exception $exception) {
@@ -127,7 +141,7 @@ class DaerahController extends Controller
             try {
                 $tabel_daerah->update([
                     'id' => $request->id,
-                    'nama_daerah' => $request->nama_daerah,
+                    'nama_daerah' => ucwords(strtolower($request->nama_daerah)),
                 ]);
             } catch (\Exception $exception) {
                 return response()->json([

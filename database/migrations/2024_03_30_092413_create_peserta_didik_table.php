@@ -20,12 +20,12 @@ return new class() extends Migration {
             $table->string('hoby', 255);
             $table->string('anak_ke', 255);
             $table->string('nama_ayah', 255);
-            $table->string('pekerjaan_ayah', 255);
+            $table->foreignId('pekerjaan_ayah', 255);
             $table->string('nama_ibu', 255);
-            $table->string('pekerjaan_ibu', 255);
+            $table->foreignId('pekerjaan_ibu', 255);
             $table->string('no_telepon_org_tua', 15);
             $table->string('nama_wali', 255)->nullable();
-            $table->string('pekerjaan_wali', 255)->nullable();
+            $table->foreignId('pekerjaan_wali', 255)->nullable();
             $table->string('no_telepon_wali', 15)->nullable();
             $table->text('alamat', 255);
             $table->boolean('status_peserta_didik');
