@@ -14,9 +14,9 @@ class PengajarPesertaController extends Controller
 {
     public function data_pengajar()
     {
-        $tabel_data_pengajar = tblPengajar::select(['nama_pengajar'])
+        $tabel_data_pengajar = tblPengajar::select(['id', 'nama_pengajar'])
             ->where('status_pengajar', true) // Memfilter hasil berdasarkan status_pengajar
-            ->groupBy('nama_pengajar') // Mengelompokkan hasil berdasarkan nama_pengajar
+            ->groupBy('id', 'nama_pengajar') // Mengelompokkan hasil berdasarkan nama_pengajar
             ->orderBy('nama_pengajar')
             ->get();
 
@@ -105,7 +105,7 @@ class PengajarPesertaController extends Controller
         ], $customMessages);
 
         $table_pengajar = new tblPengajar();
-        $table_pengajar->nama_pengajar = ucwords(strtolower($request->nama_pengajar));
+        $table_pengajar->nama_pengajar = $request->nama_pengajar;
         $table_pengajar->status_pengajar = $request->status_pengajar;
         $table_pengajar->add_by_user_id = $userId;
         $table_pengajar->tmpt_daerah = $request->tmpt_daerah;
@@ -252,7 +252,7 @@ class PengajarPesertaController extends Controller
 
                 $table_pengajar->update([
                     'id' => $request->id,
-                    'nama_pengajar' => ucwords(strtolower($request->nama_pengajar)),
+                    'nama_pengajar' => $request->nama_pengajar,
                     'status_pengajar' => $request->status_pengajar,
                     'tmpt_daerah' => $request->tmpt_daerah,
                     'tmpt_desa' => $request->tmpt_desa,

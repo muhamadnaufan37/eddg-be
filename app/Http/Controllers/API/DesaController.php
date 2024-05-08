@@ -79,7 +79,7 @@ class DesaController extends Controller
         ], $customMessages);
 
         $tabel_desa = new dataDesa();
-        $tabel_desa->nama_desa = ucwords(strtolower($request->nama_desa));
+        $tabel_desa->nama_desa = $request->nama_desa;
         $tabel_desa->daerah_id = $request->daerah_id;
         try {
             if (!$tabel_daerah) {
@@ -165,7 +165,7 @@ class DesaController extends Controller
             try {
                 $tabel_desa->update([
                     'id' => $request->id,
-                    'nama_desa' => ucwords(strtolower($request->nama_desa)),
+                    'nama_desa' => $request->nama_desa,
                     'daerah_id' => $request->daerah_id,
                 ]);
             } catch (\Exception $exception) {

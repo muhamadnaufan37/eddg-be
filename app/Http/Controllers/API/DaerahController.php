@@ -72,7 +72,7 @@ class DaerahController extends Controller
         ], $customMessages);
 
         $tabel_daerah = new dataDaerah();
-        $tabel_daerah->nama_daerah = ucwords(strtolower($request->nama_daerah));
+        $tabel_daerah->nama_daerah = $request->nama_daerah;
         try {
             $tabel_daerah->save();
         } catch (\Exception $exception) {
@@ -141,7 +141,7 @@ class DaerahController extends Controller
             try {
                 $tabel_daerah->update([
                     'id' => $request->id,
-                    'nama_daerah' => ucwords(strtolower($request->nama_daerah)),
+                    'nama_daerah' => $request->nama_daerah,
                 ]);
             } catch (\Exception $exception) {
                 return response()->json([

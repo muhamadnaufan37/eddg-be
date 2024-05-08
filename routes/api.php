@@ -74,7 +74,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Daerah Management
     Route::group(['prefix' => '/daerah/'], function () {
-        Route::get('list_daerah', [DaerahController::class, 'list_daerah'])->middleware('role:1');
+        Route::get('list_daerah', [DaerahController::class, 'list_daerah'])->middleware('role:1,2,3,4');
         Route::get('list', [DaerahController::class, 'list'])->middleware('role:1,2');
         Route::post('create', [DaerahController::class, 'create'])->middleware('role:1');
         Route::post('edit', [DaerahController::class, 'edit'])->middleware('role:1');
@@ -84,7 +84,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Desa Management
     Route::group(['prefix' => '/desa/'], function () {
-        Route::get('list_desa', [DesaController::class, 'list_desa'])->middleware('role:1');
+        Route::get('list_desa', [DesaController::class, 'list_desa'])->middleware('role:1,2,3,4');
         Route::get('list', [DesaController::class, 'list'])->middleware('role:1,2');
         Route::post('create', [DesaController::class, 'create'])->middleware('role:1');
         Route::post('edit', [DesaController::class, 'edit'])->middleware('role:1');
@@ -124,9 +124,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Pengumuman
     Route::group(['prefix' => '/boardcast/'], function () {
-        Route::get('list', [BoardCastController::class, 'list'])->middleware('role:1,2,3');
+        Route::get('list', [BoardCastController::class, 'list'])->middleware('role:1,2,3,4');
         Route::post('create', [BoardCastController::class, 'create'])->middleware('role:1');
-        Route::post('edit', [BoardCastController::class, 'edit'])->middleware('role:1,2,3');
+        Route::post('edit', [BoardCastController::class, 'edit'])->middleware('role:1,2,3,4');
         Route::post('update', [BoardCastController::class, 'update'])->middleware('role:1');
         Route::delete('delete', [BoardCastController::class, 'delete'])->middleware('role:1');
     });
@@ -153,6 +153,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Pekerjaan Management
     Route::group(['prefix' => '/pekerjaan/'], function () {
+        Route::get('list_data_all_pekerjaan', [PekerjaanPesertaController::class, 'list_data_all_pekerjaan'])->middleware('role:1,4');
         Route::get('list', [PekerjaanPesertaController::class, 'list'])->middleware('role:1,4');
         Route::post('create', [PekerjaanPesertaController::class, 'create'])->middleware('role:1,4');
         Route::post('edit', [PekerjaanPesertaController::class, 'edit'])->middleware('role:1,4');
@@ -160,8 +161,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::delete('delete', [PekerjaanPesertaController::class, 'delete'])->middleware('role:1,4');
     });
 
-    // Pekerjaan Management
+    // Kelas Management
     Route::group(['prefix' => '/kelas_peserta/'], function () {
+        Route::get('data_all_kelas', [KelasPesertaController::class, 'data_all_kelas'])->middleware('role:1,4');
         Route::get('list', [KelasPesertaController::class, 'list'])->middleware('role:1,4');
         Route::post('create', [KelasPesertaController::class, 'create'])->middleware('role:1,4');
         Route::post('edit', [KelasPesertaController::class, 'edit'])->middleware('role:1,4');
@@ -169,8 +171,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::delete('delete', [KelasPesertaController::class, 'delete'])->middleware('role:1,4');
     });
 
-    // Pekerjaan Management
+    // Kalender Pendidikan Management
     Route::group(['prefix' => '/kalender_pendidikan/'], function () {
+        Route::get('data_all_kalender_aktif', [KalenderPesertaController::class, 'data_all_kalender_aktif'])->middleware('role:1,4');
         Route::get('list', [KalenderPesertaController::class, 'list'])->middleware('role:1,4');
         Route::post('create', [KalenderPesertaController::class, 'create'])->middleware('role:1,4');
         Route::post('edit', [KalenderPesertaController::class, 'edit'])->middleware('role:1,4');
@@ -190,6 +193,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Peserta Didik Management
     Route::group(['prefix' => '/peserta_didik/'], function () {
+        Route::get('data_all_peserta_didik_aktif', [PesertaDidikController::class, 'data_all_peserta_didik_aktif'])->middleware('role:1,4');
         Route::get('list', [PesertaDidikController::class, 'list'])->middleware('role:1,4');
         Route::post('create', [PesertaDidikController::class, 'create'])->middleware('role:1,4');
         Route::post('edit', [PesertaDidikController::class, 'edit'])->middleware('role:1,4');
@@ -203,7 +207,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('create', [RerataNilaiController::class, 'create'])->middleware('role:1,4');
         Route::post('edit', [RerataNilaiController::class, 'edit'])->middleware('role:1,4');
         Route::post('update', [RerataNilaiController::class, 'update'])->middleware('role:1,4');
-        Route::delete('delete', [RerataNilaiController::class, 'delete'])->middleware('role:1,4');
+        // Route::delete('delete', [RerataNilaiController::class, 'delete'])->middleware('role:1,4');
     });
 
     // Calon Pendaftaran Peserta Didik Management

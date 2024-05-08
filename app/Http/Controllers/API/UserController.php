@@ -103,7 +103,7 @@ class UserController extends Controller
         $user->username = $request->username;
         $user->password = bcrypt($request->password);
         $user->email = $request->email;
-        $user->nama_lengkap = ucwords(strtolower($request->nama_lengkap));
+        $user->nama_lengkap = $request->nama_lengkap;
         $user->role_id = $request->role_id;
         $user->status = $request->status;
         $user->email_verified_at = now();
@@ -215,7 +215,7 @@ class UserController extends Controller
                     'password' => bcrypt($request->password),
                     'username' => $request->username,
                     'email' => $request->email,
-                    'nama_lengkap' => ucwords(strtolower($request->nama_lengkap)),
+                    'nama_lengkap' => $request->nama_lengkap,
                     'role_id' => $request->role_id,
                     'status' => $request->status,
                     'role_daerah' => $request->role_daerah,

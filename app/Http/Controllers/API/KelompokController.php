@@ -65,7 +65,7 @@ class KelompokController extends Controller
         ], $customMessages);
 
         $table_kelompok = new dataKelompok();
-        $table_kelompok->nama_kelompok = ucwords(strtolower($request->nama_kelompok));
+        $table_kelompok->nama_kelompok = $request->nama_kelompok;
         $table_kelompok->desa_id = $request->desa_id;
         try {
             if (!$tabel_desa) {
@@ -151,7 +151,7 @@ class KelompokController extends Controller
 
                 $table_kelompok->update([
                     'id' => $request->id,
-                    'nama_kelompok' => ucwords(strtolower($request->nama_kelompok)),
+                    'nama_kelompok' => $request->nama_kelompok,
                     'desa_id' => $request->desa_id,
                 ]);
             } catch (\Exception $exception) {

@@ -8,6 +8,20 @@ use Illuminate\Http\Request;
 
 class KelasPesertaController extends Controller
 {
+    public function data_all_kelas()
+    {
+        $table_kelas = tblKelasPeserta::select(['id', 'nama_kelas'])
+            ->groupBy('id', 'nama_kelas') // Mengelompokkan hasil berdasarkan nama_kelas
+            ->orderByRaw('nama_kelas') // Mengurutkan hasil berdasarkan nama_kelas
+            ->get();
+
+        return response()->json([
+            'message' => 'Sukses',
+            'data_kelas' => $table_kelas,
+            'success' => true,
+        ], 200);
+    }
+
     public function list(Request $request)
     {
         $keyword = $request->get('keyword', null);

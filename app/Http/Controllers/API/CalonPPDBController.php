@@ -18,6 +18,9 @@ class CalonPPDBController extends Controller
     public function list(Request $request)
     {
         $userID = Auth::id();
+        $user = Auth::user();
+        $roleID = $user->role_id;
+
         $keyword = $request->get('keyword', null);
         $perPage = $request->get('per-page', 10);
 
@@ -26,22 +29,25 @@ class CalonPPDBController extends Controller
         }
 
         $model = tblCppdb::select([
-            'cppdb.uuid',
-            'cppdb.kode_cari_ppdb',
-            'kalender_pendidikan.tahun_pelajaran AS tahun_akademik',
-            'kalender_pendidikan.semester_pelajaran AS semester_akademik',
-            'kelas_peserta_didik.nama_kelas',
-            'pengajar.nama_pengajar',
-            'peserta_didik.nama_lengkap AS nama_peserta',
-            'users.nama_lengkap AS nama_petugas',
-            'cppdb.created_at',
-        ])
-        ->leftJoin('kalender_pendidikan', 'cppdb.id_thn_akademik', '=', 'kalender_pendidikan.id')
-        ->leftJoin('kelas_peserta_didik', 'cppdb.id_kelas', '=', 'kelas_peserta_didik.id')
-        ->leftJoin('pengajar', 'cppdb.id_pengajar', '=', 'pengajar.id')
-        ->leftJoin('peserta_didik', 'cppdb.id_peserta', '=', 'peserta_didik.id')
-        ->leftJoin('users', 'cppdb.id_petugas', '=', 'users.id')
-        ->where('cppdb.id_petugas', $userID); // Filter berdasarkan ID pengguna yang sedang login;
+                'cppdb.uuid',
+                'cppdb.kode_cari_ppdb',
+                'kalender_pendidikan.tahun_pelajaran AS tahun_akademik',
+                'kalender_pendidikan.semester_pelajaran AS semester_akademik',
+                'kelas_peserta_didik.nama_kelas',
+                'pengajar.nama_pengajar',
+                'peserta_didik.nama_lengkap AS nama_peserta',
+                'users.nama_lengkap AS nama_petugas',
+                'cppdb.created_at',
+            ])
+            ->leftJoin('kalender_pendidikan', 'cppdb.id_thn_akademik', '=', 'kalender_pendidikan.id')
+            ->leftJoin('kelas_peserta_didik', 'cppdb.id_kelas', '=', 'kelas_peserta_didik.id')
+            ->leftJoin('pengajar', 'cppdb.id_pengajar', '=', 'pengajar.id')
+            ->leftJoin('peserta_didik', 'cppdb.id_peserta', '=', 'peserta_didik.id')
+            ->leftJoin('users', 'cppdb.id_petugas', '=', 'users.id');
+
+        if ($roleID != 1) {
+            $model->where('cppdb.id_petugas', $userID);
+        }
 
         if (!empty($keyword)) {
             $table_calon_ppdb = $model->where('kode_cari_ppdb', 'ILIKE', '%'.$keyword.'%')
@@ -182,6 +188,10 @@ class CalonPPDBController extends Controller
         $table_calon_ppdb = tblCppdb::select([
             'cppdb.uuid',
             'cppdb.kode_cari_ppdb',
+            'cppdb.id_thn_akademik',
+            'cppdb.id_kelas',
+            'cppdb.id_pengajar',
+            'cppdb.id_peserta',
             'kalender_pendidikan.tahun_pelajaran AS tahun_akademik',
             'kalender_pendidikan.semester_pelajaran AS semester_akademik',
             'kelas_peserta_didik.nama_kelas',
