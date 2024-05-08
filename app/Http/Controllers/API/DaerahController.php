@@ -8,6 +8,20 @@ use Illuminate\Http\Request;
 
 class DaerahController extends Controller
 {
+    public function list_daerah()
+    {
+        $table_daerah = dataDaerah::select(['id', 'nama_daerah'])
+        ->groupBy('id', 'nama_daerah') // Menambahkan id ke dalam grup by
+        ->orderBy('nama_daerah')
+        ->get();
+
+        return response()->json([
+            'message' => 'Sukses',
+            'data_daerah' => $table_daerah,
+            'success' => true,
+        ], 200);
+    }
+
     public function list(Request $request)
     {
         $keyword = $request->get('keyword', null);

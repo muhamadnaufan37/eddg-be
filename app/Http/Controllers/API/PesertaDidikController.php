@@ -13,6 +13,21 @@ use Illuminate\Support\Facades\Auth;
 
 class PesertaDidikController extends Controller
 {
+    public function data_all_peserta_didik_aktif()
+    {
+        $table_peserta_didik = tblPesertaDidik::select(['id', 'nama_lengkap'])
+            ->where('status_peserta_didik', true) // Memfilter hasil berdasarkan status_peserta_didik
+            ->groupBy('id', 'nama_lengkap') // Mengelompokkan hasil berdasarkan nama_lengkap
+            ->orderBy('nama_lengkap')
+            ->get();
+
+        return response()->json([
+            'message' => 'Sukses',
+            'data_peserta_didik' => $table_peserta_didik,
+            'success' => true,
+        ], 200);
+    }
+
     public function list(Request $request)
     {
         $userID = Auth::id();
@@ -62,8 +77,8 @@ class PesertaDidikController extends Controller
         $model->orderByRaw('peserta_didik.created_at DESC NULLS LAST');
 
         if (!empty($keyword)) {
-            $table_peserta_didik = $model->where('nama_lengkap', 'ILIKE', '%'.$keyword.'%')
-                ->orWhere('id', 'ILIKE', '%'.$keyword.'%')
+            $table_peserta_didik = $model->where('peserta_didik.nama_lengkap', 'ILIKE', '%'.$keyword.'%')
+                ->orWhere('peserta_didik.id', 'ILIKE', '%'.$keyword.'%')
                 ->paginate($perPage);
         } else {
             $table_peserta_didik = $model->paginate($perPage);
@@ -119,13 +134,13 @@ class PesertaDidikController extends Controller
             'alamat' => 'required',
             'status_peserta_didik' => 'required',
             'tmpt_daerah' => 'required|integer|digits_between:1,5',
-            'tmpt_desa' => 'nullable|integer|digits_between:1,5',
-            'tmpt_kelompok' => 'nullable|integer|digits_between:1,5',
+            'tmpt_desa' => 'required|integer|digits_between:1,5',
+            'tmpt_kelompok' => 'required|integer|digits_between:1,5',
         ], $customMessages);
 
         $table_peserta_didik = new tblPesertaDidik();
-        $table_peserta_didik->nama_lengkap = ucwords(strtolower($request->nama_lengkap));
-        $table_peserta_didik->tempat_lahir = $request->tempat_lahir;
+        $table_peserta_didik->nama_lengkap = $request->nama_lengkap;
+        $table_peserta_didik->tempat_lahir = ucwords(strtolower($request->tempat_lahir));
         $table_peserta_didik->tanggal_lahir = $request->tanggal_lahir;
         $table_peserta_didik->jenis_kelamin = $request->jenis_kelamin;
         $table_peserta_didik->status_keluarga = $request->status_keluarga;
@@ -139,7 +154,7 @@ class PesertaDidikController extends Controller
         $table_peserta_didik->nama_wali = $request->nama_wali;
         $table_peserta_didik->pekerjaan_wali = $request->pekerjaan_wali;
         $table_peserta_didik->no_telepon_wali = $request->no_telepon_wali;
-        $table_peserta_didik->alamat = $request->alamat;
+        $table_peserta_didik->alamat = ucwords(strtolower($request->alamat));
         $table_peserta_didik->status_peserta_didik = $request->status_peserta_didik;
         $table_peserta_didik->add_by_user_id = $userId;
         $table_peserta_didik->tmpt_daerah = $request->tmpt_daerah;
@@ -234,30 +249,30 @@ class PesertaDidikController extends Controller
             'peserta_didik.hoby',
             'peserta_didik.anak_ke',
             'peserta_didik.nama_ayah',
-            'ayah.nama_pekerjaan AS pekerjaan_ayah',
+            'peserta_didik.pekerjaan_ayah',
             'peserta_didik.nama_ibu',
-            'ibu.nama_pekerjaan AS pekerjaan_ibu',
+            'peserta_didik.pekerjaan_ibu',
             'peserta_didik.no_telepon_org_tua',
             'peserta_didik.nama_wali',
-            'wali.nama_pekerjaan AS pekerjaan_wali',
+            'peserta_didik.pekerjaan_wali',
             'peserta_didik.no_telepon_wali',
             'peserta_didik.alamat',
             'peserta_didik.status_peserta_didik',
+            'peserta_didik.tmpt_daerah',
+            'peserta_didik.tmpt_desa',
+            'peserta_didik.tmpt_kelompok',
             'users.nama_lengkap AS nama_petugas', // Kolom baru untuk nama pengguna
             'tabel_daerah.nama_daerah AS nama_daerah', // Kolom baru untuk nama daerah
             'tabel_desa.nama_desa AS nama_desa', // Kolom baru untuk nama desa
             'tabel_kelompok.nama_kelompok AS nama_kelompok', // Kolom baru untuk nama kelompok
             'peserta_didik.created_at',
         ])
-        ->leftJoin('tbl_pekerjaan AS ayah', 'peserta_didik.pekerjaan_ayah', '=', 'ayah.id')
-        ->leftJoin('tbl_pekerjaan AS ibu', 'peserta_didik.pekerjaan_ibu', '=', 'ibu.id')
-        ->leftJoin('tbl_pekerjaan AS wali', 'peserta_didik.pekerjaan_wali', '=', 'wali.id')
         ->leftJoin('users', 'peserta_didik.add_by_user_id', '=', 'users.id')
         ->leftJoin('tabel_daerah', 'peserta_didik.tmpt_daerah', '=', 'tabel_daerah.id')
         ->leftJoin('tabel_desa', 'peserta_didik.tmpt_desa', '=', 'tabel_desa.id')
-        ->leftJoin('tabel_kelompok', 'peserta_didik.tmpt_kelompok', '=', 'tabel_kelompok.id')->first();
-
-        unset($table_peserta_didik->created_at, $table_peserta_didik->updated_at);
+        ->leftJoin('tabel_kelompok', 'peserta_didik.tmpt_kelompok', '=', 'tabel_kelompok.id')
+        ->where('peserta_didik.id', $request->id)
+        ->first();
 
         if (!empty($table_peserta_didik)) {
             return response()->json([
@@ -379,8 +394,8 @@ class PesertaDidikController extends Controller
 
                 $table_peserta_didik->update([
                     'id' => $request->id,
-                    'nama_lengkap' => ucwords(strtolower($request->nama_lengkap)),
-                    'tempat_lahir' => $request->tempat_lahir,
+                    'nama_lengkap' => $request->nama_lengkap,
+                    'tempat_lahir' => ucwords(strtolower($request->tempat_lahir)),
                     'tanggal_lahir' => $request->tanggal_lahir,
                     'jenis_kelamin' => $request->jenis_kelamin,
                     'status_keluarga' => $request->status_keluarga,
@@ -394,7 +409,7 @@ class PesertaDidikController extends Controller
                     'nama_wali' => $request->nama_wali,
                     'pekerjaan_wali' => $request->pekerjaan_wali,
                     'no_telepon_wali' => $request->no_telepon_wali,
-                    'alamat' => $request->alamat,
+                    'alamat' => ucwords(strtolower($request->alamat)),
                     'status_peserta_didik' => $request->status_peserta_didik,
                     'tmpt_daerah' => $request->tmpt_daerah,
                     'tmpt_desa' => $request->tmpt_desa,

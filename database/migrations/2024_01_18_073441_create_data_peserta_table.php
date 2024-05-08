@@ -23,7 +23,7 @@ return new class() extends Migration {
             $table->string('nama_ayah', 255);
             $table->string('nama_ibu', 255);
             $table->string('hoby', 255);
-            $table->string('pekerjaan', 255);
+            $table->foreignId('pekerjaan', 255);
             $table->string('usia_menikah', 255)->nullable();
             $table->string('kriteria_pasangan', 255)->nullable();
             $table->boolean('status_pernikahan');

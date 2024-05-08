@@ -377,8 +377,8 @@ class DataPesertaController extends Controller
             'usia_menikah' => 'nullable|string',
             'kriteria_pasangan' => 'nullable|string',
             'tmpt_daerah' => 'required|integer|digits_between:1,5',
-            'tmpt_desa' => 'integer|digits_between:1,5',
-            'tmpt_kelompok' => 'integer|digits_between:1,5',
+            'tmpt_desa' => 'required|integer|digits_between:1,5',
+            'tmpt_kelompok' => 'required|integer|digits_between:1,5',
             'img_sensus' => 'nullable|image|mimes:png|max:4096',
             'user_id' => 'required|integer',
         ], $customMessages);
@@ -390,15 +390,15 @@ class DataPesertaController extends Controller
         $tahun = $tanggalSekarang->format('Y'); // Mendapatkan tahun saat ini (format 4 digit)
 
         $tabel_sensus->kode_cari_data = $bulan.Str::random(4).$tahun;
-        $tabel_sensus->nama_lengkap = ucwords(strtolower($request->nama_lengkap));
+        $tabel_sensus->nama_lengkap = $request->nama_lengkap;
         $tabel_sensus->nama_panggilan = ucwords(strtolower($request->nama_panggilan));
         $tabel_sensus->tempat_lahir = ucwords(strtolower($request->tempat_lahir));
         $tabel_sensus->tanggal_lahir = $request->tanggal_lahir;
         $tabel_sensus->alamat = ucwords(strtolower($request->alamat));
         $tabel_sensus->jenis_kelamin = $request->jenis_kelamin;
         $tabel_sensus->no_telepon = $request->no_telepon;
-        $tabel_sensus->nama_ayah = ucwords(strtolower($request->nama_ayah));
-        $tabel_sensus->nama_ibu = ucwords(strtolower($request->nama_ibu));
+        $tabel_sensus->nama_ayah = $request->nama_ayah;
+        $tabel_sensus->nama_ibu = $request->nama_ibu;
         $tabel_sensus->hoby = $request->hoby;
         $tabel_sensus->pekerjaan = $request->pekerjaan;
         $tabel_sensus->usia_menikah = $request->usia_menikah;
@@ -587,15 +587,15 @@ class DataPesertaController extends Controller
             try {
                 $sensus->update([
                     'id' => $request->id,
-                    'nama_lengkap' => ucwords(strtolower($request->nama_lengkap)),
+                    'nama_lengkap' => $request->nama_lengkap,
                     'nama_panggilan' => ucwords(strtolower($request->nama_panggilan)),
                     'tempat_lahir' => ucwords(strtolower($request->tempat_lahir)),
                     'tanggal_lahir' => $request->tanggal_lahir,
                     'alamat' => ucwords(strtolower($request->alamat)),
                     'jenis_kelamin' => $request->jenis_kelamin,
                     'no_telepon' => $request->no_telepon,
-                    'nama_ayah' => ucwords(strtolower($request->nama_ayah)),
-                    'nama_ibu' => ucwords(strtolower($request->nama_ibu)),
+                    'nama_ayah' => $request->nama_ayah,
+                    'nama_ibu' => $request->nama_ibu,
                     'hoby' => $request->hoby,
                     'pekerjaan' => $request->pekerjaan,
                     'usia_menikah' => $request->usia_menikah,

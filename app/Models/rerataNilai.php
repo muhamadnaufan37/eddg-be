@@ -24,5 +24,6 @@ class rerataNilai extends Model
         'r_nilai10',
         'r_nilai11',
         'created_at',
+        'updated_at',
     ];
 }

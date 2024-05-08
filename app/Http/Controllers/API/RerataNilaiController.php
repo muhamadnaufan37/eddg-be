@@ -31,6 +31,7 @@ class RerataNilaiController extends Controller
             'r_nilai10',
             'r_nilai11',
             'created_at',
+            'updated_at',
         ]);
 
         if (!empty($keyword)) {
@@ -90,17 +91,17 @@ class RerataNilaiController extends Controller
         ], $customMessages);
 
         // Hitung total nilai
-        // $totalNilai = $request->nilai1 + $request->nilai2 + $request->nilai3 + $request->nilai4 +
-        //     $request->nilai5 + $request->nilai6 + $request->nilai7 + $request->nilai8 +
-        //     $request->nilai9 + $request->nilai10 + $request->nilai11;
+        $totalNilai = $request->nilai1 + $request->nilai2 + $request->nilai3 + $request->nilai4 +
+            $request->nilai5 + $request->nilai6 + $request->nilai7 + $request->nilai8 +
+            $request->nilai9 + $request->nilai10 + $request->nilai11;
 
         // Pastikan total nilai tidak melebihi 100
-        // if ($totalNilai > 100) {
-        //     return response()->json([
-        //         'message' => 'Total nilai melebihi 100',
-        //         'success' => false,
-        //     ], 400);
-        // }
+        if ($totalNilai > 100) {
+            return response()->json([
+                'message' => 'Total nilai melebihi 100',
+                'success' => false,
+            ], 400);
+        }
 
         // Buat entri baru ke tabel rerata_nilai
         $table_rerata_nilai = new rerataNilai();
@@ -190,6 +191,19 @@ class RerataNilaiController extends Controller
         $table_rerata_nilai = rerataNilai::where('id', '=', $request->id)
             ->first();
 
+        // Hitung total nilai
+        $totalNilai = $request->nilai1 + $request->nilai2 + $request->nilai3 + $request->nilai4 +
+            $request->nilai5 + $request->nilai6 + $request->nilai7 + $request->nilai8 +
+            $request->nilai9 + $request->nilai10 + $request->nilai11;
+
+        // Pastikan total nilai tidak melebihi 100
+        if ($totalNilai > 100) {
+            return response()->json([
+                'message' => 'Total nilai melebihi 100',
+                'success' => false,
+            ], 400);
+        }
+
         if (!empty($table_rerata_nilai)) {
             try {
                 $table_rerata_nilai->update([
@@ -226,35 +240,35 @@ class RerataNilaiController extends Controller
         ], 200);
     }
 
-    public function delete(Request $request)
-    {
-        $request->validate([
-            'id' => 'required|numeric|digits_between:1,5',
-        ]);
+    // public function delete(Request $request)
+    // {
+    //     $request->validate([
+    //         'id' => 'required|numeric|digits_between:1,5',
+    //     ]);
 
-        $table_rerata_nilai = rerataNilai::where('id', '=', $request->id)
-            ->first();
+    //     $table_rerata_nilai = rerataNilai::where('id', '=', $request->id)
+    //         ->first();
 
-        if (!empty($table_rerata_nilai)) {
-            try {
-                $table_rerata_nilai = rerataNilai::where('id', '=', $request->id)
-                    ->delete();
+    //     if (!empty($table_rerata_nilai)) {
+    //         try {
+    //             $table_rerata_nilai = rerataNilai::where('id', '=', $request->id)
+    //                 ->delete();
 
-                return response()->json([
-                    'message' => 'Data Rerata Nilai berhasil dihapus',
-                    'success' => true,
-                ], 200);
-            } catch (\Exception $exception) {
-                return response()->json([
-                    'message' => 'Gagal menghapus Data Rerata Nilai'.$exception->getMessage(),
-                    'success' => false,
-                ], 500);
-            }
-        }
+    //             return response()->json([
+    //                 'message' => 'Data Rerata Nilai berhasil dihapus',
+    //                 'success' => true,
+    //             ], 200);
+    //         } catch (\Exception $exception) {
+    //             return response()->json([
+    //                 'message' => 'Gagal menghapus Data Rerata Nilai'.$exception->getMessage(),
+    //                 'success' => false,
+    //             ], 500);
+    //         }
+    //     }
 
-        return response()->json([
-            'message' => 'Data Rerata Nilai tidak ditemukan',
-            'success' => false,
-        ], 200);
-    }
+    //     return response()->json([
+    //         'message' => 'Data Rerata Nilai tidak ditemukan',
+    //         'success' => false,
+    //     ], 200);
+    // }
 }

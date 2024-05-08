@@ -8,6 +8,18 @@ use Illuminate\Http\Request;
 
 class PekerjaanPesertaController extends Controller
 {
+    public function list_data_all_pekerjaan()
+    {
+        $table_pekerjaan = tblPekerjaan::select(['id', 'nama_pekerjaan'])
+            ->groupBy('id', 'nama_pekerjaan')->orderBy('nama_pekerjaan')->get();
+
+        return response()->json([
+            'message' => 'Sukses',
+            'data_pekerjaan' => $table_pekerjaan,
+            'success' => true,
+        ], 200);
+    }
+
     public function list(Request $request)
     {
         $keyword = $request->get('keyword', null);
