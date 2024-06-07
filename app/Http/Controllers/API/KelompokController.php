@@ -9,6 +9,20 @@ use Illuminate\Http\Request;
 
 class KelompokController extends Controller
 {
+    public function list_kelompok()
+    {
+        $table_kelompok = dataKelompok::select(['id', 'nama_kelompok'])
+        ->groupBy('id', 'nama_kelompok') // Menambahkan id ke dalam grup by
+        ->orderBy('nama_kelompok')
+        ->get();
+
+        return response()->json([
+            'message' => 'Sukses',
+            'data_kelompok' => $table_kelompok,
+            'success' => true,
+        ], 200);
+    }
+
     public function list(Request $request)
     {
         $keyword = $request->get('keyword', null);

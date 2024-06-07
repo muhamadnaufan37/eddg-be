@@ -197,7 +197,6 @@ class UserController extends Controller
         $request->validate([
             'id' => 'required|numeric|digits_between:1,5',
             'username' => 'sometimes|required|max:30|unique:users,username,'.$request->id.',id',
-            'password' => 'sometimes|max:30',
             'email' => 'sometimes|required|email|max:50|unique:users,email,'.$request->id.',id',
             'nama_lengkap' => 'sometimes|required|max:50|unique:users,nama_lengkap,'.$request->id.',id',
             'role_id' => 'required|numeric|digits_between:1,5',
@@ -212,7 +211,6 @@ class UserController extends Controller
         if (!empty($user)) {
             try {
                 $user->update([
-                    'password' => bcrypt($request->password),
                     'username' => $request->username,
                     'email' => $request->email,
                     'nama_lengkap' => $request->nama_lengkap,

@@ -19,9 +19,21 @@ class RolesSeeder extends Seeder
         ]);
 
         Role::create([
-            'name' => 'ptgs-data',
+            'name' => 'Petugas Data Sensus',
             'guard_name' => 'web',
-            'description' => 'Untuk Role Petugaas Pendataan Sensus',
+            'description' => 'Untuk Role Petugas Pendataan Sensus',
+        ]);
+
+        Role::create([
+            'name' => 'Bendahara / KU',
+            'guard_name' => 'web',
+            'description' => 'Untuk Role Petugas Pengelolaan Keuangan',
+        ]);
+
+        Role::create([
+            'name' => 'Admin KBM',
+            'guard_name' => 'web',
+            'description' => 'Untuk Role Petugas Pengelolaan Data PPG',
         ]);
     }
 }

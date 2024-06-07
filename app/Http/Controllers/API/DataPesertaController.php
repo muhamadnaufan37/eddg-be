@@ -18,12 +18,31 @@ class DataPesertaController extends Controller
 {
     public function dashboard_sensus(Request $request)
     {
-        $user = $request->user();
-        $dataDaerah = $request->get('data-daerah', $user->role_daerah);
-        $dataDesa = $request->get('data-desa', $user->role_desa);
-        $dataKelompok = $request->get('data-kelompok', $user->role_kelompok);
+        $modelDataDaerah = $request->get('data_daerah');
+        $modelDataDesa = $request->get('data_desa');
+        $modelDataKelompok = $request->get('data_kelompok');
 
+        $customMessages = [
+            'required' => 'Kolom :attribute wajib diisi.',
+            'unique' => ':attribute sudah terdaftar di sistem',
+            'email' => ':attribute harus berupa alamat email yang valid.',
+            'max' => ':attribute tidak boleh lebih dari :max karakter.',
+            'confirmed' => 'Konfirmasi :attribute tidak cocok.',
+            'min' => ':attribute harus memiliki setidaknya :min karakter.',
+            'regex' => ':attribute harus mengandung setidaknya satu huruf kapital dan satu angka.',
+            'numeric' => ':attribute harus berupa angka.',
+            'digits_between' => ':attribute harus memiliki panjang antara :min dan :max digit.',
+        ];
+
+        $request->validate([
+            'data_daerah' => 'required|string',
+            'data_desa' => 'required|string',
+            'data_kelompok' => 'nullable',
+        ], $customMessages);
+
+        // $currentYear = Carbon::now()->year;
         $currentYear = Carbon::now()->year;
+        $current_timestamp = Carbon::now()->toDateTimeString();
 
         $query = dataSensusPeserta::select([
             DB::raw('COALESCE(EXTRACT(MONTH FROM data_peserta.created_at), 1) AS month'),
@@ -46,6 +65,44 @@ class DataPesertaController extends Controller
                 END) AS total_muda_mudi_usia_nikah'),
             DB::raw('SUM(CASE WHEN data_peserta.jenis_kelamin = \'LAKI-LAKI\' THEN 1 ELSE 0 END) AS total_laki'),
             DB::raw('SUM(CASE WHEN data_peserta.jenis_kelamin = \'PEREMPUAN\' THEN 1 ELSE 0 END) AS total_perempuan'),
+            DB::raw('
+                SUM(CASE
+                    WHEN EXTRACT(YEAR FROM AGE(current_date, data_peserta.tanggal_lahir)) <= 13
+                    AND data_peserta.jenis_kelamin = \'LAKI-LAKI\' THEN 1
+                    ELSE 0
+                END) AS total_pra_remaja_laki'),
+            DB::raw('
+                SUM(CASE
+                    WHEN EXTRACT(YEAR FROM AGE(current_date, data_peserta.tanggal_lahir)) <= 13
+                    AND data_peserta.jenis_kelamin = \'PEREMPUAN\' THEN 1
+                    ELSE 0
+                END) AS total_pra_remaja_perempuan'),
+            DB::raw('
+                SUM(CASE
+                    WHEN EXTRACT(YEAR FROM AGE(current_date, data_peserta.tanggal_lahir)) > 13
+                    AND EXTRACT(YEAR FROM AGE(current_date, data_peserta.tanggal_lahir)) <= 16
+                    AND data_peserta.jenis_kelamin = \'LAKI-LAKI\' THEN 1
+                    ELSE 0
+                END) AS total_remaja_laki'),
+            DB::raw('
+                SUM(CASE
+                    WHEN EXTRACT(YEAR FROM AGE(current_date, data_peserta.tanggal_lahir)) > 13
+                    AND EXTRACT(YEAR FROM AGE(current_date, data_peserta.tanggal_lahir)) <= 16
+                    AND data_peserta.jenis_kelamin = \'PEREMPUAN\' THEN 1
+                    ELSE 0
+                END) AS total_remaja_perempuan'),
+            DB::raw('
+                SUM(CASE
+                    WHEN EXTRACT(YEAR FROM AGE(current_date, data_peserta.tanggal_lahir)) > 16
+                    AND data_peserta.jenis_kelamin = \'LAKI-LAKI\' THEN 1
+                    ELSE 0
+                END) AS total_muda_mudi_usia_nikah_laki'),
+            DB::raw('
+                SUM(CASE
+                    WHEN EXTRACT(YEAR FROM AGE(current_date, data_peserta.tanggal_lahir)) > 16
+                    AND data_peserta.jenis_kelamin = \'PEREMPUAN\' THEN 1
+                    ELSE 0
+                END) AS total_muda_mudi_usia_nikah_perempuan'),
         ])
         ->whereYear('data_peserta.created_at', '=', $currentYear)
             ->leftJoin('tabel_daerah', 'tabel_daerah.id', '=', DB::raw('CAST(data_peserta.tmpt_daerah AS BIGINT)'))
@@ -55,55 +112,75 @@ class DataPesertaController extends Controller
             ->groupBy('month')
             ->orderBy('month');
 
-        if (!is_null($dataDaerah)) {
-            $query->where('tabel_daerah.id', '=', $dataDaerah);
+        if (!is_null($modelDataDaerah)) {
+            $query->where('tabel_daerah.id', '=', $modelDataDaerah);
         }
 
-        if (!is_null($dataDesa)) {
-            $query->where('tabel_desa.id', '=', $dataDesa);
+        if (!is_null($modelDataDesa)) {
+            $query->where('tabel_desa.id', '=', $modelDataDesa);
         }
 
-        if (!is_null($dataKelompok)) {
-            $query->where('tabel_kelompok.id', '=', $dataKelompok);
-        }
-
-        // Inisialisasi array untuk menyimpan data bulan
-        $dataBulan = [];
-        for ($i = 1; $i <= 12; ++$i) {
-            $dataBulan[$i] = [
-                'month' => $i,
-                'total_data' => 0,
-                'total_pra_remaja' => 0,
-                'total_remaja' => 0,
-                'total_muda_mudi_usia_nikah' => 0,
-                'total_laki' => 0,
-                'total_perempuan' => 0,
-            ];
+        if (!is_null($modelDataKelompok)) {
+            $query->where('tabel_kelompok.id', '=', $modelDataKelompok);
         }
 
         $results = $query->get();
 
-        $data_sensus_thl = [];
+        $total_data_keseluruhan = 0;
+        $total_laki_keseluruhan = 0;
+        $total_perempuan_keseluruhan = 0;
+
+        $total_pra_remaja_keseluruhan = 0;
+        $total_laki_pra_remaja_keseluruhan = 0;
+        $total_perempuan_pra_remaja_keseluruhan = 0;
+
+        $total_remaja_keseluruhan = 0;
+        $total_laki_remaja_keseluruhan = 0;
+        $total_perempuan_remaja_keseluruhan = 0;
+
+        $total_muda_mudi_usia_nikah_keseluruhan = 0;
+        $total_laki_muda_mudi_usia_nikah_keseluruhan = 0;
+        $total_perempuan_muda_mudi_usia_nikah_keseluruhan = 0;
 
         foreach ($results as $result) {
-            $data_sensus_thl[] = [
-                'bulan' => str_pad($result->month, 2, '0', STR_PAD_LEFT),
-                'total_data' => $result->total_data,
-                'total_pra_remaja' => $result->total_pra_remaja,
-                'total_remaja' => $result->total_remaja,
-                'total_muda_mudi_usia_nikah' => $result->total_muda_mudi_usia_nikah,
-                'total_laki' => $result->total_laki,
-                'total_perempuan' => $result->total_perempuan,
-            ];
+            // Tambahkan nilai ke total keseluruhan
+            $total_data_keseluruhan += $result->total_data;
+            $total_laki_keseluruhan += $result->total_laki;
+            $total_perempuan_keseluruhan += $result->total_perempuan;
+
+            $total_pra_remaja_keseluruhan += $result->total_pra_remaja;
+            $total_laki_pra_remaja_keseluruhan += $result->total_pra_remaja_laki;
+            $total_perempuan_pra_remaja_keseluruhan += $result->total_pra_remaja_perempuan;
+
+            $total_remaja_keseluruhan += $result->total_remaja;
+            $total_laki_remaja_keseluruhan += $result->total_remaja_laki;
+            $total_perempuan_remaja_keseluruhan += $result->total_remaja_perempuan;
+
+            $total_muda_mudi_usia_nikah_keseluruhan += $result->total_muda_mudi_usia_nikah;
+            $total_laki_muda_mudi_usia_nikah_keseluruhan += $result->total_muda_mudi_usia_nikah_laki;
+            $total_perempuan_muda_mudi_usia_nikah_keseluruhan += $result->total_muda_mudi_usia_nikah_perempuan;
         }
 
         return response()->json([
-            'message' => 'Success',
-            'data_sensus_thl' => $data_sensus_thl,
+            'message' => 'Data ditemukan',
+            'total_data_keseluruhan' => $total_data_keseluruhan,
+            'total_laki_keseluruhan' => $total_laki_keseluruhan,
+            'total_perempuan_keseluruhan' => $total_perempuan_keseluruhan,
+
+            'total_pra_remaja_keseluruhan' => $total_pra_remaja_keseluruhan,
+            'total_pra_remaja_laki_keseluruhan' => $total_laki_pra_remaja_keseluruhan,
+            'total_pra_remaja_perempuan_keseluruhan' => $total_perempuan_pra_remaja_keseluruhan,
+
+            'total_remaja_keseluruhan' => $total_remaja_keseluruhan,
+            'total_remaja_laki_keseluruhan' => $total_laki_remaja_keseluruhan,
+            'total_remaja_perempuan_keseluruhan' => $total_perempuan_remaja_keseluruhan,
+
+            'total_muda_mudi_usia_nikah_keseluruhan' => $total_muda_mudi_usia_nikah_keseluruhan,
+            'total_muda_mudi_usia_nikah_laki_keseluruhan' => $total_laki_muda_mudi_usia_nikah_keseluruhan,
+            'total_muda_mudi_usia_nikah_perempuan_keseluruhan' => $total_perempuan_muda_mudi_usia_nikah_keseluruhan,
+            'date_request' => $current_timestamp,
             'success' => true,
         ], 200);
-
-        // Lakukan apa pun yang perlu Anda lakukan dengan $dataBulan
     }
 
     public function list_pekerjaan()
@@ -118,50 +195,11 @@ class DataPesertaController extends Controller
         ], 200);
     }
 
-    public function list_daerah()
-    {
-        $sensus = dataDaerah::select(['nama_daerah'])
-            ->groupBy('nama_daerah')->orderBy('nama_daerah')->get();
-
-        return response()->json([
-            'message' => 'Sukses',
-            'data_tempat_sambung' => $sensus,
-            'success' => true,
-        ], 200);
-    }
-
-    public function list_desa()
-    {
-        $sensus = dataDesa::select(['nama_desa'])
-            ->groupBy('nama_desa')->orderBy('nama_desa')->get();
-
-        return response()->json([
-            'message' => 'Sukses',
-            'data_tempat_sambung' => $sensus,
-            'success' => true,
-        ], 200);
-    }
-
-    public function list_kelompok()
-    {
-        $sensus = dataKelompok::select(['nama_kelompok'])
-            ->groupBy('nama_kelompok')->orderBy('nama_kelompok')->get();
-
-        return response()->json([
-            'message' => 'Sukses',
-            'data_tempat_sambung' => $sensus,
-            'success' => true,
-        ], 200);
-    }
-
     public function list(Request $request)
     {
         $keyword = $request->get('keyword', null);
         $perPage = $request->get('per-page', 10);
         $kolom = $request->get('kolom', null);
-        $dataDaerah = $request->get('data-daerah', null);
-        $dataDesa = $request->get('data-desa', null);
-        $dataKelompok = $request->get('data-kelompok', null);
 
         if ($perPage > 100) {
             $perPage = 100;
@@ -203,18 +241,6 @@ class DataPesertaController extends Controller
             ->join('tabel_kelompok', 'tabel_kelompok.id', '=', DB::raw('CAST(data_peserta.tmpt_kelompok AS BIGINT)'))
             ->join('users', 'users.id', '=', DB::raw('CAST(data_peserta.user_id AS BIGINT)'));
 
-        if (!is_null($dataDaerah)) {
-            $query->where('tabel_daerah.nama_daerah', '=', $dataDaerah);
-        }
-
-        if (!is_null($dataDesa)) {
-            $query->where('tabel_desa.nama_desa', '=', $dataDesa);
-        }
-
-        if (!is_null($dataKelompok)) {
-            $query->where('tabel_kelompok.nama_kelompok', '=', $dataKelompok);
-        }
-
         // Apply orderByRaw before executing the query
         $query->orderByRaw('data_peserta.created_at DESC NULLS LAST');
 
@@ -225,6 +251,9 @@ class DataPesertaController extends Controller
             $query->where(function ($q) use ($keyword) {
                 $q->where('data_peserta.nama_lengkap', 'ILIKE', '%'.$keyword.'%')
                     ->orWhere('data_peserta.kode_cari_data', 'ILIKE', '%'.$keyword.'%')
+                    ->orWhere('tabel_daerah.nama_daerah', 'ILIKE', '%'.$keyword.'%')
+                    ->orWhere('tabel_desa.nama_desa', 'ILIKE', '%'.$keyword.'%')
+                    ->orWhere('tabel_kelompok.nama_kelompok', 'ILIKE', '%'.$keyword.'%')
                     ->orWhere('data_peserta.nama_panggilan', 'ILIKE', '%'.$keyword.'%');
             });
         } elseif (!empty($keyword) && !empty($kolom)) {

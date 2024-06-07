@@ -94,6 +94,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Kelompok Management
     Route::group(['prefix' => '/kelompok/'], function () {
+        Route::get('list_kelompok', [KelompokController::class, 'list_kelompok'])->middleware('role:1');
         Route::get('list', [KelompokController::class, 'list'])->middleware('role:1,2');
         Route::post('create', [KelompokController::class, 'create'])->middleware('role:1');
         Route::post('edit', [KelompokController::class, 'edit'])->middleware('role:1');
@@ -111,9 +112,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::group(['prefix' => '/sensus/'], function () {
         Route::get('dashboard_sensus', [DataPesertaController::class, 'dashboard_sensus'])->middleware('role:1,2');
         Route::get('list_pekerjaan', [DataPesertaController::class, 'list_pekerjaan'])->middleware('role:1,2');
-        Route::get('list_daerah', [DataPesertaController::class, 'list_daerah'])->middleware('role:1,2');
-        Route::get('list_desa', [DataPesertaController::class, 'list_desa'])->middleware('role:1,2');
-        Route::get('list_kelompok', [DataPesertaController::class, 'list_kelompok'])->middleware('role:1,2');
         Route::get('list', [DataPesertaController::class, 'list']);
         Route::get('listByPtgs', [DataPesertaController::class, 'listByPtgs'])->middleware('role:1,2');
         Route::post('create', [DataPesertaController::class, 'create'])->middleware('role:1,2');
@@ -164,21 +162,21 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Kelas Management
     Route::group(['prefix' => '/kelas_peserta/'], function () {
         Route::get('data_all_kelas', [KelasPesertaController::class, 'data_all_kelas'])->middleware('role:1,4');
-        Route::get('list', [KelasPesertaController::class, 'list'])->middleware('role:1,4');
-        Route::post('create', [KelasPesertaController::class, 'create'])->middleware('role:1,4');
-        Route::post('edit', [KelasPesertaController::class, 'edit'])->middleware('role:1,4');
-        Route::post('update', [KelasPesertaController::class, 'update'])->middleware('role:1,4');
-        Route::delete('delete', [KelasPesertaController::class, 'delete'])->middleware('role:1,4');
+        Route::get('list', [KelasPesertaController::class, 'list'])->middleware('role:1');
+        Route::post('create', [KelasPesertaController::class, 'create'])->middleware('role:1');
+        Route::post('edit', [KelasPesertaController::class, 'edit'])->middleware('role:1');
+        Route::post('update', [KelasPesertaController::class, 'update'])->middleware('role:1');
+        Route::delete('delete', [KelasPesertaController::class, 'delete'])->middleware('role:1');
     });
 
     // Kalender Pendidikan Management
     Route::group(['prefix' => '/kalender_pendidikan/'], function () {
         Route::get('data_all_kalender_aktif', [KalenderPesertaController::class, 'data_all_kalender_aktif'])->middleware('role:1,4');
-        Route::get('list', [KalenderPesertaController::class, 'list'])->middleware('role:1,4');
-        Route::post('create', [KalenderPesertaController::class, 'create'])->middleware('role:1,4');
-        Route::post('edit', [KalenderPesertaController::class, 'edit'])->middleware('role:1,4');
-        Route::post('update', [KalenderPesertaController::class, 'update'])->middleware('role:1,4');
-        Route::delete('delete', [KalenderPesertaController::class, 'delete'])->middleware('role:1,4');
+        Route::get('list', [KalenderPesertaController::class, 'list'])->middleware('role:1');
+        Route::post('create', [KalenderPesertaController::class, 'create'])->middleware('role:1');
+        Route::post('edit', [KalenderPesertaController::class, 'edit'])->middleware('role:1');
+        Route::post('update', [KalenderPesertaController::class, 'update'])->middleware('role:1');
+        Route::delete('delete', [KalenderPesertaController::class, 'delete'])->middleware('role:1');
     });
 
     // Pengajar Management
@@ -195,6 +193,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::group(['prefix' => '/peserta_didik/'], function () {
         Route::get('data_all_peserta_didik_aktif', [PesertaDidikController::class, 'data_all_peserta_didik_aktif'])->middleware('role:1,4');
         Route::get('list', [PesertaDidikController::class, 'list'])->middleware('role:1,4');
+        Route::get('listByKbm', [PesertaDidikController::class, 'listByKbm'])->middleware('role:1,4');
         Route::post('create', [PesertaDidikController::class, 'create'])->middleware('role:1,4');
         Route::post('edit', [PesertaDidikController::class, 'edit'])->middleware('role:1,4');
         Route::post('update', [PesertaDidikController::class, 'update'])->middleware('role:1,4');
@@ -203,18 +202,20 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Rerata Nilai Peserta Didik Management
     Route::group(['prefix' => '/rerata_nilai/'], function () {
-        Route::get('list', [RerataNilaiController::class, 'list'])->middleware('role:1,4');
-        Route::post('create', [RerataNilaiController::class, 'create'])->middleware('role:1,4');
+        Route::get('list', [RerataNilaiController::class, 'list'])->middleware('role:1');
+        Route::post('create', [RerataNilaiController::class, 'create'])->middleware('role:1');
         Route::post('edit', [RerataNilaiController::class, 'edit'])->middleware('role:1,4');
-        Route::post('update', [RerataNilaiController::class, 'update'])->middleware('role:1,4');
-        // Route::delete('delete', [RerataNilaiController::class, 'delete'])->middleware('role:1,4');
+        Route::post('update', [RerataNilaiController::class, 'update'])->middleware('role:1');
+        // Route::delete('delete', [RerataNilaiController::class, 'delete'])->middleware('role:1');
     });
 
     // Calon Pendaftaran Peserta Didik Management
     Route::group(['prefix' => '/calon_ppdb/'], function () {
+        Route::get('listByKbm', [CalonPPDBController::class, 'listByKbm'])->middleware('role:1,4');
         Route::get('list', [CalonPPDBController::class, 'list'])->middleware('role:1,4');
         Route::post('create', [CalonPPDBController::class, 'create'])->middleware('role:1,4');
         Route::post('edit', [CalonPPDBController::class, 'edit'])->middleware('role:1,4');
+        Route::post('updatePenilaian', [CalonPPDBController::class, 'updatePenilaian'])->middleware('role:1,4');
         Route::post('update', [CalonPPDBController::class, 'update'])->middleware('role:1,4');
         Route::delete('delete', [CalonPPDBController::class, 'delete'])->middleware('role:1,4');
     });

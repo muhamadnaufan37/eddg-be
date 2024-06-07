@@ -11,15 +11,61 @@ use App\Models\tblPesertaDidik;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Ramsey\Uuid\Uuid;
 
 class CalonPPDBController extends Controller
 {
     public function list(Request $request)
     {
-        $userID = Auth::id();
+        $keyword = $request->get('keyword', null);
+        $perPage = $request->get('per-page', 10);
+
+        if ($perPage > 100) {
+            $perPage = 100;
+        }
+
+        $model = tblCppdb::select([
+            'cppdb.id',
+            'cppdb.kode_cari_ppdb',
+            'kalender_pendidikan.tahun_pelajaran AS tahun_akademik',
+            'kalender_pendidikan.semester_pelajaran AS semester_akademik',
+            'kelas_peserta_didik.nama_kelas',
+            'pengajar.nama_pengajar',
+            'peserta_didik.nama_lengkap AS nama_peserta',
+            'users.nama_lengkap AS nama_petugas',
+            'cppdb.status_naik_kelas',
+            'cppdb.created_at',
+        ])
+        ->leftJoin('kalender_pendidikan', 'cppdb.id_thn_akademik', '=', 'kalender_pendidikan.id')
+        ->leftJoin('kelas_peserta_didik', 'cppdb.id_kelas', '=', 'kelas_peserta_didik.id')
+        ->leftJoin('pengajar', 'cppdb.id_pengajar', '=', 'pengajar.id')
+        ->leftJoin('peserta_didik', 'cppdb.id_peserta', '=', 'peserta_didik.id')
+        ->leftJoin('users', 'cppdb.id_petugas', '=', 'users.id')
+        ->where('kalender_pendidikan.status_pelajaran', true);
+
+        $model->orderByRaw('cppdb.created_at DESC NULLS LAST');
+
+        if (!empty($keyword)) {
+            $model->where(function ($query) use ($keyword) {
+                $query->where('peserta_didik.nama_lengkap', 'ILIKE', '%'.$keyword.'%')
+                    ->orWhere('cppdb.kode_cari_ppdb', 'ILIKE', '%'.$keyword.'%');
+            });
+        }
+
+        $table_calon_ppdb = $model->paginate($perPage);
+        $table_calon_ppdb->appends(['per-page' => $perPage]);
+
+        return response()->json([
+            'message' => 'Sukses',
+            'data_ppdb' => $table_calon_ppdb,
+            'success' => true,
+        ], 200);
+    }
+
+    public function listByKbm(Request $request)
+    {
         $user = Auth::user();
         $roleID = $user->role_id;
+        $userID = Auth::id();
 
         $keyword = $request->get('keyword', null);
         $perPage = $request->get('per-page', 10);
@@ -29,34 +75,38 @@ class CalonPPDBController extends Controller
         }
 
         $model = tblCppdb::select([
-                'cppdb.uuid',
-                'cppdb.kode_cari_ppdb',
-                'kalender_pendidikan.tahun_pelajaran AS tahun_akademik',
-                'kalender_pendidikan.semester_pelajaran AS semester_akademik',
-                'kelas_peserta_didik.nama_kelas',
-                'pengajar.nama_pengajar',
-                'peserta_didik.nama_lengkap AS nama_peserta',
-                'users.nama_lengkap AS nama_petugas',
-                'cppdb.created_at',
-            ])
-            ->leftJoin('kalender_pendidikan', 'cppdb.id_thn_akademik', '=', 'kalender_pendidikan.id')
-            ->leftJoin('kelas_peserta_didik', 'cppdb.id_kelas', '=', 'kelas_peserta_didik.id')
-            ->leftJoin('pengajar', 'cppdb.id_pengajar', '=', 'pengajar.id')
-            ->leftJoin('peserta_didik', 'cppdb.id_peserta', '=', 'peserta_didik.id')
-            ->leftJoin('users', 'cppdb.id_petugas', '=', 'users.id');
+            'cppdb.id',
+            'cppdb.kode_cari_ppdb',
+            'kalender_pendidikan.tahun_pelajaran AS tahun_akademik',
+            'kalender_pendidikan.semester_pelajaran AS semester_akademik',
+            'kelas_peserta_didik.nama_kelas',
+            'pengajar.nama_pengajar',
+            'peserta_didik.nama_lengkap AS nama_peserta',
+            'users.nama_lengkap AS nama_petugas',
+            'cppdb.status_naik_kelas',
+            'cppdb.created_at',
+        ])
+        ->leftJoin('kalender_pendidikan', 'cppdb.id_thn_akademik', '=', 'kalender_pendidikan.id')
+        ->leftJoin('kelas_peserta_didik', 'cppdb.id_kelas', '=', 'kelas_peserta_didik.id')
+        ->leftJoin('pengajar', 'cppdb.id_pengajar', '=', 'pengajar.id')
+        ->leftJoin('peserta_didik', 'cppdb.id_peserta', '=', 'peserta_didik.id')
+        ->leftJoin('users', 'cppdb.id_petugas', '=', 'users.id')
+        ->where('kalender_pendidikan.status_pelajaran', true);  // Adding condition to filter by status_pelajaran being true
+
+        $model->orderByRaw('cppdb.created_at DESC NULLS LAST');
 
         if ($roleID != 1) {
             $model->where('cppdb.id_petugas', $userID);
         }
 
         if (!empty($keyword)) {
-            $table_calon_ppdb = $model->where('kode_cari_ppdb', 'ILIKE', '%'.$keyword.'%')
-                ->orWhere('id', 'ILIKE', '%'.$keyword.'%')
-                ->paginate($perPage);
-        } else {
-            $table_calon_ppdb = $model->paginate($perPage);
+            $model->where(function ($query) use ($keyword) {
+                $query->where('peserta_didik.nama_lengkap', 'ILIKE', '%'.$keyword.'%')
+                    ->orWhere('cppdb.kode_cari_ppdb', 'ILIKE', '%'.$keyword.'%');
+            });
         }
 
+        $table_calon_ppdb = $model->paginate($perPage);
         $table_calon_ppdb->appends(['per-page' => $perPage]);
 
         return response()->json([
@@ -68,15 +118,6 @@ class CalonPPDBController extends Controller
 
     public function create(Request $request)
     {
-        $tabel_akademin_tahun = tblKlnderPndidikan::find($request->id_thn_akademik);
-        $tabel_kelas_peserta = tblKelasPeserta::find($request->id_kelas);
-        $tabel_pengajar_peserta = tblPengajar::find($request->id_pengajar);
-        $tabel_peserta_didik = tblPesertaDidik::find($request->id_peserta);
-        $tabel_petugas_peserta = User::find($request->id_petugas);
-
-        // Menghasilkan UUID
-        $uuid = Uuid::uuid4()->toString();
-
         function generateRandomCode($length = 5)
         {
             $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -102,7 +143,7 @@ class CalonPPDBController extends Controller
 
         $request->validate([
             'kode_cari_ppdb' => 'unique:cppdb',
-            'id_thn_akademik' => 'required|unique:cppdb',
+            'id_thn_akademik' => 'required',
             'id_kelas' => 'required',
             'id_pengajar' => 'required',
             'id_peserta' => 'required',
@@ -114,23 +155,37 @@ class CalonPPDBController extends Controller
         // Membangun kode_cari_ppdb
         $kode_cari_ppdb = $currentYear.$request->id_thn_akademik.$request->id_kelas.$request->id_pengajar.$request->id_peserta.$request->id_petugas.generateRandomCode();
 
+        // Memeriksa apakah sudah ada data dengan id_thn_akademik dan id_peserta yang sama
+        $existingEntry = tblCppdb::where('id_thn_akademik', $request->id_thn_akademik)
+        ->where('id_peserta', $request->id_peserta)
+        ->first();
+
+        if ($existingEntry) {
+            return response()->json([
+            'message' => 'Data dengan Tahun Akademik dan Peserta yang sama sudah terdaftar',
+            'success' => false,
+            ], 409);
+        }
+
         $table_calon_ppdb = new tblCppdb();
-        $table_calon_ppdb->uuid = $uuid; // Atur nilai uuid
         $table_calon_ppdb->kode_cari_ppdb = $kode_cari_ppdb;
         $table_calon_ppdb->id_thn_akademik = $request->id_thn_akademik;
         $table_calon_ppdb->id_kelas = $request->id_kelas;
         $table_calon_ppdb->id_pengajar = $request->id_pengajar;
         $table_calon_ppdb->id_peserta = $request->id_peserta;
         $table_calon_ppdb->id_petugas = $request->id_petugas;
+        $table_calon_ppdb->status_naik_kelas = false;
 
         // Memeriksa apakah tahun akademik ditemukan dan memiliki status pelajaran true
-        if (!$tabel_akademin_tahun || !$tabel_akademin_tahun->status_pelajaran) {
+        $tabel_akademik_tahun = tblKlnderPndidikan::find($request->id_thn_akademik);
+        if (!$tabel_akademik_tahun || !$tabel_akademik_tahun->status_pelajaran) {
             return response()->json([
                 'message' => 'Tahun Akademik tidak ditemukan atau status pelajaran tidak aktif',
                 'success' => false,
             ], 404);
         }
 
+        $tabel_kelas_peserta = tblKelasPeserta::find($request->id_kelas);
         if (!$tabel_kelas_peserta) {
             return response()->json([
                 'message' => 'Kelas tidak ditemukan',
@@ -138,6 +193,7 @@ class CalonPPDBController extends Controller
             ], 404);
         }
 
+        $tabel_pengajar_peserta = tblPengajar::find($request->id_pengajar);
         if (!$tabel_pengajar_peserta) {
             return response()->json([
                 'message' => 'Pengajar tidak ditemukan',
@@ -145,6 +201,7 @@ class CalonPPDBController extends Controller
             ], 404);
         }
 
+        $tabel_peserta_didik = tblPesertaDidik::find($request->id_peserta);
         if (!$tabel_peserta_didik) {
             return response()->json([
                 'message' => 'Peserta tidak ditemukan',
@@ -152,6 +209,7 @@ class CalonPPDBController extends Controller
             ], 404);
         }
 
+        $tabel_petugas_peserta = User::find($request->id_petugas);
         if (!$tabel_petugas_peserta) {
             return response()->json([
                 'message' => 'Petugas tidak ditemukan',
@@ -180,13 +238,11 @@ class CalonPPDBController extends Controller
     public function edit(Request $request)
     {
         $request->validate([
-            'uuid' => 'required|uuid',
+            'id' => 'required|numeric|digits_between:1,5',
         ]);
 
-        // $table_calon_ppdb = tblCppdb::where('uuid', '=', $request->uuid)->first();
-
         $table_calon_ppdb = tblCppdb::select([
-            'cppdb.uuid',
+            'cppdb.id',
             'cppdb.kode_cari_ppdb',
             'cppdb.id_thn_akademik',
             'cppdb.id_kelas',
@@ -196,7 +252,11 @@ class CalonPPDBController extends Controller
             'kalender_pendidikan.semester_pelajaran AS semester_akademik',
             'kelas_peserta_didik.nama_kelas',
             'pengajar.nama_pengajar',
+            'peserta_didik.nomor_induk_santri',
             'peserta_didik.nama_lengkap AS nama_peserta',
+            'peserta_didik.nama_ortu',
+            'tabel_desa.nama_desa', // Mengambil nama desa dari tabel desa
+            'tabel_kelompok.nama_kelompok', // Mengambil nama kelompok dari tabel kelompok
             'users.nama_lengkap AS nama_petugas',
             'cppdb.nilai1',
             'cppdb.nilai2',
@@ -209,6 +269,11 @@ class CalonPPDBController extends Controller
             'cppdb.nilai9',
             'cppdb.nilai10',
             'cppdb.nilai11',
+            'cppdb.nilai12',
+            'cppdb.nilai13',
+            'cppdb.nilai14',
+            'cppdb.nilai15',
+            'cppdb.nilai16',
             'cppdb.nilai_presensi_1',
             'cppdb.nilai_presensi_2',
             'cppdb.nilai_presensi_3',
@@ -219,9 +284,10 @@ class CalonPPDBController extends Controller
         ->leftJoin('kelas_peserta_didik', 'cppdb.id_kelas', '=', 'kelas_peserta_didik.id')
         ->leftJoin('pengajar', 'cppdb.id_pengajar', '=', 'pengajar.id')
         ->leftJoin('peserta_didik', 'cppdb.id_peserta', '=', 'peserta_didik.id')
-        ->leftJoin('users', 'cppdb.id_petugas', '=', 'users.id')->first();
-
-        unset($table_calon_ppdb->created_at, $table_calon_ppdb->updated_at);
+        ->leftJoin('users', 'cppdb.id_petugas', '=', 'users.id')
+        ->leftJoin('tabel_desa', 'peserta_didik.tmpt_desa', '=', 'tabel_desa.id') // Menghubungkan tabel desa
+        ->leftJoin('tabel_kelompok', 'peserta_didik.tmpt_kelompok', '=', 'tabel_kelompok.id') // Menghubungkan tabel kelompok
+        ->where('cppdb.id', $request->id)->first();
 
         if (!empty($table_calon_ppdb)) {
             return response()->json([
@@ -239,7 +305,6 @@ class CalonPPDBController extends Controller
 
     public function update(Request $request)
     {
-        $tabel_akademin_tahun = tblKlnderPndidikan::find($request->id_thn_akademik);
         $tabel_kelas_peserta = tblKelasPeserta::find($request->id_kelas);
         $tabel_pengajar_peserta = tblPengajar::find($request->id_pengajar);
         $tabel_peserta_didik = tblPesertaDidik::find($request->id_peserta);
@@ -257,25 +322,35 @@ class CalonPPDBController extends Controller
             'digits_between' => ':attribute harus memiliki panjang antara :min dan :max digit.',
         ];
 
+        // Ambil data peserta saat ini berdasarkan ID yang dikirimkan
+        $currentEntry = tblCppdb::find($request->id);
+
+        if ($currentEntry) {
+            // Periksa apakah id_peserta dalam permintaan berbeda dari id_peserta saat ini
+            if ($currentEntry->id_peserta != $request->id_peserta) {
+                // Jika id_peserta diubah, cek apakah kombinasi id_thn_akademik dan id_peserta baru sudah ada
+                $existingEntry = tblCppdb::where('id_thn_akademik', $request->id_thn_akademik)
+                    ->where('id_peserta', $request->id_peserta)
+                    ->first();
+
+                if ($existingEntry) {
+                    return response()->json([
+                        'message' => 'Data dengan Tahun Akademik dan Peserta yang sama sudah terdaftar',
+                        'success' => false,
+                    ], 409);
+                }
+            }
+        }
+
         $request->validate([
-            'uuid' => 'required|uuid',
-            'id_thn_akademik' => 'sometimes|required|numeric|digits_between:1,5|unique:cppdb,id_thn_akademik,'.$request->uuid.',uuid',
-            'id_kelas' => 'sometimes|required|numeric|digits_between:1,5|unique:cppdb,id_kelas,'.$request->uuid.',uuid',
-            'id_pengajar' => 'sometimes|required|numeric|digits_between:1,5|unique:cppdb,id_pengajar,'.$request->uuid.',uuid',
-            'id_peserta' => 'sometimes|required|numeric|digits_between:1,5|unique:cppdb,id_peserta,'.$request->uuid.',uuid',
-            'id_petugas' => 'sometimes|required|numeric|digits_between:1,5|unique:cppdb,id_petugas,'.$request->uuid.',uuid',
+            'id' => 'required|numeric|digits_between:1,5',
+            'id_kelas' => 'required|numeric|digits_between:1,5',
+            'id_pengajar' => 'required|numeric|digits_between:1,5',
+            'id_peserta' => 'sometimes|required|numeric|digits_between:1,5',
         ], $customMessages);
 
-        $table_calon_ppdb = tblCppdb::where('uuid', '=', $request->uuid)
+        $table_calon_ppdb = tblCppdb::where('id', '=', $request->id)
             ->first();
-
-        // Memeriksa apakah tahun akademik ditemukan dan memiliki status pelajaran true
-        if (!$tabel_akademin_tahun || !$tabel_akademin_tahun->status_pelajaran) {
-            return response()->json([
-                'message' => 'Tahun Akademik tidak ditemukan atau status pelajaran tidak aktif',
-                'success' => false,
-            ], 404);
-        }
 
         if (!$tabel_kelas_peserta) {
             return response()->json([
@@ -308,12 +383,96 @@ class CalonPPDBController extends Controller
         if (!empty($table_calon_ppdb)) {
             try {
                 $table_calon_ppdb->update([
-                    'uuid' => $request->uuid,
-                    'id_thn_akademik' => $request->id_thn_akademik,
+                    'id' => $request->id,
                     'id_kelas' => $request->id_kelas,
                     'id_pengajar' => $request->id_pengajar,
                     'id_peserta' => $request->id_peserta,
-                    'id_petugas' => $request->id_petugas,
+                ]);
+
+                return response()->json([
+                    'message' => 'Data PPDB berhasil diupdate',
+                    'data_ppdb' => $table_calon_ppdb,
+                    'success' => true,
+                ], 200);
+            } catch (\Exception $exception) {
+                return response()->json([
+                    'message' => 'Gagal mengupdate Data PPDB'.$exception->getMessage(),
+                    'success' => false,
+                ], 500);
+            }
+        }
+
+        return response()->json([
+            'message' => 'Data PPDB tidak ditemukan',
+            'success' => false,
+        ], 200);
+    }
+
+    public function updatePenilaian(Request $request)
+    {
+        $customMessages = [
+            'required' => 'Kolom :attribute wajib diisi.',
+            'unique' => ':attribute sudah terdaftar di sistem',
+            'email' => ':attribute harus berupa alamat email yang valid.',
+            'max' => ':attribute tidak boleh lebih dari :max karakter.',
+            'confirmed' => 'Konfirmasi :attribute tidak cocok.',
+            'min' => ':attribute harus memiliki setidaknya :min karakter.',
+            'regex' => ':attribute harus mengandung setidaknya satu huruf kapital dan satu angka.',
+            'numeric' => ':attribute harus berupa angka.',
+            'digits_between' => ':attribute harus memiliki panjang antara :min dan :max digit.',
+        ];
+
+        $request->validate([
+            'id' => 'required|numeric|digits_between:1,5',
+            'nilai1' => 'required|numeric|digits_between:1,3',
+            'nilai2' => 'required|numeric|digits_between:1,3',
+            'nilai3' => 'required|numeric|digits_between:1,3',
+            'nilai4' => 'required|numeric|digits_between:1,3',
+            'nilai5' => 'required|numeric|digits_between:1,3',
+            'nilai6' => 'required|numeric|digits_between:1,3',
+            'nilai7' => 'required|numeric|digits_between:1,3',
+            'nilai8' => 'required|numeric|digits_between:1,3',
+            'nilai9' => 'required|numeric|digits_between:1,3',
+            'nilai10' => 'required|numeric|digits_between:1,3',
+            'nilai12' => 'required',
+            'nilai13' => 'required',
+            'nilai14' => 'required',
+            'nilai15' => 'required',
+            'nilai16' => 'required',
+            'nilai_presensi_1' => 'required',
+            'nilai_presensi_2' => 'required',
+            'nilai_presensi_3' => 'required',
+            'catatan_ortu' => 'required',
+            'status_naik_kelas' => 'required',
+        ], $customMessages);
+
+        $table_calon_ppdb = tblCppdb::where('id', '=', $request->id)
+            ->first();
+
+        if (!empty($table_calon_ppdb)) {
+            try {
+                $table_calon_ppdb->update([
+                    'id' => $request->id,
+                    'nilai1' => $request->nilai1,
+                    'nilai2' => $request->nilai2,
+                    'nilai3' => $request->nilai3,
+                    'nilai4' => $request->nilai4,
+                    'nilai5' => $request->nilai5,
+                    'nilai6' => $request->nilai6,
+                    'nilai7' => $request->nilai7,
+                    'nilai8' => $request->nilai8,
+                    'nilai9' => $request->nilai9,
+                    'nilai10' => $request->nilai10,
+                    'nilai12' => $request->nilai12,
+                    'nilai13' => $request->nilai13,
+                    'nilai14' => $request->nilai14,
+                    'nilai15' => $request->nilai15,
+                    'nilai16' => $request->nilai16,
+                    'nilai_presensi_1' => $request->nilai_presensi_1,
+                    'nilai_presensi_2' => $request->nilai_presensi_2,
+                    'nilai_presensi_3' => $request->nilai_presensi_3,
+                    'catatan_ortu' => $request->catatan_ortu,
+                    'status_naik_kelas' => $request->status_naik_kelas,
                 ]);
 
                 return response()->json([
@@ -338,15 +497,15 @@ class CalonPPDBController extends Controller
     public function delete(Request $request)
     {
         $request->validate([
-            'uuid' => 'required|uuid',
+            'id' => 'required',
         ]);
 
-        $table_calon_ppdb = tblCppdb::where('uuid', '=', $request->uuid)
+        $table_calon_ppdb = tblCppdb::where('id', '=', $request->id)
             ->first();
 
         if (!empty($table_calon_ppdb)) {
             try {
-                $table_calon_ppdb = tblCppdb::where('uuid', '=', $request->uuid)
+                $table_calon_ppdb = tblCppdb::where('id', '=', $request->id)
                     ->delete();
 
                 return response()->json([
