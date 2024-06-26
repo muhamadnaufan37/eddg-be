@@ -9,6 +9,7 @@ use App\Http\Controllers\API\DesaController;
 use App\Http\Controllers\API\KalenderPesertaController;
 use App\Http\Controllers\API\KelasPesertaController;
 use App\Http\Controllers\API\KelompokController;
+use App\Http\Controllers\API\LaporanRaporController;
 use App\Http\Controllers\API\LogsController;
 use App\Http\Controllers\API\MappingTempatSambungController;
 use App\Http\Controllers\API\PekerjaanPesertaController;
@@ -211,12 +212,18 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Calon Pendaftaran Peserta Didik Management
     Route::group(['prefix' => '/calon_ppdb/'], function () {
-        Route::get('listByKbm', [CalonPPDBController::class, 'listByKbm'])->middleware('role:1,4');
         Route::get('list', [CalonPPDBController::class, 'list'])->middleware('role:1,4');
+        Route::get('listByKbm', [CalonPPDBController::class, 'listByKbm'])->middleware('role:1,4');
         Route::post('create', [CalonPPDBController::class, 'create'])->middleware('role:1,4');
         Route::post('edit', [CalonPPDBController::class, 'edit'])->middleware('role:1,4');
         Route::post('updatePenilaian', [CalonPPDBController::class, 'updatePenilaian'])->middleware('role:1,4');
         Route::post('update', [CalonPPDBController::class, 'update'])->middleware('role:1,4');
         Route::delete('delete', [CalonPPDBController::class, 'delete'])->middleware('role:1,4');
+    });
+
+    // Calon Pendaftaran Peserta Didik Management
+    Route::group(['prefix' => '/pelaporan_ppdb/'], function () {
+        Route::get('list', [LaporanRaporController::class, 'list'])->middleware('role:1,4');
+        Route::get('getLaporanEvaluasi', [LaporanRaporController::class, 'getLaporanEvaluasi'])->middleware('role:1,4');
     });
 });
