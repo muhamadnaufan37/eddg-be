@@ -36,9 +36,12 @@ class KelasPesertaController extends Controller
             'nama_kelas',
         ]);
 
+        // Apply orderByRaw before executing the query
+        $model->orderByRaw('created_at IS NULL, created_at DESC');
+
         if (!empty($keyword)) {
-            $table_kelas = $model->where('nama_kelas', 'ILIKE', '%'.$keyword.'%')
-                ->orWhere('id', 'ILIKE', '%'.$keyword.'%')
+            $table_kelas = $model->where('nama_kelas', 'LIKE', '%'.$keyword.'%')
+                ->orWhere('id', 'LIKE', '%'.$keyword.'%')
                 ->paginate($perPage);
         } else {
             $table_kelas = $model->paginate($perPage);

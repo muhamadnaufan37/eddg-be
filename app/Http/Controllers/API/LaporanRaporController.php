@@ -77,7 +77,8 @@ class LaporanRaporController extends Controller
             $model->where('cppdb.status_naik_kelas', '=', $status);
         }
 
-        $model->orderByRaw('cppdb.created_at DESC NULLS LAST');
+        // Apply orderByRaw before executing the query
+        $model->orderByRaw('cppdb.created_at IS NULL, cppdb.created_at DESC');
 
         $pelaporan_evaluasi_generus = $model->paginate($perPage);
         $pelaporan_evaluasi_generus->appends(['per-page' => $perPage]);

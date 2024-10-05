@@ -42,6 +42,7 @@ class PengajarPesertaController extends Controller
         $roleId = $request->user()->role_id;
         $keyword = $request->get('keyword', null);
         $perPage = $request->get('per-page', 10);
+        $statusMengajar = $request->get('status_pengajar', null);
 
         if ($perPage > 100) {
             $perPage = 100;
@@ -63,17 +64,25 @@ class PengajarPesertaController extends Controller
             ->leftJoin('tabel_kelompok', 'pengajar.tmpt_kelompok', '=', 'tabel_kelompok.id');
 
         // $model->where('pengajar.status_pengajar', '=', true);
-        $model->orderByRaw('pengajar.created_at DESC NULLS LAST');
+        // Apply orderByRaw before executing the query
+        $model->orderByRaw('pengajar.created_at IS NULL, pengajar.created_at DESC');
 
         if ($roleId != 1) {
             // Jika role_id bukan 1, tambahkan kondisi id_user
             $model->where('pengajar.add_by_user_id', $request->user()->id);
         }
 
+        if (!is_null($statusMengajar)) {
+            $model->where('pengajar.status_pengajar', '=', $statusMengajar);
+        }
+
         if (!empty($keyword)) {
-            $model->where(function ($query) use ($keyword) {
-                $query->where('pengajar.nama_pengajar', 'ILIKE', '%'.$keyword.'%')
-                      ->orWhere('pengajar.id', 'ILIKE', '%'.$keyword.'%');
+            $model->where(function ($q) use ($keyword) {
+                $q->where('pengajar.nama_pengajar', 'LIKE', '%'.$keyword.'%')
+                    ->orWhere('tabel_daerah.nama_daerah', 'LIKE', '%'.$keyword.'%')
+                    ->orWhere('tabel_desa.nama_desa', 'LIKE', '%'.$keyword.'%')
+                    ->orWhere('tabel_kelompok.nama_kelompok', 'LIKE', '%'.$keyword.'%')
+                    ->orWhere('users.nama_lengkap', 'LIKE', '%'.$keyword.'%');
             });
         }
 

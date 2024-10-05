@@ -34,9 +34,12 @@ class PekerjaanPesertaController extends Controller
             'nama_pekerjaan',
         ]);
 
+        // Apply orderByRaw before executing the query
+        $model->orderByRaw('created_at IS NULL, created_at DESC');
+
         if (!empty($keyword)) {
-            $table_pekerjaan = $model->where('nama_pekerjaan', 'ILIKE', '%'.$keyword.'%')
-                ->orWhere('id', 'ILIKE', '%'.$keyword.'%')
+            $table_pekerjaan = $model->where('nama_pekerjaan', 'LIKE', '%'.$keyword.'%')
+                ->orWhere('nama_pekerjaan', 'LIKE', '%'.$keyword.'%')
                 ->paginate($perPage);
         } else {
             $table_pekerjaan = $model->paginate($perPage);

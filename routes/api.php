@@ -18,9 +18,11 @@ use App\Http\Controllers\API\PesertaDidikController;
 use App\Http\Controllers\API\ProfileController;
 use App\Http\Controllers\API\RerataNilaiController;
 use App\Http\Controllers\API\RolesController;
+use App\Http\Controllers\API\SetorKasCashlessController;
 use App\Http\Controllers\API\UserController;
 use App\Http\Controllers\API\WalletKasController;
 use App\Http\Controllers\DataSensusController;
+use App\Http\Controllers\StatistikTmptSmbngController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -42,6 +44,7 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register_akun', [AuthController::class, 'register']);
 Route::post('/find_sensus', [DataSensusController::class, 'cari_data']);
+Route::get('/data_tempat_sambung', [StatistikTmptSmbngController::class, 'data_tempat_sambung']);
 
 Route::middleware(['auth:sanctum'])->group(function () {
     // User Management
@@ -119,6 +122,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('edit', [DataPesertaController::class, 'edit'])->middleware('role:1,2');
         Route::post('update', [DataPesertaController::class, 'update'])->middleware('role:1,2');
         Route::delete('delete', [DataPesertaController::class, 'delete'])->middleware('role:1,2');
+        Route::post('sensus_report_pdf', [DataPesertaController::class, 'sensus_report_pdf'])->middleware('role:1,2');
     });
 
     // Pengumuman
@@ -148,6 +152,21 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('edit', [WalletKasController::class, 'edit'])->middleware('role:1,3');
         Route::post('update', [WalletKasController::class, 'update'])->middleware('role:1,3');
         Route::delete('delete', [WalletKasController::class, 'delete'])->middleware('role:1,3');
+    });
+
+    // Kas Digital
+    Route::group(['prefix' => '/wallet_kas_digital/'], function () {
+        Route::get('list_status_wallet', [SetorKasCashlessController::class, 'list_status_wallet'])->middleware('role:1,3');
+        Route::get('list_tampungan_wallet', [SetorKasCashlessController::class, 'list_tampungan_wallet'])->middleware('role:1,3');
+        Route::get('list_payment_wallet', [SetorKasCashlessController::class, 'list_payment_wallet'])->middleware('role:1,3');
+        Route::get('list_payment_wallet_data_aktif', [SetorKasCashlessController::class, 'list_payment_wallet_data_aktif'])->middleware('role:1,3');
+        Route::get('list_data_peserta', [SetorKasCashlessController::class, 'list_data_peserta'])->middleware('role:1,3');
+        Route::get('list', [SetorKasCashlessController::class, 'list'])->middleware('role:1,3');
+        Route::post('create', [SetorKasCashlessController::class, 'create'])->middleware('role:1,3');
+        Route::post('edit', [SetorKasCashlessController::class, 'edit'])->middleware('role:1,3');
+        Route::post('update', [SetorKasCashlessController::class, 'update'])->middleware('role:1,3');
+        Route::delete('delete', [SetorKasCashlessController::class, 'delete'])->middleware('role:1,3');
+        Route::post('bayar_digital', [SetorKasCashlessController::class, 'bayar_digital'])->middleware('role:1,3');
     });
 
     // Pekerjaan Management

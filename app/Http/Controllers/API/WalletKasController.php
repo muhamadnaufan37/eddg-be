@@ -200,15 +200,15 @@ class WalletKasController extends Controller
             'users.nama_lengkap AS nama_petugas',
             'wallet_kas.jenis_transaksi',
             'wallet_kas.tgl_transaksi',
-            'wallet_kas.keterangan',
             'wallet_kas.jumlah',
             'wallet_kas.created_at',
         ])
             ->leftJoin('users', function ($join) {
-                $join->on('wallet_kas.id_user', '=', DB::raw('CAST(users.id AS TEXT)'));
+                $join->on('wallet_kas.id_user', '=', DB::raw('CAST(users.id AS CHAR)'));
             });
 
-        $model->orderByRaw('wallet_kas.created_at DESC NULLS LAST');
+        // Apply orderByRaw before executing the query
+        $model->orderByRaw('wallet_kas.created_at IS NULL, wallet_kas.created_at DESC');
 
         if ($roleId != 1) {
             // Jika role_id bukan 1, tambahkan kondisi id_user
@@ -220,19 +220,19 @@ class WalletKasController extends Controller
         }
 
         if (!empty($keyword) && empty($kolom)) {
-            $walletKas = $model->where('wallet_kas.tgl_transaksi', 'ILIKE', '%'.$keyword.'%')
-                ->orWhere('users.nama_lengkap', 'ILIKE', '%'.$keyword.'%')
+            $walletKas = $model->where(DB::raw("DATE_FORMAT(wallet_kas.tgl_transaksi, '%M %Y') COLLATE utf8mb4_unicode_ci"), 'LIKE', '%'.$keyword.'%')
+                ->orWhere('users.nama_lengkap', 'LIKE', '%'.$keyword.'%')
                 ->paginate($perPage);
         } elseif (!empty($keyword) && !empty($kolom)) {
             if ($kolom == 'tgl_transaksi') {
-                $kolom = 'wallet_kas.tgl_transaksi';
+                $kolom = DB::raw("DATE_FORMAT(wallet_kas.tgl_transaksi, '%M %Y') COLLATE utf8mb4_unicode_ci");
             } elseif ($kolom == 'nama_lengkap') {
                 $kolom = 'wallet_kas.nama_lengkap';
             } else {
                 $kolom = 'users.nama_lengkap';
             }
 
-            $walletKas = $model->where($kolom, 'ILIKE', '%'.$keyword.'%')
+            $walletKas = $model->where($kolom, 'LIKE', '%'.$keyword.'%')
                 ->paginate($perPage);
         } else {
             $walletKas = $model->paginate($perPage);
@@ -338,7 +338,7 @@ class WalletKasController extends Controller
             'wallet_kas.created_at',
         ])
             ->leftJoin('users', function ($join) {
-                $join->on('wallet_kas.id_user', '=', DB::raw('CAST(users.id AS TEXT)'));
+                $join->on('wallet_kas.id_user', '=', DB::raw('CAST(users.id AS CHAR)'));
             })->where('wallet_kas.id', '=', $request->id)->first();
 
         if (!empty($walletKas)) {

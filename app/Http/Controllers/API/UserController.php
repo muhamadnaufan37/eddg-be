@@ -41,13 +41,14 @@ class UserController extends Controller
             $model->where('users.status', '=', $status);
         }
 
-        $model->orderByRaw('users.created_at DESC NULLS LAST');
+        $model->orderByRaw('users.created_at IS NULL, users.created_at DESC');
 
         if (!empty($keyword) && empty($kolom)) {
-            $user = $model->where('users.username', 'ILIKE', '%'.$keyword.'%')
-                ->orWhere('users.email', 'ILIKE', '%'.$keyword.'%')
-                ->orWhere('users.nama_lengkap', 'ILIKE', '%'.$keyword.'%')
-                ->paginate($perPage);
+            $model->where(function ($q) use ($keyword) {
+                $q->where('users.username', 'LIKE', '%' . $keyword . '%')
+                    ->orWhere('users.email', 'LIKE', '%' . $keyword . '%')
+                    ->orWhere('users.nama_lengkap', 'LIKE', '%' . $keyword . '%');
+            });
         } elseif (!empty($keyword) && !empty($kolom)) {
             if ($kolom == 'username') {
                 $kolom = 'users.username';
@@ -57,13 +58,14 @@ class UserController extends Controller
                 $kolom = 'users.nama_lengkap';
             }
 
-            $user = $model->where($kolom, 'ILIKE', '%'.$keyword.'%')
-                ->paginate($perPage);
-        } else {
-            $user = $model->paginate($perPage);
+            $model->where($kolom, 'LIKE', '%' . $keyword . '%');
         }
 
-        $user->appends(['per-page' => $perPage]);
+        $user = $model->paginate($perPage);
+
+        $user->appends([
+            'per-page' => $perPage,
+        ]);
 
         return response()->json([
             'message' => 'Sukses',
@@ -89,7 +91,6 @@ class UserController extends Controller
 
         $request->validate([
             'username' => 'required|max:30|unique:users',
-            'password' => 'required|min:8|max:30|regex:/^(?=.*[A-Z])(?=.*\d)/',
             'email' => 'required|email|max:50|unique:users',
             'nama_lengkap' => 'required|max:50|unique:users',
             'role_id' => 'required|numeric|digits_between:1,5',
@@ -101,7 +102,7 @@ class UserController extends Controller
 
         $user = new User();
         $user->username = $request->username;
-        $user->password = bcrypt($request->password);
+        $user->password = bcrypt(1);
         $user->email = $request->email;
         $user->nama_lengkap = $request->nama_lengkap;
         $user->role_id = $request->role_id;
@@ -130,7 +131,7 @@ class UserController extends Controller
             $user->save();
         } catch (\Exception $exception) {
             return response()->json([
-                'message' => 'Gagal menambah data User '.$exception->getMessage(),
+                'message' => 'Gagal menambah data User ' . $exception->getMessage(),
                 'success' => false,
             ], 500);
         }
@@ -163,6 +164,7 @@ class UserController extends Controller
                 'users.role_daerah',
                 'users.role_desa',
                 'users.role_kelompok',
+                'users.reason_ban',
             ])->where('users.id', '=', $request->id)->first();
 
         if (!empty($user)) {
@@ -196,11 +198,11 @@ class UserController extends Controller
 
         $request->validate([
             'id' => 'required|numeric|digits_between:1,5',
-            'username' => 'sometimes|required|max:30|unique:users,username,'.$request->id.',id',
-            'email' => 'sometimes|required|email|max:50|unique:users,email,'.$request->id.',id',
-            'nama_lengkap' => 'sometimes|required|max:50|unique:users,nama_lengkap,'.$request->id.',id',
+            'username' => 'sometimes|required|max:30|unique:users,username,' . $request->id . ',id',
+            'email' => 'sometimes|required|email|max:50|unique:users,email,' . $request->id . ',id',
+            'nama_lengkap' => 'sometimes|required|max:50|unique:users,nama_lengkap,' . $request->id . ',id',
             'role_id' => 'required|numeric|digits_between:1,5',
-            'status' => 'required|numeric|digits_between:1,5',
+            'status' => 'required',
             'role_daerah' => 'numeric|nullable|digits_between:1,5',
             'role_desa' => 'numeric|nullable|digits_between:1,5',
             'role_kelompok' => 'numeric|nullable|digits_between:1,5',
@@ -219,10 +221,11 @@ class UserController extends Controller
                     'role_daerah' => $request->role_daerah,
                     'role_desa' => $request->role_desa,
                     'role_kelompok' => $request->role_kelompok,
+                    'reason_ban' => $request->reason_ban,
                 ]);
             } catch (\Exception $exception) {
                 return response()->json([
-                    'message' => 'Gagal mengupdate data User'.$exception->getMessage(),
+                    'message' => 'Gagal mengupdate data User' . $exception->getMessage(),
                     'success' => false,
                 ], 500);
             }
@@ -263,7 +266,7 @@ class UserController extends Controller
                 ], 200);
             } catch (\Exception $exception) {
                 return response()->json([
-                    'message' => 'Gagal menghapus data User'.$exception->getMessage(),
+                    'message' => 'Gagal menghapus data User' . $exception->getMessage(),
                     'success' => false,
                 ], 500);
             }

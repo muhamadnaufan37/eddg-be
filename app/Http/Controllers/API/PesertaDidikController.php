@@ -9,6 +9,7 @@ use App\Models\dataKelompok;
 use App\Models\tblPesertaDidik;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class PesertaDidikController extends Controller
 {
@@ -43,6 +44,8 @@ class PesertaDidikController extends Controller
     {
         $keyword = $request->get('keyword', null);
         $perPage = $request->get('per-page', 10);
+        $statusPeserta = $request->get('status_peserta', null);
+        $jenisKelamin = $request->get('jenis_kelamin', null);
 
         if ($perPage > 100) {
             $perPage = 100;
@@ -58,22 +61,33 @@ class PesertaDidikController extends Controller
             'tabel_kelompok.nama_kelompok AS nama_kelompok', // Kolom baru untuk nama kelompok
             'peserta_didik.created_at',
         ])
-        ->leftJoin('users', 'peserta_didik.add_by_user_id', '=', 'users.id')
-        ->leftJoin('tabel_daerah', 'peserta_didik.tmpt_daerah', '=', 'tabel_daerah.id')
-        ->leftJoin('tabel_desa', 'peserta_didik.tmpt_desa', '=', 'tabel_desa.id')
-        ->leftJoin('tabel_kelompok', 'peserta_didik.tmpt_kelompok', '=', 'tabel_kelompok.id');
+            ->leftJoin('users', 'peserta_didik.add_by_user_id', '=', 'users.id')
+            ->leftJoin('tabel_daerah', 'peserta_didik.tmpt_daerah', '=', 'tabel_daerah.id')
+            ->leftJoin('tabel_desa', 'peserta_didik.tmpt_desa', '=', 'tabel_desa.id')
+            ->leftJoin('tabel_kelompok', 'peserta_didik.tmpt_kelompok', '=', 'tabel_kelompok.id');
 
-        $model->orderByRaw('peserta_didik.created_at DESC NULLS LAST');
-
-        if (!empty($keyword)) {
-            $model->where(function ($query) use ($keyword) {
-                $query->where('peserta_didik.nama_lengkap', 'ILIKE', '%'.$keyword.'%')
-                    ->orWhere('peserta_didik.id', 'ILIKE', '%'.$keyword.'%');
-            });
-        } else {
-            $table_peserta_didik = $model->paginate($perPage);
+        if (!is_null($statusPeserta)) {
+            $model->where('peserta_didik.status_peserta_didik', '=', $statusPeserta);
         }
 
+        if (!is_null($jenisKelamin)) {
+            $model->where('peserta_didik.jenis_kelamin', '=', $jenisKelamin);
+        }
+
+        // Apply orderByRaw before executing the query
+        $model->orderByRaw('peserta_didik.created_at IS NULL, peserta_didik.created_at DESC');
+
+        if (!empty($keyword)) {
+            $model->where(function ($q) use ($keyword) {
+                $q->where('peserta_didik.nama_lengkap', 'LIKE', '%' . $keyword . '%')
+                    ->orWhere('tabel_daerah.nama_daerah', 'LIKE', '%' . $keyword . '%')
+                    ->orWhere('tabel_desa.nama_desa', 'LIKE', '%' . $keyword . '%')
+                    ->orWhere('tabel_kelompok.nama_kelompok', 'LIKE', '%' . $keyword . '%')
+                    ->orWhere('users.nama_lengkap', 'LIKE', '%' . $keyword . '%');
+            });
+        }
+
+        $table_peserta_didik = $model->paginate($perPage);
         $table_peserta_didik->appends(['per-page' => $perPage]);
 
         return response()->json([
@@ -88,6 +102,8 @@ class PesertaDidikController extends Controller
         $user = $request->user();
         $keyword = $request->get('keyword', null);
         $perPage = $request->get('per-page', 10);
+        $statusPeserta = $request->get('status_peserta', null);
+        $jenisKelamin = $request->get('jenis_kelamin', null);
         $dataDaerah = $request->get('data-daerah', $user->role_daerah);
         $dataDesa = $request->get('data-desa', $user->role_desa);
         $dataKelompok = $request->get('data-kelompok', $user->role_kelompok);
@@ -106,10 +122,18 @@ class PesertaDidikController extends Controller
             'tabel_kelompok.nama_kelompok AS nama_kelompok', // Kolom baru untuk nama kelompok
             'peserta_didik.created_at',
         ])
-        ->leftJoin('users', 'peserta_didik.add_by_user_id', '=', 'users.id')
-        ->leftJoin('tabel_daerah', 'peserta_didik.tmpt_daerah', '=', 'tabel_daerah.id')
-        ->leftJoin('tabel_desa', 'peserta_didik.tmpt_desa', '=', 'tabel_desa.id')
-        ->leftJoin('tabel_kelompok', 'peserta_didik.tmpt_kelompok', '=', 'tabel_kelompok.id');
+            ->leftJoin('users', 'peserta_didik.add_by_user_id', '=', 'users.id')
+            ->leftJoin('tabel_daerah', 'peserta_didik.tmpt_daerah', '=', 'tabel_daerah.id')
+            ->leftJoin('tabel_desa', 'peserta_didik.tmpt_desa', '=', 'tabel_desa.id')
+            ->leftJoin('tabel_kelompok', 'peserta_didik.tmpt_kelompok', '=', 'tabel_kelompok.id');
+
+        if (!is_null($statusPeserta)) {
+            $model->where('peserta_didik.status_peserta_didik', '=', $statusPeserta);
+        }
+
+        if (!is_null($jenisKelamin)) {
+            $model->where('peserta_didik.jenis_kelamin', '=', $jenisKelamin);
+        }
 
         if (!is_null($dataDaerah)) {
             $model->where('tabel_daerah.id', '=', $dataDaerah);
@@ -123,16 +147,20 @@ class PesertaDidikController extends Controller
             $model->where('tabel_kelompok.id', '=', $dataKelompok);
         }
 
-        $model->orderByRaw('peserta_didik.created_at DESC NULLS LAST');
+        // Apply orderByRaw before executing the query
+        $model->orderByRaw('peserta_didik.created_at IS NULL, peserta_didik.created_at DESC');
 
         if (!empty($keyword)) {
-            $table_peserta_didik = $model->where('peserta_didik.nama_lengkap', 'ILIKE', '%'.$keyword.'%')
-                ->orWhere('peserta_didik.id', 'ILIKE', '%'.$keyword.'%')
-                ->paginate($perPage);
-        } else {
-            $table_peserta_didik = $model->paginate($perPage);
+            $model->where(function ($q) use ($keyword) {
+                $q->where('peserta_didik.nama_lengkap', 'LIKE', '%' . $keyword . '%')
+                    ->orWhere('tabel_daerah.nama_daerah', 'LIKE', '%' . $keyword . '%')
+                    ->orWhere('tabel_desa.nama_desa', 'LIKE', '%' . $keyword . '%')
+                    ->orWhere('tabel_kelompok.nama_kelompok', 'LIKE', '%' . $keyword . '%')
+                    ->orWhere('users.nama_lengkap', 'LIKE', '%' . $keyword . '%');
+            });
         }
 
+        $table_peserta_didik = $model->paginate($perPage);
         $table_peserta_didik->appends(['per-page' => $perPage]);
 
         return response()->json([
@@ -193,7 +221,7 @@ class PesertaDidikController extends Controller
         $table_peserta_didik->tmpt_kelompok = $request->tmpt_kelompok;
         // Generate nomor induk santri dengan nomor random 4 digit
         $random_number = str_pad(mt_rand(0, 9999), 4, '0', STR_PAD_LEFT); // Menghasilkan nomor random 4 digit
-        $table_peserta_didik->nomor_induk_santri = $request->tmpt_daerah.$request->tmpt_desa.$request->tmpt_kelompok.$userId.$random_number.'313354';
+        $table_peserta_didik->nomor_induk_santri = $request->tmpt_daerah . $request->tmpt_desa . $request->tmpt_kelompok . $userId . $random_number . '313354';
         try {
             if (!$tabel_daerah) {
                 return response()->json([
@@ -226,7 +254,7 @@ class PesertaDidikController extends Controller
             $table_peserta_didik->save();
         } catch (\Exception $exception) {
             return response()->json([
-                'message' => 'Gagal menambah Data Peserta Didik'.$exception->getMessage(),
+                'message' => 'Gagal menambah Data Peserta Didik' . $exception->getMessage(),
                 'success' => false,
             ], 500);
         }
@@ -252,7 +280,8 @@ class PesertaDidikController extends Controller
             'peserta_didik.nama_lengkap',
             'peserta_didik.tempat_lahir',
             'peserta_didik.tanggal_lahir',
-            tblPesertaDidik::raw('EXTRACT(YEAR FROM AGE(tanggal_lahir)) as umur'),
+            // tblPesertaDidik::raw('EXTRACT(YEAR FROM AGE(tanggal_lahir)) as umur'),
+            DB::raw('TIMESTAMPDIFF(YEAR, peserta_didik.tanggal_lahir, CURDATE()) AS umur'),
             'peserta_didik.jenis_kelamin',
             'peserta_didik.hoby',
             'peserta_didik.nama_ortu',
@@ -268,12 +297,12 @@ class PesertaDidikController extends Controller
             'tabel_kelompok.nama_kelompok AS nama_kelompok', // Kolom baru untuk nama kelompok
             'peserta_didik.created_at',
         ])
-        ->leftJoin('users', 'peserta_didik.add_by_user_id', '=', 'users.id')
-        ->leftJoin('tabel_daerah', 'peserta_didik.tmpt_daerah', '=', 'tabel_daerah.id')
-        ->leftJoin('tabel_desa', 'peserta_didik.tmpt_desa', '=', 'tabel_desa.id')
-        ->leftJoin('tabel_kelompok', 'peserta_didik.tmpt_kelompok', '=', 'tabel_kelompok.id')
-        ->where('peserta_didik.id', $request->id)
-        ->first();
+            ->leftJoin('users', 'peserta_didik.add_by_user_id', '=', 'users.id')
+            ->leftJoin('tabel_daerah', 'peserta_didik.tmpt_daerah', '=', 'tabel_daerah.id')
+            ->leftJoin('tabel_desa', 'peserta_didik.tmpt_desa', '=', 'tabel_desa.id')
+            ->leftJoin('tabel_kelompok', 'peserta_didik.tmpt_kelompok', '=', 'tabel_kelompok.id')
+            ->where('peserta_didik.id', $request->id)
+            ->first();
 
         unset($table_peserta_didik->created_at, $table_peserta_didik->updated_at);
 
@@ -312,7 +341,7 @@ class PesertaDidikController extends Controller
 
         $request->validate([
             'id' => 'required|numeric|digits_between:1,5',
-            'nama_lengkap' => 'sometimes|required|max:225|string|unique:peserta_didik,nama_lengkap,'.$request->id.',id',
+            'nama_lengkap' => 'sometimes|required|max:225|string|unique:peserta_didik,nama_lengkap,' . $request->id . ',id',
             'tempat_lahir' => 'required|string',
             'tanggal_lahir' => 'required|date',
             'jenis_kelamin' => 'required|in:LAKI-LAKI,PEREMPUAN',
@@ -376,7 +405,7 @@ class PesertaDidikController extends Controller
                 ]);
             } catch (\Exception $exception) {
                 return response()->json([
-                    'message' => 'Gagal mengupdate Data'.$exception->getMessage(),
+                    'message' => 'Gagal mengupdate Data' . $exception->getMessage(),
                     'success' => false,
                 ], 500);
             }
@@ -414,7 +443,7 @@ class PesertaDidikController extends Controller
                 ], 200);
             } catch (\Exception $exception) {
                 return response()->json([
-                    'message' => 'Gagal menghapus Data'.$exception->getMessage(),
+                    'message' => 'Gagal menghapus Data' . $exception->getMessage(),
                     'success' => false,
                 ], 500);
             }

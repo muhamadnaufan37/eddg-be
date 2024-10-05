@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class() extends Migration {
+return new class extends Migration {
     /**
      * Run the migrations.
      */
@@ -31,7 +31,9 @@ return new class() extends Migration {
             $table->foreignId('tmpt_daerah');
             $table->foreignId('tmpt_desa')->nullable();
             $table->foreignId('tmpt_kelompok')->nullable();
+            $table->boolean('status_atlet_asad')->default(0);
             $table->foreignId('user_id');
+            $table->text('img_profile')->nullable();
             $table->timestamps();
         });
     }

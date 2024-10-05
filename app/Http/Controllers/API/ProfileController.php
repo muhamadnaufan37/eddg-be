@@ -3,8 +3,9 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
-use App\Models\dataProfile;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 
 class ProfileController extends Controller
 {
@@ -14,12 +15,12 @@ class ProfileController extends Controller
             'id' => 'required|numeric|digits_between:1,5',
         ]);
 
-        $profile = dataProfile::select([
-                'nama_lengkap',
-                'username',
-                'email',
-                'created_at',
-            ])->where('users.id', '=', $request->id)->first();
+        $profile = User::select([
+            'nama_lengkap',
+            'username',
+            'email',
+            'created_at',
+        ])->where('users.id', '=', $request->id)->first();
 
         if (!empty($profile)) {
             return response()->json([
@@ -45,7 +46,7 @@ class ProfileController extends Controller
             'email' => 'required|email|max:50',
         ]);
 
-        $profile = dataProfile::where('id', '=', $request->id)
+        $profile = User::where('id', '=', $request->id)
             ->first();
 
         if (!empty($profile)) {
@@ -57,7 +58,7 @@ class ProfileController extends Controller
                 ]);
             } catch (\Exception $exception) {
                 return response()->json([
-                    'message' => 'Gagal mengupdate data Profile'.$exception->getMessage(),
+                    'message' => 'Gagal mengupdate data Profile' . $exception->getMessage(),
                     'success' => false,
                 ], 500);
             }
@@ -88,7 +89,7 @@ class ProfileController extends Controller
             'id' => 'required|numeric|digits_between:1,5',
         ]);
 
-        $profile = dataProfile::select([
+        $profile = User::select([
             'nama_lengkap',
             'username',
             'email',
@@ -97,14 +98,26 @@ class ProfileController extends Controller
 
         if (!empty($profile)) {
             if (!empty($profile->password)) {
-                return response()->json([
-                    'message' => 'Sukses',
-                    'success' => true,
-                ], 200);
+                // Asumsi: $defaultPassword adalah kata sandi default yang ditetapkan saat akun dibuat
+                $defaultPassword = '1'; // Ganti dengan nilai sebenarnya atau logika Anda
+
+                if (Hash::check($defaultPassword, $profile->password)) {
+                    // Kata sandi belum diubah, masih default
+                    return response()->json([
+                        'message' => 'User belum mengganti password, masih menggunakan default. silahkan ganti password terlebih dahulu untuk keamanan akun anda',
+                        'success' => false,
+                    ], 200);
+                } else {
+                    // Kata sandi sudah diubah
+                    return response()->json([
+                        'message' => 'User sudah pernah mengganti password',
+                        'success' => true,
+                    ], 200);
+                }
             }
 
             return response()->json([
-                'message' => 'Sukses',
+                'message' => 'Sukses, tapi password kosong',
                 'success' => false,
             ], 200);
         }
@@ -115,6 +128,7 @@ class ProfileController extends Controller
         ], 200);
     }
 
+
     public function update_password(Request $request)
     {
         $request->validate([
@@ -122,7 +136,7 @@ class ProfileController extends Controller
             'password' => 'required|max:30',
         ]);
 
-        $profile = dataProfile::where('id', '=', $request->id)
+        $profile = User::where('id', '=', $request->id)
             ->first();
 
         if (!empty($profile)) {
@@ -132,7 +146,7 @@ class ProfileController extends Controller
                 ]);
             } catch (\Exception $exception) {
                 return response()->json([
-                    'message' => 'Gagal mengupdate password'.$exception->getMessage(),
+                    'message' => 'Gagal mengupdate password' . $exception->getMessage(),
                     'success' => false,
                 ], 500);
             }

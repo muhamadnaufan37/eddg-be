@@ -18,6 +18,7 @@ class CalonPPDBController extends Controller
     {
         $keyword = $request->get('keyword', null);
         $perPage = $request->get('per-page', 10);
+        $statusKenaikan = $request->get('status_naik_kelas', null);
 
         if ($perPage > 100) {
             $perPage = 100;
@@ -40,15 +41,25 @@ class CalonPPDBController extends Controller
         ->leftJoin('pengajar', 'cppdb.id_pengajar', '=', 'pengajar.id')
         ->leftJoin('peserta_didik', 'cppdb.id_peserta', '=', 'peserta_didik.id')
         ->leftJoin('users', 'cppdb.id_petugas', '=', 'users.id')
-        ->where('kalender_pendidikan.status_pelajaran', true);
+        ->where('kalender_pendidikan.status_pelajaran', 1);
 
-        $model->orderByRaw('cppdb.created_at DESC NULLS LAST');
+        // Apply orderByRaw before executing the query
+        $model->orderByRaw('cppdb.created_at IS NULL, cppdb.created_at DESC');
 
         if (!empty($keyword)) {
             $model->where(function ($query) use ($keyword) {
-                $query->where('peserta_didik.nama_lengkap', 'ILIKE', '%'.$keyword.'%')
-                    ->orWhere('cppdb.kode_cari_ppdb', 'ILIKE', '%'.$keyword.'%');
+                $query->where('peserta_didik.nama_lengkap', 'LIKE', '%'.$keyword.'%')
+                ->orWhere('cppdb.kode_cari_ppdb', 'LIKE', '%'.$keyword.'%')
+                ->orWhere('kalender_pendidikan.tahun_pelajaran', 'LIKE', '%'.$keyword.'%')
+                ->orWhere('kelas_peserta_didik.nama_kelas', 'LIKE', '%'.$keyword.'%')
+                ->orWhere('pengajar.nama_pengajar', 'LIKE', '%'.$keyword.'%')
+                ->orWhere('peserta_didik.nama_lengkap', 'LIKE', '%'.$keyword.'%')
+                ->orWhere('users.nama_lengkap', 'LIKE', '%'.$keyword.'%');
             });
+        }
+
+        if (!is_null($statusKenaikan)) {
+            $model->where('cppdb.status_naik_kelas', '=', $statusKenaikan);
         }
 
         $table_calon_ppdb = $model->paginate($perPage);
@@ -66,6 +77,7 @@ class CalonPPDBController extends Controller
         $user = Auth::user();
         $roleID = $user->role_id;
         $userID = Auth::id();
+        $statusKenaikan = $request->get('status_naik_kelas', null);
 
         $keyword = $request->get('keyword', null);
         $perPage = $request->get('per-page', 10);
@@ -91,18 +103,28 @@ class CalonPPDBController extends Controller
         ->leftJoin('pengajar', 'cppdb.id_pengajar', '=', 'pengajar.id')
         ->leftJoin('peserta_didik', 'cppdb.id_peserta', '=', 'peserta_didik.id')
         ->leftJoin('users', 'cppdb.id_petugas', '=', 'users.id')
-        ->where('kalender_pendidikan.status_pelajaran', true);  // Adding condition to filter by status_pelajaran being true
+        ->where('kalender_pendidikan.status_pelajaran', 1);
 
-        $model->orderByRaw('cppdb.created_at DESC NULLS LAST');
+        // Apply orderByRaw before executing the query
+        $model->orderByRaw('cppdb.created_at IS NULL, cppdb.created_at DESC');
 
         if ($roleID != 1) {
             $model->where('cppdb.id_petugas', $userID);
         }
 
+        if (!is_null($statusKenaikan)) {
+            $model->where('cppdb.status_naik_kelas', '=', $statusKenaikan);
+        }
+
         if (!empty($keyword)) {
             $model->where(function ($query) use ($keyword) {
-                $query->where('peserta_didik.nama_lengkap', 'ILIKE', '%'.$keyword.'%')
-                    ->orWhere('cppdb.kode_cari_ppdb', 'ILIKE', '%'.$keyword.'%');
+                $query->where('peserta_didik.nama_lengkap', 'LIKE', '%'.$keyword.'%')
+                ->orWhere('cppdb.kode_cari_ppdb', 'LIKE', '%'.$keyword.'%')
+                ->orWhere('kalender_pendidikan.tahun_pelajaran', 'LIKE', '%'.$keyword.'%')
+                ->orWhere('kelas_peserta_didik.nama_kelas', 'LIKE', '%'.$keyword.'%')
+                ->orWhere('pengajar.nama_pengajar', 'LIKE', '%'.$keyword.'%')
+                ->orWhere('peserta_didik.nama_lengkap', 'LIKE', '%'.$keyword.'%')
+                ->orWhere('users.nama_lengkap', 'LIKE', '%'.$keyword.'%');
             });
         }
 
@@ -162,8 +184,8 @@ class CalonPPDBController extends Controller
 
         if ($existingEntry) {
             return response()->json([
-            'message' => 'Data dengan Tahun Akademik dan Peserta yang sama sudah terdaftar',
-            'success' => false,
+                'message' => 'Data dengan Tahun Akademik dan Peserta yang sama sudah terdaftar',
+                'success' => false,
             ], 409);
         }
 

@@ -23,6 +23,7 @@ return new class() extends Migration {
             $table->foreignId('role_daerah')->nullable();
             $table->foreignId('role_desa')->nullable();
             $table->foreignId('role_kelompok')->nullable();
+            $table->string('reason_ban', 255);
             $table->timestamp('login_terakhir')->nullable();
             $table->timestamps();
         });

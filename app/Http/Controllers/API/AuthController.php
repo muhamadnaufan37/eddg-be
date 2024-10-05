@@ -46,7 +46,7 @@ class AuthController extends Controller
             $register_akun->save();
         } catch (\Exception $exception) {
             return response()->json([
-                'message' => 'Gagal menambah Akun'.$exception->getMessage(),
+                'message' => 'Gagal menambah Akun' . $exception->getMessage(),
                 'success' => false,
             ], 500);
         }
@@ -67,7 +67,7 @@ class AuthController extends Controller
 
         if (empty($user)) {
             return response()->json([
-                'message' => 'User tidak ditemukan',
+                'message' => 'User tidak ditemukan atau tidak terdaftar',
                 'success' => false,
             ], 200);
         }
@@ -105,9 +105,13 @@ class AuthController extends Controller
 
             logs::create($logAccount);
 
+            $user_balikan = [
+                'reason_ban' => $user['reason_ban'],
+            ];
+
             $responseMessage = ($user->status == -1)
-                ? 'Akses akun anda di Blokir, Silahkan hubungi admin bidang'
-                : 'Mohon maaf, akun anda Non-Aktif. Silahkan hubungi admin bidang';
+                ? 'Akses akun anda di Dibatasi, Silahkan hubungi Administrator. Karena : ' . ($user_balikan['reason_ban'] ?? '-')
+                : 'Mohon maaf, akun anda Non-Aktif. Silahkan hubungi Administrator';
 
             return response()->json([
                 'status' => $statusMessage,

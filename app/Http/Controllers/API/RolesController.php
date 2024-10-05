@@ -43,9 +43,10 @@ class RolesController extends Controller
         ]);
 
         if (!empty($keyword) && empty($kolom)) {
-            $role = $model->where('name', 'ILIKE', '%'.$keyword.'%')
-                ->orWhere('description', 'ILIKE', '%'.$keyword.'%')
-                ->paginate($perPage);
+            $model->where(function ($q) use ($keyword) {
+                $q->where('name', 'LIKE', '%'.$keyword.'%')
+                ->orWhere('description', 'LIKE', '%'.$keyword.'%');
+            });
         } elseif (!empty($keyword) && !empty($kolom)) {
             if ($kolom == 'name') {
                 $kolom = 'name';
@@ -53,11 +54,10 @@ class RolesController extends Controller
                 $kolom = 'description';
             }
 
-            $role = $model->where($kolom, 'ILIKE', '%'.$keyword.'%')
-                ->paginate($perPage);
-        } else {
-            $role = $model->paginate($perPage);
+            $model->where($kolom, 'LIKE', '%'.$keyword.'%');
         }
+
+        $role = $model->paginate($perPage);
 
         $role->appends(['per-page' => $perPage]);
 
