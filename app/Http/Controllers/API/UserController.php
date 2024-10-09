@@ -245,6 +245,54 @@ class UserController extends Controller
         ], 200);
     }
 
+    // Update data User
+    public function reset_password(Request $request)
+    {
+        $customMessages = [
+            'required' => 'Kolom :attribute wajib diisi.',
+            'unique' => ':attribute sudah terdaftar di sistem',
+            'email' => ':attribute harus berupa alamat email yang valid.',
+            'max' => ':attribute tidak boleh lebih dari :max karakter.',
+            'confirmed' => 'Konfirmasi :attribute tidak cocok.',
+            'min' => ':attribute harus memiliki setidaknya :min karakter.',
+            'regex' => ':attribute harus mengandung setidaknya satu huruf kapital dan satu angka.',
+            'numeric' => ':attribute harus berupa angka.',
+            'digits_between' => ':attribute harus memiliki panjang antara :min dan :max digit.',
+        ];
+
+        $request->validate([
+            'id' => 'required|numeric|digits_between:1,5',
+        ], $customMessages);
+
+        $user = User::where('id', '=', $request->id)->first();
+
+        if (!empty($user)) {
+            try {
+                $user->update([
+                    'password' => bcrypt(1),
+                ]);
+            } catch (\Exception $exception) {
+                return response()->json([
+                    'message' => 'Gagal Reset Password' . $exception->getMessage(),
+                    'success' => false,
+                ], 500);
+            }
+
+            unset($user->password);
+
+            return response()->json([
+                'message' => 'Password Berhasil Di Reset',
+                'data_user' => $user,
+                'success' => true,
+            ], 200);
+        }
+
+        return response()->json([
+            'message' => 'Data User tidak ditemukan',
+            'success' => false,
+        ], 200);
+    }
+
     // Delete data User
     public function delete(Request $request)
     {

@@ -53,6 +53,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('create', [UserController::class, 'create'])->middleware('role:1');
         Route::post('edit', [UserController::class, 'edit'])->middleware('role:1');
         Route::post('update', [UserController::class, 'update'])->middleware('role:1');
+        Route::post('reset_password', [UserController::class, 'reset_password'])->middleware('role:1');
         Route::delete('delete', [UserController::class, 'delete'])->middleware('role:1');
         Route::post('logout', [AuthController::class, 'logout']);
     });
