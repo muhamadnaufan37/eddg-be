@@ -41,6 +41,7 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
+Route::post('/load_data_center', [AuthController::class, 'load_data_center']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register_akun', [AuthController::class, 'register']);
 Route::post('/find_sensus', [DataSensusController::class, 'cari_data']);
@@ -245,5 +246,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::group(['prefix' => '/pelaporan_ppdb/'], function () {
         Route::get('list', [LaporanRaporController::class, 'list'])->middleware('role:1,4');
         Route::get('getLaporanEvaluasi', [LaporanRaporController::class, 'getLaporanEvaluasi'])->middleware('role:1,4');
+        Route::get('data_dashboard_ranking', [LaporanRaporController::class, 'data_dashboard_ranking'])->middleware('role:1,4');
+        Route::get('getAverageNilai1', [LaporanRaporController::class, 'getAverageNilai1'])->middleware('role:1,4');
     });
 });

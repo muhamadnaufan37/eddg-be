@@ -36,7 +36,7 @@ class DataPesertaController extends Controller
 
         $request->validate([
             'data_daerah' => 'required|string',
-            'data_desa' => 'required|string',
+            'data_desa' => 'nullable',
             'data_kelompok' => 'nullable',
         ], $customMessages);
 
