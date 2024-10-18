@@ -20,6 +20,8 @@ class AuthController extends Controller
         ]);
 
         $config = dataCenter::select([
+            'config_name',
+            'config_comment',
             'config_status',
         ])->where('id', '=', $request->id)->first();
 
