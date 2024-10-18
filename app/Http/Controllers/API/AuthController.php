@@ -7,7 +7,6 @@ use App\Models\logs;
 use App\Models\User;
 use App\Models\dataCenter;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Jenssegers\Agent\Agent;
 use Spatie\Permission\Models\Role;
@@ -46,6 +45,7 @@ class AuthController extends Controller
             'success' => false,
         ], 200);
     }
+
     public function register(Request $request)
     {
         $customMessages = [
