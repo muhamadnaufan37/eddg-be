@@ -36,25 +36,25 @@ class CalonPPDBController extends Controller
             'cppdb.status_naik_kelas',
             'cppdb.created_at',
         ])
-        ->leftJoin('kalender_pendidikan', 'cppdb.id_thn_akademik', '=', 'kalender_pendidikan.id')
-        ->leftJoin('kelas_peserta_didik', 'cppdb.id_kelas', '=', 'kelas_peserta_didik.id')
-        ->leftJoin('pengajar', 'cppdb.id_pengajar', '=', 'pengajar.id')
-        ->leftJoin('peserta_didik', 'cppdb.id_peserta', '=', 'peserta_didik.id')
-        ->leftJoin('users', 'cppdb.id_petugas', '=', 'users.id')
-        ->where('kalender_pendidikan.status_pelajaran', 1);
+            ->leftJoin('kalender_pendidikan', 'cppdb.id_thn_akademik', '=', 'kalender_pendidikan.id')
+            ->leftJoin('kelas_peserta_didik', 'cppdb.id_kelas', '=', 'kelas_peserta_didik.id')
+            ->leftJoin('pengajar', 'cppdb.id_pengajar', '=', 'pengajar.id')
+            ->leftJoin('peserta_didik', 'cppdb.id_peserta', '=', 'peserta_didik.id')
+            ->leftJoin('users', 'cppdb.id_petugas', '=', 'users.id')
+            ->where('kalender_pendidikan.status_pelajaran', 1);
 
         // Apply orderByRaw before executing the query
         $model->orderByRaw('cppdb.created_at IS NULL, cppdb.created_at DESC');
 
         if (!empty($keyword)) {
             $model->where(function ($query) use ($keyword) {
-                $query->where('peserta_didik.nama_lengkap', 'LIKE', '%'.$keyword.'%')
-                ->orWhere('cppdb.kode_cari_ppdb', 'LIKE', '%'.$keyword.'%')
-                ->orWhere('kalender_pendidikan.tahun_pelajaran', 'LIKE', '%'.$keyword.'%')
-                ->orWhere('kelas_peserta_didik.nama_kelas', 'LIKE', '%'.$keyword.'%')
-                ->orWhere('pengajar.nama_pengajar', 'LIKE', '%'.$keyword.'%')
-                ->orWhere('peserta_didik.nama_lengkap', 'LIKE', '%'.$keyword.'%')
-                ->orWhere('users.nama_lengkap', 'LIKE', '%'.$keyword.'%');
+                $query->where('peserta_didik.nama_lengkap', 'LIKE', '%' . $keyword . '%')
+                    ->orWhere('cppdb.kode_cari_ppdb', 'LIKE', '%' . $keyword . '%')
+                    ->orWhere('kalender_pendidikan.tahun_pelajaran', 'LIKE', '%' . $keyword . '%')
+                    ->orWhere('kelas_peserta_didik.nama_kelas', 'LIKE', '%' . $keyword . '%')
+                    ->orWhere('pengajar.nama_pengajar', 'LIKE', '%' . $keyword . '%')
+                    ->orWhere('peserta_didik.nama_lengkap', 'LIKE', '%' . $keyword . '%')
+                    ->orWhere('users.nama_lengkap', 'LIKE', '%' . $keyword . '%');
             });
         }
 
@@ -98,12 +98,12 @@ class CalonPPDBController extends Controller
             'cppdb.status_naik_kelas',
             'cppdb.created_at',
         ])
-        ->leftJoin('kalender_pendidikan', 'cppdb.id_thn_akademik', '=', 'kalender_pendidikan.id')
-        ->leftJoin('kelas_peserta_didik', 'cppdb.id_kelas', '=', 'kelas_peserta_didik.id')
-        ->leftJoin('pengajar', 'cppdb.id_pengajar', '=', 'pengajar.id')
-        ->leftJoin('peserta_didik', 'cppdb.id_peserta', '=', 'peserta_didik.id')
-        ->leftJoin('users', 'cppdb.id_petugas', '=', 'users.id')
-        ->where('kalender_pendidikan.status_pelajaran', 1);
+            ->leftJoin('kalender_pendidikan', 'cppdb.id_thn_akademik', '=', 'kalender_pendidikan.id')
+            ->leftJoin('kelas_peserta_didik', 'cppdb.id_kelas', '=', 'kelas_peserta_didik.id')
+            ->leftJoin('pengajar', 'cppdb.id_pengajar', '=', 'pengajar.id')
+            ->leftJoin('peserta_didik', 'cppdb.id_peserta', '=', 'peserta_didik.id')
+            ->leftJoin('users', 'cppdb.id_petugas', '=', 'users.id')
+            ->where('kalender_pendidikan.status_pelajaran', 1);
 
         // Apply orderByRaw before executing the query
         $model->orderByRaw('cppdb.created_at IS NULL, cppdb.created_at DESC');
@@ -118,13 +118,13 @@ class CalonPPDBController extends Controller
 
         if (!empty($keyword)) {
             $model->where(function ($query) use ($keyword) {
-                $query->where('peserta_didik.nama_lengkap', 'LIKE', '%'.$keyword.'%')
-                ->orWhere('cppdb.kode_cari_ppdb', 'LIKE', '%'.$keyword.'%')
-                ->orWhere('kalender_pendidikan.tahun_pelajaran', 'LIKE', '%'.$keyword.'%')
-                ->orWhere('kelas_peserta_didik.nama_kelas', 'LIKE', '%'.$keyword.'%')
-                ->orWhere('pengajar.nama_pengajar', 'LIKE', '%'.$keyword.'%')
-                ->orWhere('peserta_didik.nama_lengkap', 'LIKE', '%'.$keyword.'%')
-                ->orWhere('users.nama_lengkap', 'LIKE', '%'.$keyword.'%');
+                $query->where('peserta_didik.nama_lengkap', 'LIKE', '%' . $keyword . '%')
+                    ->orWhere('cppdb.kode_cari_ppdb', 'LIKE', '%' . $keyword . '%')
+                    ->orWhere('kalender_pendidikan.tahun_pelajaran', 'LIKE', '%' . $keyword . '%')
+                    ->orWhere('kelas_peserta_didik.nama_kelas', 'LIKE', '%' . $keyword . '%')
+                    ->orWhere('pengajar.nama_pengajar', 'LIKE', '%' . $keyword . '%')
+                    ->orWhere('peserta_didik.nama_lengkap', 'LIKE', '%' . $keyword . '%')
+                    ->orWhere('users.nama_lengkap', 'LIKE', '%' . $keyword . '%');
             });
         }
 
@@ -175,12 +175,12 @@ class CalonPPDBController extends Controller
         $currentYear = date('Y');
 
         // Membangun kode_cari_ppdb
-        $kode_cari_ppdb = $currentYear.$request->id_thn_akademik.$request->id_kelas.$request->id_pengajar.$request->id_peserta.$request->id_petugas.generateRandomCode();
+        $kode_cari_ppdb = $currentYear . $request->id_thn_akademik . $request->id_kelas . $request->id_pengajar . $request->id_peserta . $request->id_petugas . generateRandomCode();
 
         // Memeriksa apakah sudah ada data dengan id_thn_akademik dan id_peserta yang sama
         $existingEntry = tblCppdb::where('id_thn_akademik', $request->id_thn_akademik)
-        ->where('id_peserta', $request->id_peserta)
-        ->first();
+            ->where('id_peserta', $request->id_peserta)
+            ->first();
 
         if ($existingEntry) {
             return response()->json([
@@ -243,7 +243,7 @@ class CalonPPDBController extends Controller
             $table_calon_ppdb->save();
         } catch (\Exception $exception) {
             return response()->json([
-                'message' => 'Gagal menambah Data PPDB'.$exception->getMessage(),
+                'message' => 'Gagal menambah Data PPDB' . $exception->getMessage(),
                 'success' => false,
             ], 500);
         }
@@ -277,6 +277,7 @@ class CalonPPDBController extends Controller
             'peserta_didik.nomor_induk_santri',
             'peserta_didik.nama_lengkap AS nama_peserta',
             'peserta_didik.nama_ortu',
+            'tabel_daerah.nama_daerah', // Mengambil nama daerah dari tabel daerah
             'tabel_desa.nama_desa', // Mengambil nama desa dari tabel desa
             'tabel_kelompok.nama_kelompok', // Mengambil nama kelompok dari tabel kelompok
             'users.nama_lengkap AS nama_petugas',
@@ -302,14 +303,15 @@ class CalonPPDBController extends Controller
             'cppdb.catatan_ortu',
             'cppdb.status_naik_kelas',
         ])
-        ->leftJoin('kalender_pendidikan', 'cppdb.id_thn_akademik', '=', 'kalender_pendidikan.id')
-        ->leftJoin('kelas_peserta_didik', 'cppdb.id_kelas', '=', 'kelas_peserta_didik.id')
-        ->leftJoin('pengajar', 'cppdb.id_pengajar', '=', 'pengajar.id')
-        ->leftJoin('peserta_didik', 'cppdb.id_peserta', '=', 'peserta_didik.id')
-        ->leftJoin('users', 'cppdb.id_petugas', '=', 'users.id')
-        ->leftJoin('tabel_desa', 'peserta_didik.tmpt_desa', '=', 'tabel_desa.id') // Menghubungkan tabel desa
-        ->leftJoin('tabel_kelompok', 'peserta_didik.tmpt_kelompok', '=', 'tabel_kelompok.id') // Menghubungkan tabel kelompok
-        ->where('cppdb.id', $request->id)->first();
+            ->leftJoin('kalender_pendidikan', 'cppdb.id_thn_akademik', '=', 'kalender_pendidikan.id')
+            ->leftJoin('kelas_peserta_didik', 'cppdb.id_kelas', '=', 'kelas_peserta_didik.id')
+            ->leftJoin('pengajar', 'cppdb.id_pengajar', '=', 'pengajar.id')
+            ->leftJoin('peserta_didik', 'cppdb.id_peserta', '=', 'peserta_didik.id')
+            ->leftJoin('users', 'cppdb.id_petugas', '=', 'users.id')
+            ->leftJoin('tabel_daerah', 'peserta_didik.tmpt_daerah', '=', 'tabel_daerah.id') // Menghubungkan tabel desa
+            ->leftJoin('tabel_desa', 'peserta_didik.tmpt_desa', '=', 'tabel_desa.id') // Menghubungkan tabel desa
+            ->leftJoin('tabel_kelompok', 'peserta_didik.tmpt_kelompok', '=', 'tabel_kelompok.id') // Menghubungkan tabel kelompok
+            ->where('cppdb.id', $request->id)->first();
 
         if (!empty($table_calon_ppdb)) {
             return response()->json([
@@ -418,7 +420,7 @@ class CalonPPDBController extends Controller
                 ], 200);
             } catch (\Exception $exception) {
                 return response()->json([
-                    'message' => 'Gagal mengupdate Data PPDB'.$exception->getMessage(),
+                    'message' => 'Gagal mengupdate Data PPDB' . $exception->getMessage(),
                     'success' => false,
                 ], 500);
             }
@@ -504,7 +506,7 @@ class CalonPPDBController extends Controller
                 ], 200);
             } catch (\Exception $exception) {
                 return response()->json([
-                    'message' => 'Gagal mengupdate Data PPDB'.$exception->getMessage(),
+                    'message' => 'Gagal mengupdate Data PPDB' . $exception->getMessage(),
                     'success' => false,
                 ], 500);
             }
@@ -536,7 +538,7 @@ class CalonPPDBController extends Controller
                 ], 200);
             } catch (\Exception $exception) {
                 return response()->json([
-                    'message' => 'Gagal menghapus Data PPDB'.$exception->getMessage(),
+                    'message' => 'Gagal menghapus Data PPDB' . $exception->getMessage(),
                     'success' => false,
                 ], 500);
             }
