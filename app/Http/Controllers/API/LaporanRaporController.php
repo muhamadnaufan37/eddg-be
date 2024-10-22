@@ -165,6 +165,7 @@ class LaporanRaporController extends Controller
             ->leftJoin('tabel_daerah', 'peserta_didik.tmpt_daerah', '=', 'tabel_daerah.id')
             ->leftJoin('tabel_desa', 'peserta_didik.tmpt_desa', '=', 'tabel_desa.id')
             ->leftJoin('tabel_kelompok', 'peserta_didik.tmpt_kelompok', '=', 'tabel_kelompok.id')
+            ->where('cppdb.status_naik_kelas', '=', 1)
             ->where('kalender_pendidikan.id', '=', $dataThnAkademik)
             ->where('tabel_daerah.id', '=', $dataDaerah)
             ->where('kelas_peserta_didik.id', '=', $dataKelas);
@@ -232,12 +233,102 @@ class LaporanRaporController extends Controller
             'tabel_kelompok.nama_kelompok',
             DB::raw('(
                 cppdb.nilai1 + cppdb.nilai2 + cppdb.nilai3 + cppdb.nilai4 + cppdb.nilai5 + 
-                cppdb.nilai6 + cppdb.nilai7 + cppdb.nilai8 + cppdb.nilai9 + cppdb.nilai10
+                cppdb.nilai6 + cppdb.nilai7 + cppdb.nilai8 + cppdb.nilai9 + cppdb.nilai10 +
+                CASE 
+                    WHEN COALESCE(cppdb.nilai12, \'F\') = \'A\' THEN 100
+                    WHEN COALESCE(cppdb.nilai12, \'F\') = \'B\' THEN 90
+                    WHEN COALESCE(cppdb.nilai12, \'F\') = \'C\' THEN 80
+                    WHEN COALESCE(cppdb.nilai12, \'F\') = \'D\' THEN 70
+                    WHEN COALESCE(cppdb.nilai12, \'F\') = \'E\' THEN 60
+                    WHEN COALESCE(cppdb.nilai12, \'F\') = \'F\' THEN 50
+                    ELSE 0
+                END +
+                CASE 
+                    WHEN COALESCE(cppdb.nilai13, \'F\') = \'A\' THEN 100
+                    WHEN COALESCE(cppdb.nilai13, \'F\') = \'B\' THEN 90
+                    WHEN COALESCE(cppdb.nilai13, \'F\') = \'C\' THEN 80
+                    WHEN COALESCE(cppdb.nilai13, \'F\') = \'D\' THEN 70
+                    WHEN COALESCE(cppdb.nilai13, \'F\') = \'E\' THEN 60
+                    WHEN COALESCE(cppdb.nilai13, \'F\') = \'F\' THEN 50
+                    ELSE 0
+                END +
+                CASE 
+                    WHEN COALESCE(cppdb.nilai14, \'F\') = \'A\' THEN 100
+                    WHEN COALESCE(cppdb.nilai14, \'F\') = \'B\' THEN 90
+                    WHEN COALESCE(cppdb.nilai14, \'F\') = \'C\' THEN 80
+                    WHEN COALESCE(cppdb.nilai14, \'F\') = \'D\' THEN 70
+                    WHEN COALESCE(cppdb.nilai14, \'F\') = \'E\' THEN 60
+                    WHEN COALESCE(cppdb.nilai14, \'F\') = \'F\' THEN 50
+                    ELSE 0
+                END +
+                CASE 
+                    WHEN COALESCE(cppdb.nilai15, \'F\') = \'A\' THEN 100
+                    WHEN COALESCE(cppdb.nilai15, \'F\') = \'B\' THEN 90
+                    WHEN COALESCE(cppdb.nilai15, \'F\') = \'C\' THEN 80
+                    WHEN COALESCE(cppdb.nilai15, \'F\') = \'D\' THEN 70
+                    WHEN COALESCE(cppdb.nilai15, \'F\') = \'E\' THEN 60
+                    WHEN COALESCE(cppdb.nilai15, \'F\') = \'F\' THEN 50
+                    ELSE 0
+                END +
+                CASE 
+                    WHEN COALESCE(cppdb.nilai16, \'F\') = \'A\' THEN 100
+                    WHEN COALESCE(cppdb.nilai16, \'F\') = \'B\' THEN 90
+                    WHEN COALESCE(cppdb.nilai16, \'F\') = \'C\' THEN 80
+                    WHEN COALESCE(cppdb.nilai16, \'F\') = \'D\' THEN 70
+                    WHEN COALESCE(cppdb.nilai16, \'F\') = \'E\' THEN 60
+                    WHEN COALESCE(cppdb.nilai16, \'F\') = \'F\' THEN 50
+                    ELSE 0
+                END - cppdb.nilai_presensi_1 - cppdb.nilai_presensi_2 - cppdb.nilai_presensi_3
             ) AS total_nilai'),
             DB::raw('(
                 cppdb.nilai1 + cppdb.nilai2 + cppdb.nilai3 + cppdb.nilai4 + cppdb.nilai5 + 
-                cppdb.nilai6 + cppdb.nilai7 + cppdb.nilai8 + cppdb.nilai9 + cppdb.nilai10
-            ) / 10 AS rata_rata_nilai'),
+                cppdb.nilai6 + cppdb.nilai7 + cppdb.nilai8 + cppdb.nilai9 + cppdb.nilai10 +
+                CASE 
+                    WHEN COALESCE(cppdb.nilai12, \'F\') = \'A\' THEN 100
+                    WHEN COALESCE(cppdb.nilai12, \'F\') = \'B\' THEN 90
+                    WHEN COALESCE(cppdb.nilai12, \'F\') = \'C\' THEN 80
+                    WHEN COALESCE(cppdb.nilai12, \'F\') = \'D\' THEN 70
+                    WHEN COALESCE(cppdb.nilai12, \'F\') = \'E\' THEN 60
+                    WHEN COALESCE(cppdb.nilai12, \'F\') = \'F\' THEN 50
+                    ELSE 0
+                END +
+                CASE 
+                    WHEN COALESCE(cppdb.nilai13, \'F\') = \'A\' THEN 100
+                    WHEN COALESCE(cppdb.nilai13, \'F\') = \'B\' THEN 90
+                    WHEN COALESCE(cppdb.nilai13, \'F\') = \'C\' THEN 80
+                    WHEN COALESCE(cppdb.nilai13, \'F\') = \'D\' THEN 70
+                    WHEN COALESCE(cppdb.nilai13, \'F\') = \'E\' THEN 60
+                    WHEN COALESCE(cppdb.nilai13, \'F\') = \'F\' THEN 50
+                    ELSE 0
+                END +
+                CASE 
+                    WHEN COALESCE(cppdb.nilai14, \'F\') = \'A\' THEN 100
+                    WHEN COALESCE(cppdb.nilai14, \'F\') = \'B\' THEN 90
+                    WHEN COALESCE(cppdb.nilai14, \'F\') = \'C\' THEN 80
+                    WHEN COALESCE(cppdb.nilai14, \'F\') = \'D\' THEN 70
+                    WHEN COALESCE(cppdb.nilai14, \'F\') = \'E\' THEN 60
+                    WHEN COALESCE(cppdb.nilai14, \'F\') = \'F\' THEN 50
+                    ELSE 0
+                END +
+                CASE 
+                    WHEN COALESCE(cppdb.nilai15, \'F\') = \'A\' THEN 100
+                    WHEN COALESCE(cppdb.nilai15, \'F\') = \'B\' THEN 90
+                    WHEN COALESCE(cppdb.nilai15, \'F\') = \'C\' THEN 80
+                    WHEN COALESCE(cppdb.nilai15, \'F\') = \'D\' THEN 70
+                    WHEN COALESCE(cppdb.nilai15, \'F\') = \'E\' THEN 60
+                    WHEN COALESCE(cppdb.nilai15, \'F\') = \'F\' THEN 50
+                    ELSE 0
+                END +
+                CASE 
+                    WHEN COALESCE(cppdb.nilai16, \'F\') = \'A\' THEN 100
+                    WHEN COALESCE(cppdb.nilai16, \'F\') = \'B\' THEN 90
+                    WHEN COALESCE(cppdb.nilai16, \'F\') = \'C\' THEN 80
+                    WHEN COALESCE(cppdb.nilai16, \'F\') = \'D\' THEN 70
+                    WHEN COALESCE(cppdb.nilai16, \'F\') = \'E\' THEN 60
+                    WHEN COALESCE(cppdb.nilai16, \'F\') = \'F\' THEN 50
+                    ELSE 0
+                END - cppdb.nilai_presensi_1 - cppdb.nilai_presensi_2 - cppdb.nilai_presensi_3
+            ) / 18 AS rata_rata_nilai'),
         ])
             ->leftJoin('kalender_pendidikan', 'cppdb.id_thn_akademik', '=', 'kalender_pendidikan.id')
             ->leftJoin('kelas_peserta_didik', 'cppdb.id_kelas', '=', 'kelas_peserta_didik.id')
@@ -246,6 +337,7 @@ class LaporanRaporController extends Controller
             ->leftJoin('tabel_daerah', 'peserta_didik.tmpt_daerah', '=', 'tabel_daerah.id')
             ->leftJoin('tabel_desa', 'peserta_didik.tmpt_desa', '=', 'tabel_desa.id')
             ->leftJoin('tabel_kelompok', 'peserta_didik.tmpt_kelompok', '=', 'tabel_kelompok.id')
+            ->where('cppdb.status_naik_kelas', '=', 1)
             ->where('kalender_pendidikan.id', '=', $dataThnAkademik)
             ->where('tabel_daerah.id', '=', $dataDaerah)
             ->where('kelas_peserta_didik.id', '=', $dataKelas);
@@ -439,7 +531,6 @@ class LaporanRaporController extends Controller
             DB::raw('(
                 cppdb.nilai1 + cppdb.nilai2 + cppdb.nilai3 + cppdb.nilai4 + cppdb.nilai5 + 
                 cppdb.nilai6 + cppdb.nilai7 + cppdb.nilai8 + cppdb.nilai9 + cppdb.nilai10 +
-                -- Konversi nilai huruf (nilai12-nilai16) menjadi angka dan ganti null dengan 0
                 CASE 
                     WHEN COALESCE(cppdb.nilai12, \'F\') = \'A\' THEN 100
                     WHEN COALESCE(cppdb.nilai12, \'F\') = \'B\' THEN 90
@@ -484,7 +575,7 @@ class LaporanRaporController extends Controller
                     WHEN COALESCE(cppdb.nilai16, \'F\') = \'E\' THEN 60
                     WHEN COALESCE(cppdb.nilai16, \'F\') = \'F\' THEN 50
                     ELSE 0
-                END
+                END - cppdb.nilai_presensi_1 - cppdb.nilai_presensi_2 - cppdb.nilai_presensi_3
             ) AS total_nilai'),
         ])
             ->leftJoin('kalender_pendidikan', 'cppdb.id_thn_akademik', '=', 'kalender_pendidikan.id')
