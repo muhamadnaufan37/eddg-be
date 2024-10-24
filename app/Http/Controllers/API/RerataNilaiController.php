@@ -77,31 +77,31 @@ class RerataNilaiController extends Controller
 
         // Validasi input
         $request->validate([
-            'r_nilai1' => 'required|integer|digits_between:1,2|max:100',
-            'r_nilai2' => 'required|integer|digits_between:1,2|max:100',
-            'r_nilai3' => 'required|integer|digits_between:1,2|max:100',
-            'r_nilai4' => 'required|integer|digits_between:1,2|max:100',
-            'r_nilai5' => 'required|integer|digits_between:1,2|max:100',
-            'r_nilai6' => 'required|integer|digits_between:1,2|max:100',
-            'r_nilai7' => 'required|integer|digits_between:1,2|max:100',
-            'r_nilai8' => 'required|integer|digits_between:1,2|max:100',
-            'r_nilai9' => 'required|integer|digits_between:1,2|max:100',
-            'r_nilai10' => 'required|integer|digits_between:1,2|max:100',
-            'r_nilai11' => 'required|integer|digits_between:1,2|max:100',
+            'r_nilai1' => 'required|integer|max:100',
+            'r_nilai2' => 'required|integer|max:100',
+            'r_nilai3' => 'required|integer|max:100',
+            'r_nilai4' => 'required|integer|max:100',
+            'r_nilai5' => 'required|integer|max:100',
+            'r_nilai6' => 'required|integer|max:100',
+            'r_nilai7' => 'required|integer|max:100',
+            'r_nilai8' => 'required|integer|max:100',
+            'r_nilai9' => 'required|integer|max:100',
+            'r_nilai10' => 'required|integer|max:100',
+            'r_nilai11' => 'required|integer|max:100',
         ], $customMessages);
 
         // Hitung total nilai
-        $totalNilai = $request->nilai1 + $request->nilai2 + $request->nilai3 + $request->nilai4 +
-            $request->nilai5 + $request->nilai6 + $request->nilai7 + $request->nilai8 +
-            $request->nilai9 + $request->nilai10 + $request->nilai11;
+        // $totalNilai = $request->r_nilai1 + $request->r_nilai2 + $request->r_nilai3 + $request->r_nilai4 +
+        //     $request->r_nilai5 + $request->r_nilai6 + $request->r_nilai7 + $request->r_nilai8 +
+        //     $request->r_nilai9 + $request->r_nilai10 + $request->r_nilai11;
 
         // Pastikan total nilai tidak melebihi 100
-        if ($totalNilai > 100) {
-            return response()->json([
-                'message' => 'Total nilai melebihi 100',
-                'success' => false,
-            ], 400);
-        }
+        // if ($totalNilai > 100) {
+        //     return response()->json([
+        //         'message' => 'Total nilai melebihi 100',
+        //         'success' => false,
+        //     ], 400);
+        // }
 
         // Buat entri baru ke tabel rerata_nilai
         $table_rerata_nilai = new rerataNilai();
@@ -175,50 +175,50 @@ class RerataNilaiController extends Controller
 
         $request->validate([
             'id' => 'required|numeric|digits_between:1,5',
-            'r_nilai1' => 'required|integer|digits_between:1,2|max:100',
-            'r_nilai2' => 'required|integer|digits_between:1,2|max:100',
-            'r_nilai3' => 'required|integer|digits_between:1,2|max:100',
-            'r_nilai4' => 'required|integer|digits_between:1,2|max:100',
-            'r_nilai5' => 'required|integer|digits_between:1,2|max:100',
-            'r_nilai6' => 'required|integer|digits_between:1,2|max:100',
-            'r_nilai7' => 'required|integer|digits_between:1,2|max:100',
-            'r_nilai8' => 'required|integer|digits_between:1,2|max:100',
-            'r_nilai9' => 'required|integer|digits_between:1,2|max:100',
-            'r_nilai10' => 'required|integer|digits_between:1,2|max:100',
-            'r_nilai11' => 'required|integer|digits_between:1,2|max:100',
+            'r_nilai1' => 'required|integer|max:100',
+            'r_nilai2' => 'required|integer|max:100',
+            'r_nilai3' => 'required|integer|max:100',
+            'r_nilai4' => 'required|integer|max:100',
+            'r_nilai5' => 'required|integer|max:100',
+            'r_nilai6' => 'required|integer|max:100',
+            'r_nilai7' => 'required|integer|max:100',
+            'r_nilai8' => 'required|integer|max:100',
+            'r_nilai9' => 'required|integer|max:100',
+            'r_nilai10' => 'required|integer|max:100',
+            'r_nilai11' => 'required|integer|max:100',
         ], $customMessages);
 
         $table_rerata_nilai = rerataNilai::where('id', '=', $request->id)
             ->first();
 
         // Hitung total nilai
-        $totalNilai = $request->nilai1 + $request->nilai2 + $request->nilai3 + $request->nilai4 +
-            $request->nilai5 + $request->nilai6 + $request->nilai7 + $request->nilai8 +
-            $request->nilai9 + $request->nilai10 + $request->nilai11;
+        // $totalNilai = $request->r_nilai1 + $request->r_nilai2 + $request->r_nilai3 + $request->r_nilai4 +
+        //     $request->r_nilai5 + $request->r_nilai6 + $request->r_nilai7 + $request->r_nilai8 +
+        //     $request->r_nilai9 + $request->r_nilai10 + $request->r_nilai11;
 
         // Pastikan total nilai tidak melebihi 100
-        if ($totalNilai > 100) {
-            return response()->json([
-                'message' => 'Total nilai melebihi 100',
-                'success' => false,
-            ], 400);
-        }
+        // if ($totalNilai > 100) {
+        //     return response()->json([
+        //         'message' => 'Total nilai melebihi 100',
+        //         'success' => false,
+        //     ], 400);
+        // }
 
         if (!empty($table_rerata_nilai)) {
             try {
                 $table_rerata_nilai->update([
                     'id' => $request->id,
-                    'nilai1' => $request->nilai1,
-                    'nilai2' => $request->nilai2,
-                    'nilai3' => $request->nilai3,
-                    'nilai4' => $request->nilai4,
-                    'nilai5' => $request->nilai5,
-                    'nilai6' => $request->nilai6,
-                    'nilai7' => $request->nilai7,
-                    'nilai8' => $request->nilai8,
-                    'nilai9' => $request->nilai9,
-                    'nilai10' => $request->nilai10,
-                    'nilai11' => $request->nilai11,
+                    'nilai1' => $request->r_nilai1,
+                    'r_nilai2' => $request->r_nilai2,
+                    'r_nilai3' => $request->r_nilai3,
+                    'r_nilai4' => $request->r_nilai4,
+                    'r_nilai5' => $request->r_nilai5,
+                    'r_nilai6' => $request->r_nilai6,
+                    'r_nilai7' => $request->r_nilai7,
+                    'r_nilai8' => $request->r_nilai8,
+                    'r_nilai9' => $request->r_nilai9,
+                    'r_nilai10' => $request->r_nilai10,
+                    'r_nilai11' => $request->r_nilai11,
                 ]);
             } catch (\Exception $exception) {
                 return response()->json([

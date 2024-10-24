@@ -15,9 +15,23 @@ class DataSensusController extends Controller
     {
         $agent = new Agent();
 
+        $customMessages = [
+            'required' => 'Kolom :attribute wajib diisi.',
+            'unique' => ':attribute sudah terdaftar di sistem',
+            'email' => ':attribute harus berupa alamat email yang valid.',
+            'max' => ':attribute tidak boleh lebih dari :max karakter.',
+            'confirmed' => 'Konfirmasi :attribute tidak cocok.',
+            'min' => ':attribute harus memiliki setidaknya :min karakter.',
+            'regex' => ':attribute harus mengandung setidaknya satu huruf kapital dan satu angka.',
+            'numeric' => ':attribute harus berupa angka.',
+            'digits_between' => ':attribute harus memiliki panjang antara :min dan :max digit.',
+        ];
+
         $request->validate([
-            'kode_cari_data' => 'required',
-        ]);
+            'nama_lengkap' => 'required',
+            'tanggal_lahir' => 'required',
+            'nama_ortu' => 'required',
+        ], $customMessages);
 
         // Tambahkan tanggal pencarian
         $tanggalPencarian = now()->format('Y-m-d H:i:s');
@@ -51,7 +65,7 @@ class DataSensusController extends Controller
             logs::create($logAccount);
         } else {
             return response()->json([
-                'message' => 'Data Sensus tidak ditemukan'.$response->status(),
+                'message' => 'Data Sensus tidak ditemukan' . $response->status(),
                 'success' => false,
             ], 200);
         }
@@ -64,38 +78,47 @@ class DataSensusController extends Controller
             'data_peserta.tempat_lahir',
             'data_peserta.tanggal_lahir',
             'data_peserta.alamat',
-            DB::raw('EXTRACT(YEAR FROM AGE(current_date, data_peserta.tanggal_lahir)) AS usia'),
+            DB::raw('TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) AS usia'),
             'data_peserta.jenis_kelamin',
             'data_peserta.no_telepon',
             'data_peserta.nama_ayah',
             'data_peserta.nama_ibu',
             'data_peserta.hoby',
-            'data_peserta.pekerjaan',
+            'tbl_pekerjaan.nama_pekerjaan AS pekerjaan',
             'data_peserta.usia_menikah',
             'data_peserta.kriteria_pasangan',
-            'data_peserta.user_id',
+            DB::raw("
+        CASE
+            WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) <= 13 THEN 'Pra-remaja'
+            WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) <= 16 THEN 'Remaja'
+            ELSE 'Muda - mudi / Usia Nikah'
+        END AS status_kelas"),
+            'data_peserta.status_pernikahan',
+            'data_peserta.status_sambung',
+            'data_peserta.status_atlet_asad',
             'tabel_daerah.nama_daerah',
             'tabel_desa.nama_desa',
             'tabel_kelompok.nama_kelompok',
-            'data_peserta.status_pernikahan',
-            'data_peserta.status_sambung',
             'users.username AS user_petugas',
-            DB::raw("
-        CASE
-            WHEN EXTRACT(YEAR FROM AGE(current_date, data_peserta.tanggal_lahir)) <= 13 THEN 'Pra-remaja'
-            WHEN EXTRACT(YEAR FROM AGE(current_date, data_peserta.tanggal_lahir)) <= 16 THEN 'Remaja'
-            ELSE 'Muda - mudi / Usia Nikah'
-        END AS status_kelas
-        "),
         ])->join('tabel_daerah', function ($join) {
-            $join->on('tabel_daerah.id', '=', DB::raw('CAST(data_peserta.tmpt_daerah AS BIGINT)'));
+            $join->on('tabel_daerah.id', '=', DB::raw('CAST(data_peserta.tmpt_daerah AS UNSIGNED)'));
         })->join('tabel_desa', function ($join) {
-            $join->on('tabel_desa.id', '=', DB::raw('CAST(data_peserta.tmpt_desa AS BIGINT)'));
+            $join->on('tabel_desa.id', '=', DB::raw('CAST(data_peserta.tmpt_desa AS UNSIGNED)'));
         })->join('tabel_kelompok', function ($join) {
-            $join->on('tabel_kelompok.id', '=', DB::raw('CAST(data_peserta.tmpt_kelompok AS BIGINT)'));
+            $join->on('tabel_kelompok.id', '=', DB::raw('CAST(data_peserta.tmpt_kelompok AS UNSIGNED)'));
+        })->join('tbl_pekerjaan', function ($join) {
+            $join->on('tbl_pekerjaan.id', '=', DB::raw('CAST(data_peserta.pekerjaan AS UNSIGNED)'));
         })->join('users', function ($join) {
-            $join->on('users.id', '=', DB::raw('CAST(data_peserta.user_id AS BIGINT)'));
-        })->where('data_peserta.kode_cari_data', '=', $request->kode_cari_data)->first();
+            $join->on('users.id', '=', DB::raw('CAST(data_peserta.user_id AS UNSIGNED)'));
+        })
+            // Change this part to search based on the requested fields
+            ->where('data_peserta.nama_lengkap', $request->nama_lengkap)
+            ->where('data_peserta.tanggal_lahir', $request->tanggal_lahir)
+            ->where(function ($query) use ($request) {
+                $query->where('data_peserta.nama_ayah', $request->nama_ortu)
+                    ->orWhere('data_peserta.nama_ibu', $request->nama_ortu);
+            })
+            ->first();
 
         try {
             if (!empty($sensus)) {
@@ -121,7 +144,7 @@ class DataSensusController extends Controller
         } catch (\Exception $exception) {
             return response()->json([
                 'success' => false,
-                'message' => 'Data Sensus tidak ditemukan'.$exception->getMessage(),
+                'message' => 'Data Sensus tidak ditemukan' . $exception->getMessage(),
             ], 200);
         }
     }

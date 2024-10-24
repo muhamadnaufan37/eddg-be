@@ -41,11 +41,12 @@ class KalenderPesertaController extends Controller
         ]);
 
         // $model->where('status_pelajaran', '=', true);
-        $model->orderByRaw('created_at DESC NULLS LAST');
+        // Apply orderByRaw before executing the query
+        $model->orderByRaw('created_at IS NULL, created_at DESC');
 
         if (!empty($keyword)) {
-            $table_kalender_pendidikan = $model->where('tahun_pelajaran', 'ILIKE', '%'.$keyword.'%')
-                ->orWhere('id', 'ILIKE', '%'.$keyword.'%')
+            $table_kalender_pendidikan = $model->where('tahun_pelajaran', 'LIKE', '%'.$keyword.'%')
+                ->orWhere('id', 'LIKE', '%'.$keyword.'%')
                 ->paginate($perPage);
         } else {
             $table_kalender_pendidikan = $model->paginate($perPage);
@@ -75,11 +76,11 @@ class KalenderPesertaController extends Controller
         ];
 
         // Pastikan hanya ada satu catatan dengan status_pelajaran bernilai true
-        $countTrueStatus = tblKlnderPndidikan::where('status_pelajaran', true)->count();
+        $countTrueStatus = tblKlnderPndidikan::where('status_pelajaran', 1)->count();
 
         // Jika sudah ada satu catatan dengan status_pelajaran bernilai true dan mencoba menyimpan lagi, kembalikan respons yang sesuai
-        if ($countTrueStatus >= 1 && $request->status_pelajaran === true) {
-            return response()->json(['message' => 'Hanya boleh ada satu catatan dengan status pelajaran bernilai true'], 400);
+        if ($countTrueStatus >= 1 && $request->status_pelajaran === 1) {
+            return response()->json(['message' => 'Hanya boleh ada satu catatan dengan status pelajaran Aktif'], 400);
         }
 
         // Lanjutkan dengan validasi dan penyimpanan data jika tidak ada lebih dari satu catatan dengan status_pelajaran bernilai true
@@ -185,11 +186,11 @@ class KalenderPesertaController extends Controller
             // Pastikan ada perubahan pada tahun_pelajaran atau semester_pelajaran
             if ($kalender_pendidikan->tahun_pelajaran != $tahun_pelajaran || $kalender_pendidikan->semester_pelajaran != $semester_pelajaran || $kalender_pendidikan->status_pelajaran != $status_pelajaran) {
                 // Pastikan hanya ada satu catatan dengan status_pelajaran bernilai true
-                $countTrueStatus = tblKlnderPndidikan::where('status_pelajaran', true)->count();
+                $countTrueStatus = tblKlnderPndidikan::where('status_pelajaran', 1)->count();
 
                 // Jika sudah ada satu catatan dengan status_pelajaran bernilai true dan mencoba menyimpan lagi, kembalikan respons yang sesuai
-                if ($countTrueStatus >= 1 && $request->status_pelajaran === true) {
-                    return response()->json(['message' => 'Hanya boleh ada satu catatan dengan status pelajaran bernilai true'], 400);
+                if ($countTrueStatus >= 1 && $request->status_pelajaran === 1) {
+                    return response()->json(['message' => 'Hanya boleh ada satu catatan dengan status pelajaran Aktif'], 400);
                 }
 
                 // Lakukan pengecekan apakah sudah ada tahun_pelajaran yang sama untuk semester tertentu

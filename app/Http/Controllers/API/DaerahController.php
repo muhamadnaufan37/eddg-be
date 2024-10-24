@@ -37,8 +37,8 @@ class DaerahController extends Controller
         ]);
 
         if (!empty($keyword)) {
-            $table_daerah = $model->where('nama_daerah', 'ILIKE', '%'.$keyword.'%')
-                ->orWhere('id', 'ILIKE', '%'.$keyword.'%')
+            $table_daerah = $model->where('nama_daerah', 'LIKE', '%'.$keyword.'%')
+                ->orWhere('id', 'LIKE', '%'.$keyword.'%')
                 ->paginate($perPage);
         } else {
             $table_daerah = $model->paginate($perPage);

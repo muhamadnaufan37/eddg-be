@@ -23,38 +23,37 @@ class BoardCastController extends Controller
 
         $model = Boarcast::select([
             'broadcast.id',
-            'broadcast.id_user',
             'users.nama_lengkap as nama_petugas',
             'broadcast.judul_broadcast',
             'broadcast.jenis_broadcast',
-            'broadcast.text_broadcast',
-            'broadcast.ip',
             'broadcast.created_at',
-        ])
-            ->leftJoin('users', function ($join) {
-                $join->on('broadcast.id_user', '=', DB::raw('CAST(users.id AS TEXT)'));
-            });
+        ])->leftJoin('users', function ($join) {
+            $join->on('broadcast.id_user', '=', DB::raw('CAST(users.id AS CHAR)'));
+        });
+
+        // Apply orderByRaw before executing the query
+        $model->orderByRaw('broadcast.created_at IS NULL, broadcast.created_at DESC');
 
         if (!is_null($status)) {
             $model->where('broadcast.jenis_broadcast', '=', $status);
         }
 
         if (!empty($keyword) && empty($kolom)) {
-            $boardcast = $model->where('users.nama_lengkap', 'ILIKE', '%'.$keyword.'%')
-                ->orWhere('broadcast.judul_broadcast', 'ILIKE', '%'.$keyword.'%')
-                ->paginate($perPage);
+            $model->where(function ($q) use ($keyword) {
+                $q->where('users.nama_lengkap', 'LIKE', '%'.$keyword.'%')
+                    ->orWhere('broadcast.judul_broadcast', 'LIKE', '%'.$keyword.'%');
+            });
         } elseif (!empty($keyword) && !empty($kolom)) {
-            if ($kolom == 'users.nama_lengkap') {
+            if ($kolom == 'nama_lengkap') {
                 $kolom = 'users.nama_lengkap';
             } else {
                 $kolom = 'broadcast.judul_broadcast';
             }
 
-            $boardcast = $model->where($kolom, 'ILIKE', '%'.$keyword.'%')
-                ->paginate($perPage);
-        } else {
-            $boardcast = $model->paginate($perPage);
+            $model->where($kolom, 'LIKE', '%'.$keyword.'%');
         }
+
+        $boardcast = $model->paginate($perPage);
 
         $boardcast->appends(['per-page' => $perPage]);
 
@@ -137,7 +136,7 @@ class BoardCastController extends Controller
             'broadcast.created_at',
         ])
             ->leftJoin('users', function ($join) {
-                $join->on('broadcast.id_user', '=', DB::raw('CAST(users.id AS TEXT)'));
+                $join->on('broadcast.id_user', '=', DB::raw('CAST(users.id AS CHAR)'));
             })->where('broadcast.id', '=', $request->id)->first();
 
         if (!empty($boardcast)) {

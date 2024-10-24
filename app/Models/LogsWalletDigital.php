@@ -5,18 +5,17 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class WalletKas extends Model
+class LogsWalletDigital extends Model
 {
     use HasFactory;
 
-    protected $table = 'wallet_kas';
+    protected $table = 'logs_wallet_digital';
 
     protected $fillable = [
-        'id_user',
-        'jenis_transaksi',
-        'tgl_transaksi',
-        'keterangan',
-        'jumlah',
+        'transaction_id',
+        'payment_type',
+        'total_amount',
+        'status_bayar',
         'created_at',
     ];
 }

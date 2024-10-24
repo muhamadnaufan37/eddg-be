@@ -9,6 +9,20 @@ use Illuminate\Http\Request;
 
 class KelompokController extends Controller
 {
+    public function list_kelompok()
+    {
+        $table_kelompok = dataKelompok::select(['id', 'nama_kelompok'])
+            ->groupBy('id', 'nama_kelompok') // Menambahkan id ke dalam grup by
+            ->orderBy('nama_kelompok')
+            ->get();
+
+        return response()->json([
+            'message' => 'Sukses',
+            'data_kelompok' => $table_kelompok,
+            'success' => true,
+        ], 200);
+    }
+
     public function list(Request $request)
     {
         $keyword = $request->get('keyword', null);
@@ -24,11 +38,11 @@ class KelompokController extends Controller
             'tabel_desa.nama_desa AS parent_desa',
             'tabel_kelompok.desa_id',
         ])
-        ->leftJoin('tabel_desa', 'tabel_kelompok.desa_id', '=', 'tabel_desa.id');
+            ->leftJoin('tabel_desa', 'tabel_kelompok.desa_id', '=', 'tabel_desa.id');
 
         if (!empty($keyword)) {
-            $table_kelompok = $model->where('tabel_kelompok.nama_kelompok', 'ILIKE', '%'.$keyword.'%')
-                ->orWhere('tabel_kelompok.id', 'ILIKE', '%'.$keyword.'%')
+            $table_kelompok = $model->where('tabel_kelompok.nama_kelompok', 'LIKE', '%' . $keyword . '%')
+                ->orWhere('tabel_desa.nama_desa', 'LIKE', '%' . $keyword . '%')
                 ->paginate($perPage);
         } else {
             $table_kelompok = $model->paginate($perPage);
@@ -78,7 +92,7 @@ class KelompokController extends Controller
             $table_kelompok->save();
         } catch (\Exception $exception) {
             return response()->json([
-                'message' => 'Gagal menambah data Kelompok'.$exception->getMessage(),
+                'message' => 'Gagal menambah data Kelompok' . $exception->getMessage(),
                 'success' => false,
             ], 500);
         }
@@ -134,8 +148,8 @@ class KelompokController extends Controller
 
         $request->validate([
             'id' => 'required|numeric|digits_between:1,5',
-            'nama_kelompok' => 'required|max:225',
-            'desa_id' => 'required|numeric',
+            'nama_kelompok' => 'sometimes|required|string|unique:tabel_kelompok,nama_kelompok,' . $request->id . ',id',
+            'desa_id' => 'required',
         ], $customMessages);
 
         $table_kelompok = dataKelompok::where('id', '=', $request->id)->first();
@@ -156,7 +170,7 @@ class KelompokController extends Controller
                 ]);
             } catch (\Exception $exception) {
                 return response()->json([
-                    'message' => 'Gagal mengupdate data Kelompok'.$exception->getMessage(),
+                    'message' => 'Gagal mengupdate data Kelompok' . $exception->getMessage(),
                     'success' => false,
                 ], 500);
             }
@@ -194,7 +208,7 @@ class KelompokController extends Controller
                 ], 200);
             } catch (\Exception $exception) {
                 return response()->json([
-                    'message' => 'Gagal menghapus data Kelompok'.$exception->getMessage(),
+                    'message' => 'Gagal menghapus data Kelompok' . $exception->getMessage(),
                     'success' => false,
                 ], 500);
             }

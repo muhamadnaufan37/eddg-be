@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class() extends Migration {
+return new class extends Migration {
     /**
      * Run the migrations.
      */
@@ -12,7 +12,6 @@ return new class() extends Migration {
     {
         Schema::create('cppdb', function (Blueprint $table) {
             $table->id();
-            $table->uuid();
             $table->string('kode_cari_ppdb', 255);
             $table->foreignId('id_thn_akademik');
             $table->foreignId('id_kelas');
@@ -30,11 +29,11 @@ return new class() extends Migration {
             $table->integer('nilai9')->nullable();
             $table->integer('nilai10')->nullable();
             $table->integer('nilai11')->nullable();
-            $table->integer('nilai12')->nullable();
-            $table->integer('nilai13')->nullable();
-            $table->integer('nilai14')->nullable();
-            $table->integer('nilai15')->nullable();
-            $table->integer('nilai16')->nullable();
+            $table->string('nilai12')->nullable();
+            $table->string('nilai13')->nullable();
+            $table->string('nilai14')->nullable();
+            $table->string('nilai15')->nullable();
+            $table->string('nilai16')->nullable();
             $table->integer('nilai_presensi_1')->nullable();
             $table->integer('nilai_presensi_2')->nullable();
             $table->integer('nilai_presensi_3')->nullable();

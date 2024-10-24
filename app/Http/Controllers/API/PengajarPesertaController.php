@@ -14,11 +14,21 @@ class PengajarPesertaController extends Controller
 {
     public function data_pengajar()
     {
-        $tabel_data_pengajar = tblPengajar::select(['id', 'nama_pengajar'])
+        // Ambil role_id dan user_id dari pengguna yang sedang login
+        $user = auth()->user();
+        $roleID = $user->role_id;
+        $userID = $user->id;
+
+        $query = tblPengajar::select(['id', 'nama_pengajar'])
             ->where('status_pengajar', true) // Memfilter hasil berdasarkan status_pengajar
-            ->groupBy('id', 'nama_pengajar') // Mengelompokkan hasil berdasarkan nama_pengajar
-            ->orderBy('nama_pengajar')
-            ->get();
+            ->orderBy('nama_pengajar');
+
+        // Tambahkan filter berdasarkan add_by_user_id jika roleID bukan 1
+        if ($roleID != 1) {
+            $query->where('add_by_user_id', $userID);
+        }
+
+        $tabel_data_pengajar = $query->get();
 
         return response()->json([
             'message' => 'Sukses',
@@ -32,6 +42,7 @@ class PengajarPesertaController extends Controller
         $roleId = $request->user()->role_id;
         $keyword = $request->get('keyword', null);
         $perPage = $request->get('per-page', 10);
+        $statusMengajar = $request->get('status_pengajar', null);
 
         if ($perPage > 100) {
             $perPage = 100;
@@ -53,21 +64,29 @@ class PengajarPesertaController extends Controller
             ->leftJoin('tabel_kelompok', 'pengajar.tmpt_kelompok', '=', 'tabel_kelompok.id');
 
         // $model->where('pengajar.status_pengajar', '=', true);
-        $model->orderByRaw('pengajar.created_at DESC NULLS LAST');
+        // Apply orderByRaw before executing the query
+        $model->orderByRaw('pengajar.created_at IS NULL, pengajar.created_at DESC');
 
         if ($roleId != 1) {
             // Jika role_id bukan 1, tambahkan kondisi id_user
             $model->where('pengajar.add_by_user_id', $request->user()->id);
         }
 
-        if (!empty($keyword)) {
-            $table_pengajar = $model->where('pengajar.nama_pengajar', 'ILIKE', '%'.$keyword.'%')
-                ->orWhere('pengajar.id', 'ILIKE', '%'.$keyword.'%')
-                ->paginate($perPage);
-        } else {
-            $table_pengajar = $model->paginate($perPage);
+        if (!is_null($statusMengajar)) {
+            $model->where('pengajar.status_pengajar', '=', $statusMengajar);
         }
 
+        if (!empty($keyword)) {
+            $model->where(function ($q) use ($keyword) {
+                $q->where('pengajar.nama_pengajar', 'LIKE', '%'.$keyword.'%')
+                    ->orWhere('tabel_daerah.nama_daerah', 'LIKE', '%'.$keyword.'%')
+                    ->orWhere('tabel_desa.nama_desa', 'LIKE', '%'.$keyword.'%')
+                    ->orWhere('tabel_kelompok.nama_kelompok', 'LIKE', '%'.$keyword.'%')
+                    ->orWhere('users.nama_lengkap', 'LIKE', '%'.$keyword.'%');
+            });
+        }
+
+        $table_pengajar = $model->paginate($perPage);
         $table_pengajar->appends(['per-page' => $perPage]);
 
         return response()->json([
@@ -179,7 +198,8 @@ class PengajarPesertaController extends Controller
             ->leftJoin('users', 'pengajar.add_by_user_id', '=', 'users.id')
             ->leftJoin('tabel_daerah', 'pengajar.tmpt_daerah', '=', 'tabel_daerah.id')
             ->leftJoin('tabel_desa', 'pengajar.tmpt_desa', '=', 'tabel_desa.id')
-            ->leftJoin('tabel_kelompok', 'pengajar.tmpt_kelompok', '=', 'tabel_kelompok.id')->first();
+            ->leftJoin('tabel_kelompok', 'pengajar.tmpt_kelompok', '=', 'tabel_kelompok.id')
+            ->where('pengajar.id', $request->id)->first();
 
         unset($table_pengajar->created_at, $table_pengajar->updated_at);
 

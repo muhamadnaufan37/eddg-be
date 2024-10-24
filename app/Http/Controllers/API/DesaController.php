@@ -41,8 +41,8 @@ class DesaController extends Controller
         ->leftJoin('tabel_daerah', 'tabel_desa.daerah_id', '=', 'tabel_daerah.id');
 
         if (!empty($keyword)) {
-            $table_desa = $model->where('tabel_desa.nama_desa', 'ILIKE', '%'.$keyword.'%')
-                ->orWhere('tabel_desa.id', 'ILIKE', '%'.$keyword.'%')
+            $table_desa = $model->where('tabel_desa.nama_desa', 'LIKE', '%'.$keyword.'%')
+                ->orWhere('tabel_daerah.nama_daerah', 'LIKE', '%'.$keyword.'%')
                 ->paginate($perPage);
         } else {
             $table_desa = $model->paginate($perPage);

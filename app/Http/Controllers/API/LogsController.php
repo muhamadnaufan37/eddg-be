@@ -3,22 +3,21 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\logs;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class LogsController extends Controller
 {
-
     public function list_browser()
     {
         $logs_browser = logs::select(['browser'])
             ->groupBy('browser')->orderBy('browser')->get();
 
         return response()->json([
-            'message'       => 'Sukses',
-            'data_logs'    => $logs_browser,
-            'success'       => true
+            'message' => 'Sukses',
+            'data_logs' => $logs_browser,
+            'success' => true,
         ], 200);
     }
 
@@ -29,9 +28,9 @@ class LogsController extends Controller
             ->groupBy('os')->orderBy('os')->get();
 
         return response()->json([
-            'message'       => 'Sukses',
-            'data_logs'    => $logs_os,
-            'success'       => true
+            'message' => 'Sukses',
+            'data_logs' => $logs_os,
+            'success' => true,
         ], 200);
     }
 
@@ -42,9 +41,9 @@ class LogsController extends Controller
             ->groupBy('device')->orderBy('device')->get();
 
         return response()->json([
-            'message'       => 'Sukses',
-            'data_logs'    => $logs_device,
-            'success'       => true
+            'message' => 'Sukses',
+            'data_logs' => $logs_device,
+            'success' => true,
         ], 200);
     }
 
@@ -55,9 +54,9 @@ class LogsController extends Controller
             ->groupBy('status_logs')->orderBy('status_logs')->get();
 
         return response()->json([
-            'message'       => 'Sukses',
-            'data_logs'    => $logs_status,
-            'success'       => true
+            'message' => 'Sukses',
+            'data_logs' => $logs_status,
+            'success' => true,
         ], 200);
     }
 
@@ -87,11 +86,13 @@ class LogsController extends Controller
             'logs.device',
             'logs.latitude',
             'logs.longitude',
-            'logs.created_at'
+            'logs.created_at',
         ])
-            ->leftJoin('users', function ($join) {
-                $join->on('logs.user_id', '=', DB::raw('CAST(users.id AS TEXT)'));
-            });
+        ->leftJoin('users', function ($join) {
+            $join->on('logs.user_id', '=', DB::raw('CAST(users.id AS CHAR)'));
+        });
+
+        $model->orderByRaw('logs.created_at IS NULL, logs.created_at DESC');
 
         if (!is_null($status)) {
             $model->where('logs.status_logs', '=', $status);
@@ -110,28 +111,28 @@ class LogsController extends Controller
         }
 
         if (!empty($keyword) && empty($kolom)) {
-            $logUsers = $model->where('logs.aktifitas', 'ILIKE', '%' . $keyword . '%')
-                ->orWhere('users.nama_lengkap', 'ILIKE', '%' . $keyword . '%')
-                ->paginate($perPage);
-        } else if (!empty($keyword) && !empty($kolom)) {
+            $model->where(function ($q) use ($keyword) {
+                $q->where('logs.aktifitas', 'LIKE', '%'.$keyword.'%')
+                ->orWhere('users.nama_lengkap', 'LIKE', '%'.$keyword.'%');
+            });
+        } elseif (!empty($keyword) && !empty($kolom)) {
             if ($kolom == 'aktifitas') {
                 $kolom = 'logs.aktifitas';
             } else {
                 $kolom = 'users.nama_lengkap';
             }
 
-            $logUsers = $model->where($kolom, 'ILIKE', '%' . $keyword . '%')
-                ->paginate($perPage);
-        } else {
-            $logUsers = $model->paginate($perPage);
+            $model->where($kolom, 'LIKE', '%'.$keyword.'%');
         }
+
+        $logUsers = $model->paginate($perPage);
 
         $logUsers->appends(['per-page' => $perPage]);
 
         return response()->json([
-            'message'   => 'Sukses',
+            'message' => 'Sukses',
             'data_logs' => $logUsers,
-            'success'   => true
+            'success' => true,
         ], 200);
     }
 }
