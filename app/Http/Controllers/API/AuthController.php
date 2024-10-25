@@ -10,44 +10,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Jenssegers\Agent\Agent;
 use Spatie\Permission\Models\Role;
+use Illuminate\Support\Facades\Http;
 
 class AuthController extends Controller
 {
-    public function load_data_center(Request $request)
-    {
-        $request->validate([
-            'id' => 'required|numeric|digits_between:1,5',
-        ]);
-
-        $config = dataCenter::select([
-            'config_name',
-            'config_comment',
-            'config_status',
-        ])->where('id', '=', $request->id)->first();
-
-        if (!empty($config)) {
-            // Jika config_status memiliki nilai 1, tampilkan hanya config_status
-            if ($config->config_status == 1) {
-                return response()->json([
-                    'config_status' => $config->config_status,
-                    'success' => true,
-                ], 200);
-            }
-
-            // Jika config_status bukan 1, tampilkan seluruh data config
-            return response()->json([
-                'message' => 'Sukses',
-                'data_config' => $config,
-                'success' => true,
-            ], 200);
-        }
-
-        return response()->json([
-            'message' => 'Data Config tidak ditemukan',
-            'success' => false,
-        ], 200);
-    }
-
     public function register(Request $request)
     {
         $customMessages = [
@@ -98,8 +64,17 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
+        $responseGeoLocation = Http::get('https://api.ipgeolocation.io/ipgeo', [
+            'apiKey' => env('IP_GEO_KEY')
+        ]);
+
+        $responseUserAgent = Http::get('https://api.ipgeolocation.io/user-agent', [
+            'apiKey' => env('IP_GEO_KEY')
+        ]);
         $user = User::where('username', $request->username)->first();
         $agent = new Agent();
+        $geoInfo = $responseGeoLocation->json();
+        $userAgentInfo = $responseUserAgent->json();
 
         if (empty($user)) {
             return response()->json([
@@ -108,12 +83,9 @@ class AuthController extends Controller
             ], 200);
         }
 
-        // Fetch config status related to the user
         $config = dataCenter::select('config_status', 'config_name', 'config_comment')
             ->where('config.id', '=', $user->id)
             ->first();
-
-        // Block login if config_status is 0 and show config_comment message
         if (!empty($config) && $config->config_status == 0) {
             $logAccount = [
                 'user_id' => $user->id,
@@ -191,14 +163,41 @@ class AuthController extends Controller
 
         $logAccount = [
             'user_id' => $user->id,
-            'ip_address' => $request->ip(),
+            'ip_address' => $geoInfo['ip'],
             'aktifitas' => 'Login',
             'status_logs' => 'successfully',
-            'browser' => $agent->browser(),
-            'os' => $agent->platform(),
-            'device' => $agent->device(),
+            'string_agent' => $userAgentInfo['userAgentString'],
+            'browser' => $userAgentInfo['name'] . '/' . $userAgentInfo['type'] . '/' . $userAgentInfo['version'] . '/' . $userAgentInfo['versionMajor'],
+            'os' => $userAgentInfo['operatingSystem']['name'] . '/' . $userAgentInfo['operatingSystem']['type'] . '/' . $userAgentInfo['operatingSystem']['version'] . '/' . $userAgentInfo['operatingSystem']['versionMajor'],
+            'device' => $userAgentInfo['device']['name'] . '/' . $userAgentInfo['device']['type'] . '/' . $userAgentInfo['device']['brand'] . '/' . $userAgentInfo['device']['cpu'],
+            'engine_agent' => $userAgentInfo['engine']['name'] . '/' . $userAgentInfo['engine']['type'] . '/' . $userAgentInfo['engine']['version'] . '/' . $userAgentInfo['engine']['versionMajor'],
+            'continent_name' => $geoInfo['continent_name'],
+            'country_code2' => $geoInfo['country_code2'],
+            'country_code3' => $geoInfo['country_code3'],
+            'country_name' => $geoInfo['country_name'],
+            'country_name_official' => $geoInfo['country_name_official'],
+            'state_prov' => $geoInfo['state_prov'],
+            'district' => $geoInfo['district'],
+            'city' => $geoInfo['city'],
+            'zipcode' => $geoInfo['zipcode'],
+            'latitude' => $geoInfo['latitude'],
+            'longitude' => $geoInfo['longitude'],
+            'isp' => $geoInfo['isp'],
+            'connection_type' => $geoInfo['connection_type'],
+            'organization' => $geoInfo['organization'],
+            'timezone' => $geoInfo['time_zone']['name'],
         ];
         logs::create($logAccount);
+        // $logAccount = [
+        //     'user_id' => $user->id,
+        //     'ip_address' => $request->ip(),
+        //     'aktifitas' => 'Login',
+        //     'status_logs' => 'successfully',
+        //     'browser' => $agent->browser(),
+        //     'os' => $agent->platform(),
+        //     'device' => $agent->device(),
+        // ];
+        // logs::create($logAccount);
 
         $user_balikan = [
             'id' => $user['id'],

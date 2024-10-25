@@ -14,10 +14,25 @@ class logs extends Model
         'ip_address',
         'aktifitas',
         'status_logs',
+        'string_agent',
         'browser',
         'os',
         'device',
+        'engine_agent',
+        'continent_name',
+        'country_code2',
+        'country_code3',
+        'country_name',
+        'country_name_official',
+        'state_prov',
+        'district',
+        'city',
+        'zipcode',
         'latitude',
-        'longitude'
+        'longitude',
+        'isp',
+        'connection_type',
+        'organization',
+        'timezone'
     ];
 }
