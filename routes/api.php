@@ -41,7 +41,6 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-Route::post('/load_data_center', [AuthController::class, 'load_data_center']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register_akun', [AuthController::class, 'register']);
 Route::post('/find_sensus', [DataSensusController::class, 'cari_data']);
