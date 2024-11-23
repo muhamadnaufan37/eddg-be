@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\dataDaerah;
 use App\Models\dataDesa;
 use App\Models\dataKelompok;
+use App\Models\tblCppdb;
 use App\Models\tblPesertaDidik;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -425,33 +426,47 @@ class PesertaDidikController extends Controller
 
     public function delete(Request $request)
     {
+        // Validasi permintaan untuk memastikan 'id' tersedia dan berupa angka
         $request->validate([
             'id' => 'required|numeric|digits_between:1,5',
         ]);
 
-        $table_peserta_didik = tblPesertaDidik::where('id', '=', $request->id)
-            ->first();
+        // Ambil data Peserta Didik dengan ID yang diberikan
+        $table_peserta_didik = tblPesertaDidik::where('id', '=', $request->id)->first();
 
         if (!empty($table_peserta_didik)) {
+            // Periksa apakah ID Peserta Didik terdaftar di tabel cppdb
+            $existsInCppdb = tblCppdb::where('id_peserta', '=', $request->id)->exists();
+
+            if ($existsInCppdb) {
+                // Jika Peserta Didik terdaftar di cppdb, cegah penghapusan dengan respons 409 Conflict
+                return response()->json([
+                    'message' => 'Data Peserta Didik tidak dapat dihapus karena sudah terdaftar dan digunakan di tabel lain',
+                    'success' => false,
+                ], 409);
+            }
+
             try {
-                $table_peserta_didik = tblPesertaDidik::where('id', '=', $request->id)
-                    ->delete();
+                // Lanjutkan untuk menghapus data Peserta Didik jika tidak terdaftar di cppdb
+                tblPesertaDidik::where('id', '=', $request->id)->delete();
 
                 return response()->json([
                     'message' => 'Data Peserta Didik berhasil dihapus',
                     'success' => true,
                 ], 200);
             } catch (\Exception $exception) {
+                // Kembalikan respons kesalahan jika penghapusan gagal
                 return response()->json([
-                    'message' => 'Gagal menghapus Data' . $exception->getMessage(),
+                    'message' => 'Gagal menghapus Data: ' . $exception->getMessage(),
                     'success' => false,
                 ], 500);
             }
         }
 
+        // Kembalikan respons jika data Peserta Didik tidak ditemukan
         return response()->json([
             'message' => 'Data tidak ditemukan',
             'success' => false,
-        ], 200);
+        ], 404);
     }
 }

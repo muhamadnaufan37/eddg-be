@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\dataDaerah;
 use App\Models\dataDesa;
 use App\Models\dataKelompok;
+use App\Models\tblCppdb;
 use App\Models\tblPengajar;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -78,11 +79,11 @@ class PengajarPesertaController extends Controller
 
         if (!empty($keyword)) {
             $model->where(function ($q) use ($keyword) {
-                $q->where('pengajar.nama_pengajar', 'LIKE', '%'.$keyword.'%')
-                    ->orWhere('tabel_daerah.nama_daerah', 'LIKE', '%'.$keyword.'%')
-                    ->orWhere('tabel_desa.nama_desa', 'LIKE', '%'.$keyword.'%')
-                    ->orWhere('tabel_kelompok.nama_kelompok', 'LIKE', '%'.$keyword.'%')
-                    ->orWhere('users.nama_lengkap', 'LIKE', '%'.$keyword.'%');
+                $q->where('pengajar.nama_pengajar', 'LIKE', '%' . $keyword . '%')
+                    ->orWhere('tabel_daerah.nama_daerah', 'LIKE', '%' . $keyword . '%')
+                    ->orWhere('tabel_desa.nama_desa', 'LIKE', '%' . $keyword . '%')
+                    ->orWhere('tabel_kelompok.nama_kelompok', 'LIKE', '%' . $keyword . '%')
+                    ->orWhere('users.nama_lengkap', 'LIKE', '%' . $keyword . '%');
             });
         }
 
@@ -162,7 +163,7 @@ class PengajarPesertaController extends Controller
             $table_pengajar->save();
         } catch (\Exception $exception) {
             return response()->json([
-                'message' => 'Gagal menambah Data Pengajar'.$exception->getMessage(),
+                'message' => 'Gagal menambah Data Pengajar' . $exception->getMessage(),
                 'success' => false,
             ], 500);
         }
@@ -237,7 +238,7 @@ class PengajarPesertaController extends Controller
 
         $request->validate([
             'id' => 'required|numeric|digits_between:1,5',
-            'nama_pengajar' => 'sometimes|required|max:225|string|unique:pengajar,nama_pengajar,'.$request->id.',id',
+            'nama_pengajar' => 'sometimes|required|max:225|string|unique:pengajar,nama_pengajar,' . $request->id . ',id',
             'status_pengajar' => 'required',
             'tmpt_daerah' => 'required|integer|digits_between:1,5',
             'tmpt_desa' => 'nullable|integer|digits_between:1,5',
@@ -280,7 +281,7 @@ class PengajarPesertaController extends Controller
                 ]);
             } catch (\Exception $exception) {
                 return response()->json([
-                    'message' => 'Gagal mengupdate Data'.$exception->getMessage(),
+                    'message' => 'Gagal mengupdate Data' . $exception->getMessage(),
                     'success' => false,
                 ], 500);
             }
@@ -300,33 +301,47 @@ class PengajarPesertaController extends Controller
 
     public function delete(Request $request)
     {
+        // Validate the request to ensure 'id' is provided and is numeric
         $request->validate([
             'id' => 'required|numeric|digits_between:1,5',
         ]);
 
-        $table_pengajar = tblPengajar::where('id', '=', $request->id)
-            ->first();
+        // Retrieve the Pengajar record with the given ID
+        $table_pengajar = tblPengajar::where('id', '=', $request->id)->first();
 
         if (!empty($table_pengajar)) {
+            // Check if the Pengajar ID exists in the cppdb table
+            $existsInCppdb = tblCppdb::where('id_pengajar', '=', $request->id)->exists();
+
+            if ($existsInCppdb) {
+                // If the Pengajar is registered in cppdb, prevent deletion
+                return response()->json([
+                    'message' => 'Data Pengajar tidak dapat dihapus karena sudah terdaftar dan digunakan di tabel lain',
+                    'success' => false,
+                ], 409);
+            }
+
             try {
-                $table_pengajar = tblPengajar::where('id', '=', $request->id)
-                    ->delete();
+                // Proceed to delete the Pengajar record if it is not registered in cppdb
+                tblPengajar::where('id', '=', $request->id)->delete();
 
                 return response()->json([
                     'message' => 'Data berhasil dihapus',
                     'success' => true,
                 ], 200);
             } catch (\Exception $exception) {
+                // Return an error response if deletion fails
                 return response()->json([
-                    'message' => 'Gagal menghapus Data'.$exception->getMessage(),
+                    'message' => 'Gagal menghapus Data: ' . $exception->getMessage(),
                     'success' => false,
                 ], 500);
             }
         }
 
+        // Return a response if the Pengajar record is not found
         return response()->json([
             'message' => 'Data tidak ditemukan',
             'success' => false,
-        ], 200);
+        ], 404);
     }
 }

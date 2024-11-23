@@ -33,6 +33,6 @@ class dataSensusPeserta extends Model
         'status_pernikahan',
         'status_sambung',
         'status_kelas',
-        'created_at',
+        'img',
     ];
 }

@@ -64,17 +64,17 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
-        $responseGeoLocation = Http::get('https://api.ipgeolocation.io/ipgeo', [
-            'apiKey' => env('IP_GEO_KEY')
-        ]);
+        // $responseGeoLocation = Http::get('https://api.ipgeolocation.io/ipgeo', [
+        //     'apiKey' => env('IP_GEO_KEY')
+        // ]);
 
-        $responseUserAgent = Http::get('https://api.ipgeolocation.io/user-agent', [
-            'apiKey' => env('IP_GEO_KEY')
-        ]);
+        // $responseUserAgent = Http::get('https://api.ipgeolocation.io/user-agent', [
+        //     'apiKey' => env('IP_GEO_KEY')
+        // ]);
         $user = User::where('username', $request->username)->first();
         $agent = new Agent();
-        $geoInfo = $responseGeoLocation->json();
-        $userAgentInfo = $responseUserAgent->json();
+        // $geoInfo = $responseGeoLocation->json();
+        // $userAgentInfo = $responseUserAgent->json();
 
         if (empty($user)) {
             return response()->json([
@@ -83,26 +83,30 @@ class AuthController extends Controller
             ], 200);
         }
 
-        $config = dataCenter::select('config_status', 'config_name', 'config_comment')
-            ->where('config.id', '=', $user->id)
-            ->first();
-        if (!empty($config) && $config->config_status == 0) {
-            $logAccount = [
-                'user_id' => $user->id,
-                'ip_address' => $request->ip(),
-                'aktifitas' => 'Login - [proses login ilegal]',
-                'status_logs' => 'unsuccessfully',
-                'browser' => $agent->browser(),
-                'os' => $agent->platform(),
-                'device' => $agent->device(),
-            ];
-            logs::create($logAccount);
+        if ($user->role_id !== 1) {
+            // Lakukan validasi konfigurasi hanya jika role_id bukan 1
+            $config = dataCenter::select('config_status', 'config_name', 'config_comment')
+                ->first();
 
-            return response()->json([
-                'title' => $config->config_name,
-                'message' => $config->config_comment, // Use config_comment for the error message
-                'success' => false,
-            ], 403); // Use 403 Forbidden status for system restriction
+            if (!empty($config) && $config->config_status == 0) {
+                // Jika konfigurasi ditemukan dan statusnya 0 (tidak aktif)
+                $logAccount = [
+                    'user_id' => $user->id,
+                    'ip_address' => $request->ip(),
+                    'aktifitas' => 'Login - [proses login ilegal]',
+                    'status_logs' => 'unsuccessfully',
+                    'browser' => $agent->browser(),
+                    'os' => $agent->platform(),
+                    'device' => $agent->device(),
+                ];
+                logs::create($logAccount);
+
+                return response()->json([
+                    'title' => $config->config_name,
+                    'message' => $config->config_comment, // Gunakan config_comment sebagai pesan kesalahan
+                    'success' => false,
+                ], 403); // Gunakan status 403 Forbidden untuk pembatasan sistem
+            }
         }
 
         if (!$user || !Hash::check($request->password, $user->password)) {
@@ -161,43 +165,42 @@ class AuthController extends Controller
 
         $user->save();
 
-        $logAccount = [
-            'user_id' => $user->id,
-            'ip_address' => $geoInfo['ip'],
-            'aktifitas' => 'Login',
-            'status_logs' => 'successfully',
-            'string_agent' => $userAgentInfo['userAgentString'],
-            'browser' => $userAgentInfo['name'] . '/' . $userAgentInfo['type'] . '/' . $userAgentInfo['version'] . '/' . $userAgentInfo['versionMajor'],
-            'os' => $userAgentInfo['operatingSystem']['name'] . '/' . $userAgentInfo['operatingSystem']['type'] . '/' . $userAgentInfo['operatingSystem']['version'] . '/' . $userAgentInfo['operatingSystem']['versionMajor'],
-            'device' => $userAgentInfo['device']['name'] . '/' . $userAgentInfo['device']['type'] . '/' . $userAgentInfo['device']['brand'] . '/' . $userAgentInfo['device']['cpu'],
-            'engine_agent' => $userAgentInfo['engine']['name'] . '/' . $userAgentInfo['engine']['type'] . '/' . $userAgentInfo['engine']['version'] . '/' . $userAgentInfo['engine']['versionMajor'],
-            'continent_name' => $geoInfo['continent_name'],
-            'country_code2' => $geoInfo['country_code2'],
-            'country_code3' => $geoInfo['country_code3'],
-            'country_name' => $geoInfo['country_name'],
-            'country_name_official' => $geoInfo['country_name_official'],
-            'state_prov' => $geoInfo['state_prov'],
-            'district' => $geoInfo['district'],
-            'city' => $geoInfo['city'],
-            'zipcode' => $geoInfo['zipcode'],
-            'latitude' => $geoInfo['latitude'],
-            'longitude' => $geoInfo['longitude'],
-            'isp' => $geoInfo['isp'],
-            'connection_type' => $geoInfo['connection_type'],
-            'organization' => $geoInfo['organization'],
-            'timezone' => $geoInfo['time_zone']['name'],
-        ];
-        logs::create($logAccount);
         // $logAccount = [
         //     'user_id' => $user->id,
-        //     'ip_address' => $request->ip(),
+        //     'ip_address' => $geoInfo['ip'],
         //     'aktifitas' => 'Login',
         //     'status_logs' => 'successfully',
-        //     'browser' => $agent->browser(),
-        //     'os' => $agent->platform(),
-        //     'device' => $agent->device(),
+        //     'string_agent' => $userAgentInfo['userAgentString'],
+        //     'browser' => $userAgentInfo['name'] . '/' . $userAgentInfo['type'] . '/' . $userAgentInfo['version'] . '/' . $userAgentInfo['versionMajor'],
+        //     'os' => $userAgentInfo['operatingSystem']['name'] . '/' . $userAgentInfo['operatingSystem']['type'] . '/' . $userAgentInfo['operatingSystem']['version'] . '/' . $userAgentInfo['operatingSystem']['versionMajor'],
+        //     'device' => $userAgentInfo['device']['name'] . '/' . $userAgentInfo['device']['type'] . '/' . $userAgentInfo['device']['brand'] . '/' . $userAgentInfo['device']['cpu'],
+        //     'engine_agent' => $userAgentInfo['engine']['name'] . '/' . $userAgentInfo['engine']['type'] . '/' . $userAgentInfo['engine']['version'] . '/' . $userAgentInfo['engine']['versionMajor'],
+        //     'continent_name' => $geoInfo['continent_name'],
+        //     'country_code2' => $geoInfo['country_code2'],
+        //     'country_code3' => $geoInfo['country_code3'],
+        //     'country_name' => $geoInfo['country_name'],
+        //     'country_name_official' => $geoInfo['country_name_official'],
+        //     'state_prov' => $geoInfo['state_prov'],
+        //     'district' => $geoInfo['district'],
+        //     'city' => $geoInfo['city'],
+        //     'zipcode' => $geoInfo['zipcode'],
+        //     'latitude' => $geoInfo['latitude'],
+        //     'longitude' => $geoInfo['longitude'],
+        //     'isp' => $geoInfo['isp'],
+        //     'connection_type' => $geoInfo['connection_type'],
+        //     'organization' => $geoInfo['organization'],
+        //     'timezone' => $geoInfo['time_zone']['name'],
         // ];
-        // logs::create($logAccount);
+        $logAccount = [
+            'user_id' => $user->id,
+            'ip_address' => $request->ip(),
+            'aktifitas' => 'Login',
+            'status_logs' => 'successfully',
+            'browser' => $agent->browser(),
+            'os' => $agent->platform(),
+            'device' => $agent->device(),
+        ];
+        logs::create($logAccount);
 
         $user_balikan = [
             'id' => $user['id'],

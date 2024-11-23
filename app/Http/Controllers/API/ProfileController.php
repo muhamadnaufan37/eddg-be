@@ -105,6 +105,7 @@ class ProfileController extends Controller
                     // Kata sandi belum diubah, masih default
                     return response()->json([
                         'message' => 'User belum mengganti password, masih menggunakan default. silahkan ganti password terlebih dahulu untuk keamanan akun anda',
+                        'password_change' => false,
                         'success' => false,
                     ], 200);
                 } else {
@@ -118,6 +119,7 @@ class ProfileController extends Controller
 
             return response()->json([
                 'message' => 'Sukses, tapi password kosong',
+                'password_change' => false,
                 'success' => false,
             ], 200);
         }
