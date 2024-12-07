@@ -38,6 +38,7 @@ return new class extends Migration {
             $table->integer('nilai_presensi_2')->nullable();
             $table->integer('nilai_presensi_3')->nullable();
             $table->text('catatan_ortu')->nullable();
+            $table->text('tmpt_penetapan')->nullable();
             $table->boolean('status_naik_kelas')->nullable();
             $table->timestamps();
         });

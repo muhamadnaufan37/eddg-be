@@ -160,10 +160,10 @@ class LaporanRaporController extends Controller
         ])
             ->leftJoin('kalender_pendidikan', 'cppdb.id_thn_akademik', '=', 'kalender_pendidikan.id')
             ->leftJoin('kelas_peserta_didik', 'cppdb.id_kelas', '=', 'kelas_peserta_didik.id')
-            ->leftJoin('peserta_didik', 'cppdb.id_peserta', '=', 'peserta_didik.id')
-            ->leftJoin('tabel_daerah', 'peserta_didik.tmpt_daerah', '=', 'tabel_daerah.id')
-            ->leftJoin('tabel_desa', 'peserta_didik.tmpt_desa', '=', 'tabel_desa.id')
-            ->leftJoin('tabel_kelompok', 'peserta_didik.tmpt_kelompok', '=', 'tabel_kelompok.id')
+            ->leftJoin('data_peserta', 'cppdb.id_peserta', '=', 'data_peserta.id')
+            ->leftJoin('tabel_daerah', 'data_peserta.tmpt_daerah', '=', 'tabel_daerah.id')
+            ->leftJoin('tabel_desa', 'data_peserta.tmpt_desa', '=', 'tabel_desa.id')
+            ->leftJoin('tabel_kelompok', 'data_peserta.tmpt_kelompok', '=', 'tabel_kelompok.id')
             ->where('cppdb.status_naik_kelas', '=', 1)
             ->where('kalender_pendidikan.id', '=', $dataThnAkademik)
             ->where('tabel_daerah.id', '=', $dataDaerah)
@@ -225,7 +225,7 @@ class LaporanRaporController extends Controller
         // Ambil data peserta berdasarkan parameter yang diberikan
         $query = tblCppdb::select([
             'cppdb.id',
-            'peserta_didik.nama_lengkap AS nama_peserta',
+            'data_peserta.nama_lengkap AS nama_peserta',
             'kelas_peserta_didik.nama_kelas',
             'tabel_daerah.nama_daerah',
             'tabel_desa.nama_desa',
@@ -332,10 +332,10 @@ class LaporanRaporController extends Controller
             ->leftJoin('kalender_pendidikan', 'cppdb.id_thn_akademik', '=', 'kalender_pendidikan.id')
             ->leftJoin('kelas_peserta_didik', 'cppdb.id_kelas', '=', 'kelas_peserta_didik.id')
             ->leftJoin('pengajar', 'cppdb.id_pengajar', '=', 'pengajar.id')
-            ->leftJoin('peserta_didik', 'cppdb.id_peserta', '=', 'peserta_didik.id')
-            ->leftJoin('tabel_daerah', 'peserta_didik.tmpt_daerah', '=', 'tabel_daerah.id')
-            ->leftJoin('tabel_desa', 'peserta_didik.tmpt_desa', '=', 'tabel_desa.id')
-            ->leftJoin('tabel_kelompok', 'peserta_didik.tmpt_kelompok', '=', 'tabel_kelompok.id')
+            ->leftJoin('data_peserta', 'cppdb.id_peserta', '=', 'data_peserta.id')
+            ->leftJoin('tabel_daerah', 'data_peserta.tmpt_daerah', '=', 'tabel_daerah.id')
+            ->leftJoin('tabel_desa', 'data_peserta.tmpt_desa', '=', 'tabel_desa.id')
+            ->leftJoin('tabel_kelompok', 'data_peserta.tmpt_kelompok', '=', 'tabel_kelompok.id')
             ->where('cppdb.status_naik_kelas', '=', 1)
             ->where('kalender_pendidikan.id', '=', $dataThnAkademik)
             ->where('tabel_daerah.id', '=', $dataDaerah)
@@ -417,17 +417,17 @@ class LaporanRaporController extends Controller
             'kalender_pendidikan.semester_pelajaran AS semester_akademik',
             'kelas_peserta_didik.nama_kelas',
             'pengajar.nama_pengajar',
-            'peserta_didik.nama_lengkap AS nama_peserta',
+            'data_peserta.nama_lengkap AS nama_peserta',
             'users.nama_lengkap AS nama_petugas',
             'cppdb.status_naik_kelas',
             'cppdb.created_at',
         ])
             ->leftJoin('kalender_pendidikan', 'cppdb.id_thn_akademik', '=', 'kalender_pendidikan.id')
             ->leftJoin('kelas_peserta_didik', 'cppdb.id_kelas', '=', 'kelas_peserta_didik.id')
-            ->leftJoin('peserta_didik', 'cppdb.id_peserta', '=', 'peserta_didik.id')
-            ->leftJoin('tabel_daerah', 'peserta_didik.tmpt_daerah', '=', 'tabel_daerah.id')
-            ->leftJoin('tabel_desa', 'peserta_didik.tmpt_desa', '=', 'tabel_desa.id')
-            ->leftJoin('tabel_kelompok', 'peserta_didik.tmpt_kelompok', '=', 'tabel_kelompok.id')
+            ->leftJoin('data_peserta', 'cppdb.id_peserta', '=', 'data_peserta.id')
+            ->leftJoin('tabel_daerah', 'data_peserta.tmpt_daerah', '=', 'tabel_daerah.id')
+            ->leftJoin('tabel_desa', 'data_peserta.tmpt_desa', '=', 'tabel_desa.id')
+            ->leftJoin('tabel_kelompok', 'data_peserta.tmpt_kelompok', '=', 'tabel_kelompok.id')
             ->leftJoin('pengajar', 'cppdb.id_pengajar', '=', 'pengajar.id')
             ->leftJoin('users', 'cppdb.id_petugas', '=', 'users.id');
 
@@ -507,7 +507,7 @@ class LaporanRaporController extends Controller
             'kalender_pendidikan.tahun_pelajaran AS tahun_akademik',
             'kalender_pendidikan.semester_pelajaran AS semester_akademik',
             'kelas_peserta_didik.nama_kelas',
-            'peserta_didik.nama_lengkap AS nama_peserta',
+            'data_peserta.nama_lengkap AS nama_peserta',
             'cppdb.nilai1',
             'cppdb.nilai2',
             'cppdb.nilai3',
@@ -580,10 +580,10 @@ class LaporanRaporController extends Controller
             ->leftJoin('kalender_pendidikan', 'cppdb.id_thn_akademik', '=', 'kalender_pendidikan.id')
             ->leftJoin('kelas_peserta_didik', 'cppdb.id_kelas', '=', 'kelas_peserta_didik.id')
             ->leftJoin('pengajar', 'cppdb.id_pengajar', '=', 'pengajar.id')
-            ->leftJoin('peserta_didik', 'cppdb.id_peserta', '=', 'peserta_didik.id')
-            ->leftJoin('tabel_daerah', 'peserta_didik.tmpt_daerah', '=', 'tabel_daerah.id')
-            ->leftJoin('tabel_desa', 'peserta_didik.tmpt_desa', '=', 'tabel_desa.id')
-            ->leftJoin('tabel_kelompok', 'peserta_didik.tmpt_kelompok', '=', 'tabel_kelompok.id')
+            ->leftJoin('data_peserta', 'cppdb.id_peserta', '=', 'data_peserta.id')
+            ->leftJoin('tabel_daerah', 'data_peserta.tmpt_daerah', '=', 'tabel_daerah.id')
+            ->leftJoin('tabel_desa', 'data_peserta.tmpt_desa', '=', 'tabel_desa.id')
+            ->leftJoin('tabel_kelompok', 'data_peserta.tmpt_kelompok', '=', 'tabel_kelompok.id')
             ->where('kalender_pendidikan.id', '=', $dataThnAkademik)
             ->where('tabel_daerah.id', '=', $dataDaerah)
             ->where('tabel_desa.id', '=', $dataDesa)

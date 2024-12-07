@@ -46,6 +46,15 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register_akun', [AuthController::class, 'register']);
 Route::post('/find_sensus', [DataSensusController::class, 'cari_data']);
 Route::get('/data_tempat_sambung', [StatistikTmptSmbngController::class, 'data_tempat_sambung']);
+Route::get('/protected/images/{filename}', function ($filename) {
+    $path = storage_path('app/images/sensus/' . $filename);
+
+    if (!file_exists($path)) {
+        abort(404);
+    }
+
+    return response()->file($path);
+})->name('protected.image');
 
 Route::middleware(['auth:sanctum'])->group(function () {
     // User Management

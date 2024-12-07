@@ -130,7 +130,6 @@ class ProfileController extends Controller
         ], 200);
     }
 
-
     public function update_password(Request $request)
     {
         $request->validate([

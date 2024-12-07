@@ -87,12 +87,14 @@ class DataSensusController extends Controller
             'tbl_pekerjaan.nama_pekerjaan AS pekerjaan',
             'data_peserta.usia_menikah',
             'data_peserta.kriteria_pasangan',
-            DB::raw("
-        CASE
-            WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) <= 13 THEN 'Pra-remaja'
-            WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) <= 16 THEN 'Remaja'
-            ELSE 'Muda - mudi / Usia Nikah'
-        END AS status_kelas"),
+            DB::raw("CASE
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 3 AND 6 THEN 'Paud'
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 7 AND 12 THEN 'Caberawit'
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 13 AND 15 THEN 'Pra-remaja'
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 16 AND 18 THEN 'Remaja'
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) >= 19 THEN 'Muda - mudi / Usia Nikah'
+                ELSE 'Tidak dalam rentang usia'
+            END AS status_kelas"),
             'data_peserta.status_pernikahan',
             'data_peserta.status_sambung',
             'data_peserta.status_atlet_asad',

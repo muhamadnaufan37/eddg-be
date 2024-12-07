@@ -7,6 +7,7 @@ use App\Models\dataDaerah;
 use App\Models\dataDesa;
 use App\Models\dataKelompok;
 use App\Models\dataSensusPeserta;
+use App\Models\tblCppdb;
 use App\Models\tblPekerjaan;
 use App\Models\User;
 use Carbon\Carbon;
@@ -204,6 +205,7 @@ class DataPesertaController extends Controller
         $statusSambung = $request->get('status_sambung', null);
         $statusAtletAsad = $request->get('status_atlet_asad', null);
         $jenisKelamin = $request->get('jenis_kelamin', null);
+        $jenisData = $request->get('jenis_data', null);
 
         if ($perPage > 100) {
             $perPage = 100;
@@ -217,15 +219,19 @@ class DataPesertaController extends Controller
             'tabel_desa.nama_desa',
             'tabel_kelompok.nama_kelompok',
             'data_peserta.status_atlet_asad',
-            DB::raw("
-        CASE
-            WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) <= 13 THEN 'Pra-remaja'
-            WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) <= 16 THEN 'Remaja'
-            ELSE 'Muda - mudi / Usia Nikah'
-        END AS status_kelas"),
+            'data_peserta.tanggal_lahir',
+            DB::raw("CASE
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 3 AND 6 THEN 'Paud'
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 7 AND 12 THEN 'Caberawit'
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 13 AND 15 THEN 'Pra-remaja'
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 16 AND 18 THEN 'Remaja'
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) >= 19 THEN 'Muda - mudi / Usia Nikah'
+                ELSE 'Tidak dalam rentang usia'
+            END AS status_kelas"),
             'data_peserta.status_sambung',
             'data_peserta.status_pernikahan',
-            'users.username AS user_petugas',
+            'users.nama_lengkap AS user_petugas',
+            'data_peserta.jenis_data',
             'data_peserta.created_at',
         ])
             ->join('tabel_daerah', 'tabel_daerah.id', '=', DB::raw('CAST(data_peserta.tmpt_daerah AS UNSIGNED)'))
@@ -255,6 +261,10 @@ class DataPesertaController extends Controller
             $query->where('data_peserta.jenis_kelamin', '=', $jenisKelamin);
         }
 
+        if (!is_null($jenisData)) {
+            $query->where('data_peserta.jenis_data', '=', $jenisData);
+        }
+
         if (!empty($keyword) && empty($kolom)) {
             $query->where(function ($q) use ($keyword) {
                 $q->where('data_peserta.nama_lengkap', 'LIKE', '%' . $keyword . '%')
@@ -264,10 +274,13 @@ class DataPesertaController extends Controller
                     ->orWhere('tabel_kelompok.nama_kelompok', 'LIKE', '%' . $keyword . '%')
                     ->orWhere(DB::raw("
                         CASE
-                            WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) <= 13 THEN 'Pra-remaja'
-                            WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) <= 16 THEN 'Remaja'
-                            ELSE 'Muda - mudi / Usia Nikah'
-                        END
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 3 AND 6 THEN 'Paud'
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 7 AND 12 THEN 'Caberawit'
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 13 AND 15 THEN 'Pra-remaja'
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 16 AND 18 THEN 'Remaja'
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) >= 19 THEN 'Muda - mudi / Usia Nikah'
+                ELSE 'Tidak dalam rentang usia'
+            END
                     "), 'LIKE', '%' . $keyword . '%')
                     ->orWhere('users.nama_lengkap', 'LIKE', '%' . $keyword . '%')
                     ->orWhere('data_peserta.nama_panggilan', 'LIKE', '%' . $keyword . '%');
@@ -321,15 +334,18 @@ class DataPesertaController extends Controller
             'tabel_desa.nama_desa',
             'tabel_kelompok.nama_kelompok',
             'data_peserta.status_atlet_asad',
-            DB::raw("
-        CASE
-            WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) <= 13 THEN 'Pra-remaja'
-            WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) <= 16 THEN 'Remaja'
-            ELSE 'Muda - mudi / Usia Nikah'
-        END AS status_kelas"),
+            DB::raw("CASE
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 3 AND 6 THEN 'Paud'
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 7 AND 12 THEN 'Caberawit'
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 13 AND 15 THEN 'Pra-remaja'
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 16 AND 18 THEN 'Remaja'
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) >= 19 THEN 'Muda - mudi / Usia Nikah'
+                ELSE 'Tidak dalam rentang usia'
+            END AS status_kelas"),
             'data_peserta.status_sambung',
             'data_peserta.status_pernikahan',
-            'users.username AS user_petugas',
+            'users.nama_lengkap AS user_petugas',
+            'data_peserta.jenis_data',
             'data_peserta.created_at',
         ])
             ->join('tabel_daerah', 'tabel_daerah.id', '=', DB::raw('CAST(data_peserta.tmpt_daerah AS UNSIGNED)'))
@@ -374,18 +390,19 @@ class DataPesertaController extends Controller
         if (!empty($keyword) && empty($kolom)) {
             $query->where(function ($q) use ($keyword) {
                 $q->where('data_peserta.nama_lengkap', 'LIKE', '%' . $keyword . '%')
-                    ->orWhere('data_peserta.kode_cari_data', 'LIKE', '%' . $keyword . '%')
-                    ->orWhere('data_peserta.kode_cari_data', 'LIKE', '%' . $keyword . '%')
                     ->orWhere('tabel_daerah.nama_daerah', 'LIKE', '%' . $keyword . '%')
                     ->orWhere('tabel_desa.nama_desa', 'LIKE', '%' . $keyword . '%')
                     ->orWhere('tabel_kelompok.nama_kelompok', 'LIKE', '%' . $keyword . '%')
                     ->orWhere(DB::raw("
-                        CASE
-                            WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) <= 13 THEN 'Pra-remaja'
-                            WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) <= 16 THEN 'Remaja'
-                            ELSE 'Muda - mudi / Usia Nikah'
-                        END
-                    "), 'LIKE', '%' . $keyword . '%')
+                    CASE
+                    WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 3 AND 6 THEN 'Paud'
+                    WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 7 AND 12 THEN 'Caberawit'
+                    WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 13 AND 15 THEN 'Pra-remaja'
+                    WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 16 AND 18 THEN 'Remaja'
+                    WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) >= 19 THEN 'Muda - mudi / Usia Nikah'
+                    ELSE 'Tidak dalam rentang usia'
+                END
+                "), 'LIKE', '%' . $keyword . '%')
                     ->orWhere('users.nama_lengkap', 'LIKE', '%' . $keyword . '%')
                     ->orWhere('data_peserta.nama_panggilan', 'LIKE', '%' . $keyword . '%');
             });
@@ -441,11 +458,11 @@ class DataPesertaController extends Controller
             'pekerjaan' => 'required|integer',
             'usia_menikah' => 'nullable|string',
             'kriteria_pasangan' => 'nullable|string',
+            'status_atlet_asad' => 'required|integer',
             'tmpt_daerah' => 'required|integer|digits_between:1,5',
             'tmpt_desa' => 'required|integer|digits_between:1,5',
             'tmpt_kelompok' => 'required|integer|digits_between:1,5',
-            'img_sensus' => 'nullable|image|mimes:png|max:4096',
-            'status_atlet_asad' => 'required|integer',
+            'img' => 'nullable|image|mimes:jpg,png|max:5120',
             'user_id' => 'required|integer',
         ], $customMessages);
 
@@ -474,13 +491,15 @@ class DataPesertaController extends Controller
         $tabel_sensus->tmpt_kelompok = $request->tmpt_kelompok;
         $tabel_sensus->status_sambung = 1;
         $tabel_sensus->status_pernikahan = 0;
+        $tabel_sensus->jenis_data = "SENSUS";
+        $tabel_sensus->img = $request->img;
         $tabel_sensus->status_atlet_asad = $request->status_atlet_asad;
         $tabel_sensus->user_id = $request->user_id;
 
         // Menyimpan gambar jika diunggah
-        if ($request->hasFile('img_sensus')) {
+        if ($request->hasFile('img')) {
             // Dapatkan file foto dari permintaan
-            $foto = $request->file('img_sensus');
+            $foto = $request->file('img');
 
             // Bangun nama file yang disimpan
             $namaFile = Str::slug($tabel_sensus->nama_lengkap) . '.' . $foto->getClientOriginalExtension();
@@ -489,14 +508,14 @@ class DataPesertaController extends Controller
             $path = $foto->storeAs('public/images/sensus', $namaFile);
 
             // Anda dapat menyimpan path file ini di database jika diperlukan
-            $tabel_sensus->img_sensus = $path;
+            $tabel_sensus->img = $path;
         }
 
         try {
             $tabel_daerah = dataDaerah::find($request->tmpt_daerah);
             $tabel_desa = dataDesa::find($request->tmpt_desa);
             $tabel_kelompok = dataKelompok::find($request->tmpt_kelompok);
-            $sensuss = User::find($request->user_id);
+            $sensus = User::find($request->user_id);
 
             if (!$tabel_daerah) {
                 return response()->json([
@@ -519,7 +538,7 @@ class DataPesertaController extends Controller
                 ], 404);
             }
 
-            if (!$sensuss) {
+            if (!$sensus) {
                 return response()->json([
                     'message' => 'Data Petugas tidak ditemukan',
                     'success' => false,
@@ -576,14 +595,18 @@ class DataPesertaController extends Controller
             'tabel_desa.nama_desa',
             'tabel_kelompok.id as id_kelompok',
             'tabel_kelompok.nama_kelompok',
+            'data_peserta.jenis_data',
             'data_peserta.status_atlet_asad',
             'users.username AS user_petugas',
-            DB::raw("
-        CASE
-            WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) <= 13 THEN 'Pra-remaja'
-            WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) <= 16 THEN 'Remaja'
-            ELSE 'Muda - mudi / Usia Nikah'
-        END AS status_kelas"),
+            'data_peserta.img',
+            DB::raw("CASE
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 3 AND 6 THEN 'Paud'
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 7 AND 12 THEN 'Caberawit'
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 13 AND 15 THEN 'Pra-remaja'
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 16 AND 18 THEN 'Remaja'
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) >= 19 THEN 'Muda - mudi / Usia Nikah'
+                ELSE 'Tidak dalam rentang usia'
+            END AS status_kelas"),
         ])->join('tabel_daerah', function ($join) {
             $join->on('tabel_daerah.id', '=', DB::raw('CAST(data_peserta.tmpt_daerah AS UNSIGNED)'));
         })->join('tabel_desa', function ($join) {
@@ -596,15 +619,16 @@ class DataPesertaController extends Controller
             $join->on('users.id', '=', DB::raw('CAST(data_peserta.user_id AS UNSIGNED)'));
         })->where('data_peserta.id', '=', $request->id)->first();
 
-        if (!empty($sensus)) {
-            if ($sensus->img_sensus) {
-                $sensus->image_url = asset($sensus->img_sensus);
-            } else {
-                $sensus->image_url = '';
-            }
+        if ($sensus) {
+            // Generate the correct URL for the image
+            $sensus->img_url = $sensus->img
+                ? asset('storage/' . str_replace('public/', '', $sensus->img))
+                : null;
+
+            unset($sensus->created_at, $sensus->updated_at);
 
             return response()->json([
-                'message' => 'Sukses',
+                'message' => 'Data Peserta Ditemukan',
                 'data_sensus' => $sensus,
                 'success' => true,
             ], 200);
@@ -638,7 +662,7 @@ class DataPesertaController extends Controller
             'tanggal_lahir' => 'required|date',
             'alamat' => 'required|string',
             'jenis_kelamin' => 'required|in:LAKI-LAKI,PEREMPUAN',
-            'no_telepon' => 'sometimes|required|string|digits_between:8,13|unique:data_peserta,no_telepon,' . $request->id . ',id',
+            'no_telepon' => 'sometimes|required|string|digits_between:8,13',
             'nama_ayah' => 'required|string',
             'nama_ibu' => 'required|string',
             'hoby' => 'required|string',
@@ -648,7 +672,7 @@ class DataPesertaController extends Controller
             'status_sambung' => 'integer',
             'status_pernikahan' => 'boolean',
             'status_atlet_asad' => 'required|integer',
-            'user_id' => 'required|integer',
+            'jenis_data' => 'required|string',
         ], $customMessages);
 
         $sensus = dataSensusPeserta::where('id', '=', $request->id)
@@ -656,6 +680,26 @@ class DataPesertaController extends Controller
 
         if (!empty($sensus)) {
             try {
+
+                // Periksa apakah ada gambar baru yang diunggah
+                if ($request->hasFile('img')) {
+                    $request->validate([
+                        'img' => 'nullable|image|mimes:jpg,png|max:5120',
+                    ], $customMessages);
+                    $oldImgPath = storage_path('public/images/sensus/' . $sensus->img);
+
+                    // Hapus file lama jika ada
+                    if (file_exists($oldImgPath) && $sensus->img) {
+                        unlink($oldImgPath);
+                    }
+
+                    // Save the file to the 'public/images/sensus' directory
+                    $newImg = $request->file('img');
+                    $namaFile = Str::slug($sensus->nama_lengkap) . '.' . $newImg->getClientOriginalExtension();
+                    $path = $newImg->storeAs('public/images/sensus', $namaFile);
+                    $sensus->img = $path;
+                }
+
                 $sensus->update([
                     'id' => $request->id,
                     'nama_lengkap' => $request->nama_lengkap,
@@ -674,7 +718,7 @@ class DataPesertaController extends Controller
                     'status_sambung' => $request->status_sambung,
                     'status_pernikahan' => $request->status_pernikahan,
                     'status_atlet_asad' => $request->status_atlet_asad,
-                    'user_id' => $request->user_id,
+                    'jenis_data' => $request->jenis_data,
                 ]);
             } catch (\Exception $exception) {
                 return response()->json([
@@ -706,17 +750,37 @@ class DataPesertaController extends Controller
             ->first();
 
         if (!empty($sensus)) {
+            // Periksa apakah ID Peserta Didik terdaftar di tabel cppdb
+            $existsInCppdb = tblCppdb::where('id_peserta', $request->id)->exists();
+
+            if ($existsInCppdb) {
+                // Jika Peserta Didik terdaftar di cppdb, cegah penghapusan dengan respons 409 Conflict
+                return response()->json([
+                    'message' => 'Data Peserta Didik tidak dapat dihapus karena sudah terdaftar dan digunakan di tabel lain',
+                    'success' => false,
+                ], 409);
+            }
+
             try {
-                $sensus = dataSensusPeserta::where('id', '=', $request->id)
-                    ->delete();
+                // Hapus file gambar jika ada
+                if (!empty($sensus->img)) {
+                    $filePath = storage_path('app/' . $sensus->img); // Path lengkap file
+                    if (file_exists($filePath)) {
+                        unlink($filePath); // Hapus file dari folder
+                    }
+                }
+
+                // Lanjutkan untuk menghapus data Peserta Didik
+                $sensus->delete();
 
                 return response()->json([
-                    'message' => 'Data sensus berhasil dihapus',
+                    'message' => 'Data Peserta Didik berhasil dihapus beserta file terkait',
                     'success' => true,
                 ], 200);
             } catch (\Exception $exception) {
+                // Kembalikan respons kesalahan jika penghapusan gagal
                 return response()->json([
-                    'message' => 'Gagal menghapus Data' . $exception->getMessage(),
+                    'message' => 'Gagal menghapus Data: ' . $exception->getMessage(),
                     'success' => false,
                 ], 500);
             }
@@ -751,11 +815,13 @@ class DataPesertaController extends Controller
             'data_peserta.alamat',
             'data_peserta.hoby',
             'tbl_pekerjaan.nama_pekerjaan AS pekerjaan',
-            DB::raw("
-            CASE
-                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) <= 13 THEN 'Pra-remaja'
-                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) <= 16 THEN 'Remaja'
-                ELSE 'Muda - mudi / Usia Nikah'
+            DB::raw("CASE
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 3 AND 6 THEN 'Paud'
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 7 AND 12 THEN 'Caberawit'
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 13 AND 15 THEN 'Pra-remaja'
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 16 AND 18 THEN 'Remaja'
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) >= 19 THEN 'Muda - mudi / Usia Nikah'
+                ELSE 'Tidak dalam rentang usia'
             END AS status_kelas"),
             'data_peserta.tmpt_daerah',
             'tabel_daerah.nama_daerah',
@@ -763,6 +829,7 @@ class DataPesertaController extends Controller
             'tabel_desa.nama_desa',
             'data_peserta.tmpt_kelompok',
             'tabel_kelompok.nama_kelompok',
+            'data_peserta.jenis_data',
         ])
             ->join('tbl_pekerjaan', 'tbl_pekerjaan.id', '=', DB::raw('CAST(data_peserta.pekerjaan AS UNSIGNED)'))
             ->join('tabel_daerah', 'tabel_daerah.id', '=', DB::raw('CAST(data_peserta.tmpt_daerah AS UNSIGNED)'))

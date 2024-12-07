@@ -31,7 +31,7 @@ class CalonPPDBController extends Controller
             'kalender_pendidikan.semester_pelajaran AS semester_akademik',
             'kelas_peserta_didik.nama_kelas',
             'pengajar.nama_pengajar',
-            'peserta_didik.nama_lengkap AS nama_peserta',
+            'data_peserta.nama_lengkap AS nama_peserta',
             'users.nama_lengkap AS nama_petugas',
             'cppdb.status_naik_kelas',
             'cppdb.created_at',
@@ -39,7 +39,7 @@ class CalonPPDBController extends Controller
             ->leftJoin('kalender_pendidikan', 'cppdb.id_thn_akademik', '=', 'kalender_pendidikan.id')
             ->leftJoin('kelas_peserta_didik', 'cppdb.id_kelas', '=', 'kelas_peserta_didik.id')
             ->leftJoin('pengajar', 'cppdb.id_pengajar', '=', 'pengajar.id')
-            ->leftJoin('peserta_didik', 'cppdb.id_peserta', '=', 'peserta_didik.id')
+            ->leftJoin('data_peserta', 'cppdb.id_peserta', '=', 'data_peserta.id')
             ->leftJoin('users', 'cppdb.id_petugas', '=', 'users.id')
             ->where('kalender_pendidikan.status_pelajaran', 1);
 
@@ -48,12 +48,11 @@ class CalonPPDBController extends Controller
 
         if (!empty($keyword)) {
             $model->where(function ($query) use ($keyword) {
-                $query->where('peserta_didik.nama_lengkap', 'LIKE', '%' . $keyword . '%')
+                $query->where('data_peserta.nama_lengkap', 'LIKE', '%' . $keyword . '%')
                     ->orWhere('cppdb.kode_cari_ppdb', 'LIKE', '%' . $keyword . '%')
                     ->orWhere('kalender_pendidikan.tahun_pelajaran', 'LIKE', '%' . $keyword . '%')
                     ->orWhere('kelas_peserta_didik.nama_kelas', 'LIKE', '%' . $keyword . '%')
                     ->orWhere('pengajar.nama_pengajar', 'LIKE', '%' . $keyword . '%')
-                    ->orWhere('peserta_didik.nama_lengkap', 'LIKE', '%' . $keyword . '%')
                     ->orWhere('users.nama_lengkap', 'LIKE', '%' . $keyword . '%');
             });
         }
@@ -93,7 +92,7 @@ class CalonPPDBController extends Controller
             'kalender_pendidikan.semester_pelajaran AS semester_akademik',
             'kelas_peserta_didik.nama_kelas',
             'pengajar.nama_pengajar',
-            'peserta_didik.nama_lengkap AS nama_peserta',
+            'data_peserta.nama_lengkap AS nama_peserta',
             'users.nama_lengkap AS nama_petugas',
             'cppdb.status_naik_kelas',
             'cppdb.created_at',
@@ -101,7 +100,7 @@ class CalonPPDBController extends Controller
             ->leftJoin('kalender_pendidikan', 'cppdb.id_thn_akademik', '=', 'kalender_pendidikan.id')
             ->leftJoin('kelas_peserta_didik', 'cppdb.id_kelas', '=', 'kelas_peserta_didik.id')
             ->leftJoin('pengajar', 'cppdb.id_pengajar', '=', 'pengajar.id')
-            ->leftJoin('peserta_didik', 'cppdb.id_peserta', '=', 'peserta_didik.id')
+            ->leftJoin('data_peserta', 'cppdb.id_peserta', '=', 'data_peserta.id')
             ->leftJoin('users', 'cppdb.id_petugas', '=', 'users.id')
             ->where('kalender_pendidikan.status_pelajaran', 1);
 
@@ -118,12 +117,11 @@ class CalonPPDBController extends Controller
 
         if (!empty($keyword)) {
             $model->where(function ($query) use ($keyword) {
-                $query->where('peserta_didik.nama_lengkap', 'LIKE', '%' . $keyword . '%')
+                $query->where('data_peserta.nama_lengkap', 'LIKE', '%' . $keyword . '%')
                     ->orWhere('cppdb.kode_cari_ppdb', 'LIKE', '%' . $keyword . '%')
                     ->orWhere('kalender_pendidikan.tahun_pelajaran', 'LIKE', '%' . $keyword . '%')
                     ->orWhere('kelas_peserta_didik.nama_kelas', 'LIKE', '%' . $keyword . '%')
                     ->orWhere('pengajar.nama_pengajar', 'LIKE', '%' . $keyword . '%')
-                    ->orWhere('peserta_didik.nama_lengkap', 'LIKE', '%' . $keyword . '%')
                     ->orWhere('users.nama_lengkap', 'LIKE', '%' . $keyword . '%');
             });
         }
@@ -274,9 +272,9 @@ class CalonPPDBController extends Controller
             'kalender_pendidikan.semester_pelajaran AS semester_akademik',
             'kelas_peserta_didik.nama_kelas',
             'pengajar.nama_pengajar',
-            'peserta_didik.nomor_induk_santri',
-            'peserta_didik.nama_lengkap AS nama_peserta',
-            'peserta_didik.nama_ortu',
+            'data_peserta.kode_cari_data',
+            'data_peserta.nama_lengkap AS nama_peserta',
+            'data_peserta.nama_ayah',
             'tabel_daerah.nama_daerah', // Mengambil nama daerah dari tabel daerah
             'tabel_desa.nama_desa', // Mengambil nama desa dari tabel desa
             'tabel_kelompok.nama_kelompok', // Mengambil nama kelompok dari tabel kelompok
@@ -301,16 +299,17 @@ class CalonPPDBController extends Controller
             'cppdb.nilai_presensi_2',
             'cppdb.nilai_presensi_3',
             'cppdb.catatan_ortu',
+            'cppdb.tmpt_penetapan',
             'cppdb.status_naik_kelas',
         ])
             ->leftJoin('kalender_pendidikan', 'cppdb.id_thn_akademik', '=', 'kalender_pendidikan.id')
             ->leftJoin('kelas_peserta_didik', 'cppdb.id_kelas', '=', 'kelas_peserta_didik.id')
             ->leftJoin('pengajar', 'cppdb.id_pengajar', '=', 'pengajar.id')
-            ->leftJoin('peserta_didik', 'cppdb.id_peserta', '=', 'peserta_didik.id')
+            ->leftJoin('data_peserta', 'cppdb.id_peserta', '=', 'data_peserta.id')
             ->leftJoin('users', 'cppdb.id_petugas', '=', 'users.id')
-            ->leftJoin('tabel_daerah', 'peserta_didik.tmpt_daerah', '=', 'tabel_daerah.id') // Menghubungkan tabel desa
-            ->leftJoin('tabel_desa', 'peserta_didik.tmpt_desa', '=', 'tabel_desa.id') // Menghubungkan tabel desa
-            ->leftJoin('tabel_kelompok', 'peserta_didik.tmpt_kelompok', '=', 'tabel_kelompok.id') // Menghubungkan tabel kelompok
+            ->leftJoin('tabel_daerah', 'data_peserta.tmpt_daerah', '=', 'tabel_daerah.id') // Menghubungkan tabel desa
+            ->leftJoin('tabel_desa', 'data_peserta.tmpt_desa', '=', 'tabel_desa.id') // Menghubungkan tabel desa
+            ->leftJoin('tabel_kelompok', 'data_peserta.tmpt_kelompok', '=', 'tabel_kelompok.id') // Menghubungkan tabel kelompok
             ->where('cppdb.id', $request->id)->first();
 
         if (!empty($table_calon_ppdb)) {
@@ -467,6 +466,7 @@ class CalonPPDBController extends Controller
             'nilai_presensi_2' => 'required',
             'nilai_presensi_3' => 'required',
             'catatan_ortu' => 'required',
+            'tmpt_penetapan' => 'required',
             'status_naik_kelas' => 'required',
         ], $customMessages);
 
@@ -496,6 +496,7 @@ class CalonPPDBController extends Controller
                     'nilai_presensi_2' => $request->nilai_presensi_2,
                     'nilai_presensi_3' => $request->nilai_presensi_3,
                     'catatan_ortu' => $request->catatan_ortu,
+                    'tmpt_penetapan' => $request->tmpt_penetapan,
                     'status_naik_kelas' => $request->status_naik_kelas,
                 ]);
 

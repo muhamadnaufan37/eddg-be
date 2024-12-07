@@ -145,7 +145,6 @@ class PresensiController extends Controller
         ], 200);
     }
 
-
     public function record_presensi_qrcode(Request $request)
     {
         $request->validate([
@@ -170,8 +169,11 @@ class PresensiController extends Controller
         // Menggabungkan tgl_kegiatan dan jam_kegiatan menjadi satu objek Carbon
         $waktuKegiatan = Carbon::parse($kegiatan->tgl_kegiatan . ' ' . $kegiatan->jam_kegiatan);
 
+        // Menentukan waktu mulai presensi (90 menit sebelum waktu kegiatan)
+        $waktuMulaiPresensi = $waktuKegiatan->copy()->subMinutes(90);
+
         // Cek apakah waktu saat ini sudah mencapai atau melewati waktu kegiatan
-        if ($currentTime->lt($waktuKegiatan)) {
+        if ($currentTime->lt($waktuMulaiPresensi)) {
             return response()->json([
                 'message' => 'Presensi belum bisa dilakukan, tunggu hingga waktu kegiatan dimulai pada tanggal ' . $kegiatan->tgl_kegiatan . ' jam ' . $kegiatan->jam_kegiatan . ' waktu setempat',
                 'success' => false,
@@ -193,11 +195,13 @@ class PresensiController extends Controller
             DB::raw('TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) AS usia'),
             'data_peserta.jenis_kelamin',
             'tbl_pekerjaan.nama_pekerjaan AS pekerjaan',
-            DB::raw("
-            CASE
-                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) <= 13 THEN 'Pra-remaja'
-                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) <= 16 THEN 'Remaja'
-                ELSE 'Muda - mudi / Usia Nikah'
+            DB::raw("CASE
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 3 AND 6 THEN 'Paud'
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 7 AND 12 THEN 'Caberawit'
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 13 AND 15 THEN 'Pra-remaja'
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 16 AND 18 THEN 'Remaja'
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) >= 19 THEN 'Muda - mudi / Usia Nikah'
+                ELSE 'Tidak dalam rentang usia'
             END AS status_kelas"),
             'tabel_daerah.id AS daerah_id',
             'tabel_daerah.nama_daerah',
@@ -273,14 +277,17 @@ class PresensiController extends Controller
             ], 409);
         }
 
+        // Menentukan waktu toleransi keterlambatan (30 menit setelah waktu kegiatan dimulai)
+        $waktuToleransi = $waktuKegiatan->copy()->addMinutes(30);
+
         // Determine if the attendance is late
-        $isLate = now()->greaterThan($kegiatan->jam_kegiatan);
+        $isLate = now()->greaterThan($waktuToleransi);
 
         $presensi = new presensi();
         $presensi->id_kegiatan = $request->id_kegiatan;
         $presensi->id_peserta = $peserta->id;
         $presensi->id_petugas = $request->id_petugas;
-        $presensi->status_presensi = "HADIR";
+        $presensi->status_presensi = $isLate ? "TELAT HADIR" : "HADIR";
         $presensi->waktu_presensi = now();
         $presensi->keterangan = $isLate ? "TELAT HADIR" : "HADIR";
         $presensi->save();
@@ -342,13 +349,14 @@ class PresensiController extends Controller
             DB::raw('TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) AS usia'),
             'data_peserta.jenis_kelamin',
             'tbl_pekerjaan.nama_pekerjaan AS pekerjaan',
-            DB::raw("
-                CASE
-                    WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) <= 13 THEN 'Pra-remaja'
-                    WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) <= 16 THEN 'Remaja'
-                    ELSE 'Muda - mudi / Usia Nikah'
-                END AS status_kelas
-            "),
+            DB::raw("CASE
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 3 AND 6 THEN 'Paud'
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 7 AND 12 THEN 'Caberawit'
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 13 AND 15 THEN 'Pra-remaja'
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 16 AND 18 THEN 'Remaja'
+                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) >= 19 THEN 'Muda - mudi / Usia Nikah'
+                ELSE 'Tidak dalam rentang usia'
+            END AS status_kelas"),
             'tabel_daerah.id AS daerah_id',
             'tabel_daerah.nama_daerah',
             'tabel_desa.id AS desa_id',

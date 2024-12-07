@@ -21,7 +21,6 @@ class LogsController extends Controller
         ], 200);
     }
 
-    // List os Logs
     public function list_os()
     {
         $logs_os = logs::select(['os'])
@@ -34,7 +33,6 @@ class LogsController extends Controller
         ], 200);
     }
 
-    // List device Logs
     public function list_device()
     {
         $logs_device = logs::select(['device'])
@@ -47,7 +45,6 @@ class LogsController extends Controller
         ], 200);
     }
 
-    // List status Logs
     public function list_status()
     {
         $logs_status = logs::select(['status_logs'])
@@ -88,9 +85,9 @@ class LogsController extends Controller
             'logs.longitude',
             'logs.created_at',
         ])
-        ->leftJoin('users', function ($join) {
-            $join->on('logs.user_id', '=', DB::raw('CAST(users.id AS CHAR)'));
-        });
+            ->leftJoin('users', function ($join) {
+                $join->on('logs.user_id', '=', DB::raw('CAST(users.id AS CHAR)'));
+            });
 
         $model->orderByRaw('logs.created_at IS NULL, logs.created_at DESC');
 
@@ -112,8 +109,8 @@ class LogsController extends Controller
 
         if (!empty($keyword) && empty($kolom)) {
             $model->where(function ($q) use ($keyword) {
-                $q->where('logs.aktifitas', 'LIKE', '%'.$keyword.'%')
-                ->orWhere('users.nama_lengkap', 'LIKE', '%'.$keyword.'%');
+                $q->where('logs.aktifitas', 'LIKE', '%' . $keyword . '%')
+                    ->orWhere('users.nama_lengkap', 'LIKE', '%' . $keyword . '%');
             });
         } elseif (!empty($keyword) && !empty($kolom)) {
             if ($kolom == 'aktifitas') {
@@ -122,7 +119,7 @@ class LogsController extends Controller
                 $kolom = 'users.nama_lengkap';
             }
 
-            $model->where($kolom, 'LIKE', '%'.$keyword.'%');
+            $model->where($kolom, 'LIKE', '%' . $keyword . '%');
         }
 
         $logUsers = $model->paginate($perPage);

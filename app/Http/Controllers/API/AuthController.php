@@ -199,6 +199,7 @@ class AuthController extends Controller
             'browser' => $agent->browser(),
             'os' => $agent->platform(),
             'device' => $agent->device(),
+            'engine_agent' => $request->header('user-agent'),
         ];
         logs::create($logAccount);
 
