@@ -7,10 +7,12 @@ use App\Models\tblCppdb;
 use App\Models\tblKelasPeserta;
 use App\Models\tblKlnderPndidikan;
 use App\Models\tblPengajar;
-use App\Models\tblPesertaDidik;
+use App\Models\dataSensusPeserta;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Jenssegers\Agent\Agent;
+use App\Models\logs;
 
 class CalonPPDBController extends Controller
 {
@@ -138,6 +140,8 @@ class CalonPPDBController extends Controller
 
     public function create(Request $request)
     {
+        $userId = Auth::id();
+        $agent = new Agent();
         function generateRandomCode($length = 5)
         {
             $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -221,7 +225,7 @@ class CalonPPDBController extends Controller
             ], 404);
         }
 
-        $tabel_peserta_didik = tblPesertaDidik::find($request->id_peserta);
+        $tabel_peserta_didik = dataSensusPeserta::find($request->id_peserta);
         if (!$tabel_peserta_didik) {
             return response()->json([
                 'message' => 'Peserta tidak ditemukan',
@@ -239,6 +243,18 @@ class CalonPPDBController extends Controller
 
         try {
             $table_calon_ppdb->save();
+
+            $logAccount = [
+                'user_id' => $userId,
+                'ip_address' => $request->ip(),
+                'aktifitas' => 'Create Data PPDB - [' . $table_calon_ppdb->kode_cari_ppdb . ']',
+                'status_logs' => 'successfully',
+                'browser' => $agent->browser(),
+                'os' => $agent->platform(),
+                'device' => $agent->device(),
+                'engine_agent' => $request->header('user-agent'),
+            ];
+            logs::create($logAccount);
         } catch (\Exception $exception) {
             return response()->json([
                 'message' => 'Gagal menambah Data PPDB' . $exception->getMessage(),
@@ -328,9 +344,11 @@ class CalonPPDBController extends Controller
 
     public function update(Request $request)
     {
+        $userId = Auth::id();
+        $agent = new Agent();
         $tabel_kelas_peserta = tblKelasPeserta::find($request->id_kelas);
         $tabel_pengajar_peserta = tblPengajar::find($request->id_pengajar);
-        $tabel_peserta_didik = tblPesertaDidik::find($request->id_peserta);
+        $tabel_peserta_didik = dataSensusPeserta::find($request->id_peserta);
         $tabel_petugas_peserta = User::find($request->id_petugas);
 
         $customMessages = [
@@ -405,12 +423,36 @@ class CalonPPDBController extends Controller
 
         if (!empty($table_calon_ppdb)) {
             try {
-                $table_calon_ppdb->update([
-                    'id' => $request->id,
+                $originalData = $table_calon_ppdb->getOriginal();
+
+                $table_calon_ppdb->fill([
                     'id_kelas' => $request->id_kelas,
                     'id_pengajar' => $request->id_pengajar,
                     'id_peserta' => $request->id_peserta,
                 ]);
+
+                $updatedFields = [];
+                foreach ($table_calon_ppdb->getDirty() as $field => $newValue) {
+                    $oldValue = $originalData[$field] ?? null; // Ambil nilai lama
+                    $updatedFields[] = "$field: [$oldValue] -> [$newValue]";
+                }
+
+                // Simpan perubahan ke database
+                $table_calon_ppdb->save();
+
+                // Log perubahan
+                $logAccount = [
+                    'user_id' => $userId,
+                    'ip_address' => $request->ip(),
+                    'aktifitas' => 'Update Data Penilaian PPDB',
+                    'status_logs' => 'successfully',
+                    'browser' => $agent->browser(),
+                    'os' => $agent->platform(),
+                    'device' => $agent->device(),
+                    'engine_agent' => $request->header('user-agent'),
+                    'updated_fields' => json_encode($updatedFields), // Simpan sebagai JSON
+                ];
+                logs::create($logAccount);
 
                 return response()->json([
                     'message' => 'Data PPDB berhasil diupdate',
@@ -419,7 +461,7 @@ class CalonPPDBController extends Controller
                 ], 200);
             } catch (\Exception $exception) {
                 return response()->json([
-                    'message' => 'Gagal mengupdate Data PPDB' . $exception->getMessage(),
+                    'message' => 'Gagal mengupdate Data PPDB: ' . $exception->getMessage(),
                     'success' => false,
                 ], 500);
             }
@@ -433,6 +475,9 @@ class CalonPPDBController extends Controller
 
     public function updatePenilaian(Request $request)
     {
+        $userId = Auth::id();
+        $agent = new Agent();
+
         $customMessages = [
             'required' => 'Kolom :attribute wajib diisi.',
             'unique' => ':attribute sudah terdaftar di sistem',
@@ -475,8 +520,10 @@ class CalonPPDBController extends Controller
 
         if (!empty($table_calon_ppdb)) {
             try {
-                $table_calon_ppdb->update([
-                    'id' => $request->id,
+
+                $originalData = $table_calon_ppdb->getOriginal();
+
+                $table_calon_ppdb->fill([
                     'nilai1' => $request->nilai1,
                     'nilai2' => $request->nilai2,
                     'nilai3' => $request->nilai3,
@@ -500,6 +547,29 @@ class CalonPPDBController extends Controller
                     'status_naik_kelas' => $request->status_naik_kelas,
                 ]);
 
+                $updatedFields = [];
+                foreach ($table_calon_ppdb->getDirty() as $field => $newValue) {
+                    $oldValue = $originalData[$field] ?? null; // Ambil nilai lama
+                    $updatedFields[] = "$field: [$oldValue] -> [$newValue]";
+                }
+
+                // Simpan perubahan ke database
+                $table_calon_ppdb->save();
+
+                // Log perubahan
+                $logAccount = [
+                    'user_id' => $userId,
+                    'ip_address' => $request->ip(),
+                    'aktifitas' => 'Update Data PPDB',
+                    'status_logs' => 'successfully',
+                    'browser' => $agent->browser(),
+                    'os' => $agent->platform(),
+                    'device' => $agent->device(),
+                    'engine_agent' => $request->header('user-agent'),
+                    'updated_fields' => json_encode($updatedFields), // Simpan sebagai JSON
+                ];
+                logs::create($logAccount);
+
                 return response()->json([
                     'message' => 'Data PPDB berhasil diupdate',
                     'data_ppdb' => $table_calon_ppdb,
@@ -521,8 +591,11 @@ class CalonPPDBController extends Controller
 
     public function delete(Request $request)
     {
+        $userId = Auth::id();
+        $agent = new Agent();
+
         $request->validate([
-            'id' => 'required',
+            'id' => 'required|numeric|digits_between:1,5',
         ]);
 
         $table_calon_ppdb = tblCppdb::where('id', '=', $request->id)
@@ -532,6 +605,18 @@ class CalonPPDBController extends Controller
             try {
                 $table_calon_ppdb = tblCppdb::where('id', '=', $request->id)
                     ->delete();
+
+                $logAccount = [
+                    'user_id' => $userId,
+                    'ip_address' => $request->ip(),
+                    'aktifitas' => 'Delete Data PPDB - [' . $table_calon_ppdb->id . '] - [' . $table_calon_ppdb->nama_lengkap . ']',
+                    'status_logs' => 'successfully',
+                    'browser' => $agent->browser(),
+                    'os' => $agent->platform(),
+                    'device' => $agent->device(),
+                    'engine_agent' => $request->header('user-agent'),
+                ];
+                logs::create($logAccount);
 
                 return response()->json([
                     'message' => 'Data PPDB berhasil dihapus',

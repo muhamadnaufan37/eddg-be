@@ -8,6 +8,8 @@ use App\Models\dataDesa;
 use App\Models\dataKelompok;
 use App\Models\dataSensusPeserta;
 use App\Models\tblCppdb;
+use Jenssegers\Agent\Agent;
+use App\Models\logs;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -219,6 +221,7 @@ class PesertaDidikController extends Controller
         $tabel_desa = dataDesa::find($request->tmpt_desa);
         $tabel_kelompok = dataKelompok::find($request->tmpt_kelompok);
         $userId = Auth::id();
+        $agent = new Agent();
 
         $customMessages = [
             'required' => 'Kolom :attribute wajib diisi.',
@@ -326,6 +329,18 @@ class PesertaDidikController extends Controller
             }
 
             $table_peserta_didik->save();
+
+            $logAccount = [
+                'user_id' => $userId,
+                'ip_address' => $request->ip(),
+                'aktifitas' => 'Create Data Peserta Didik - [' . $table_peserta_didik->id . '] - [' . $table_peserta_didik->nama_lengkap . ']',
+                'status_logs' => 'successfully',
+                'browser' => $agent->browser(),
+                'os' => $agent->platform(),
+                'device' => $agent->device(),
+                'engine_agent' => $request->header('user-agent'),
+            ];
+            logs::create($logAccount);
         } catch (\Exception $exception) {
             return response()->json([
                 'message' => 'Gagal menambah Data Peserta Didik' . $exception->getMessage(),
@@ -410,10 +425,11 @@ class PesertaDidikController extends Controller
 
     public function update(Request $request)
     {
+        $userId = Auth::id();
+        $agent = new Agent();
         $tabel_daerah = dataDaerah::find($request->tmpt_daerah);
         $tabel_desa = dataDesa::find($request->tmpt_desa);
         $tabel_kelompok = dataKelompok::find($request->tmpt_kelompok);
-        $userId = Auth::id();
 
         $customMessages = [
             'required' => 'Kolom :attribute wajib diisi.',
@@ -448,75 +464,114 @@ class PesertaDidikController extends Controller
         $table_peserta_didik = dataSensusPeserta::where('id', '=', $request->id)
             ->first();
 
-        if (!empty($table_peserta_didik)) {
-            try {
-                // Validasi referensi
-                if (!$tabel_daerah || !$tabel_desa || !$tabel_kelompok || !$userId) {
-                    return response()->json([
-                        'message' => 'Data referensi tidak valid',
-                        'success' => false,
-                    ], 404);
-                }
+        if (!$table_peserta_didik) {
+            return response()->json([
+                'message' => 'Data tidak ditemukan',
+                'success' => false,
+            ], 404);
+        }
 
-                // Periksa apakah ada gambar baru yang diunggah
-                if ($request->hasFile('img')) {
-                    $request->validate([
-                        'img' => 'nullable|image|mimes:jpg,png|max:5120',
-                    ], $customMessages);
-                    $oldImgPath = storage_path('public/images/sensus/' . $table_peserta_didik->img);
-
-                    // Hapus file lama jika ada
-                    if (file_exists($oldImgPath) && $table_peserta_didik->img) {
-                        unlink($oldImgPath);
-                    }
-
-                    // Save the file to the 'public/images/sensus' directory
-                    $newImg = $request->file('img');
-                    $namaFile = Str::slug($table_peserta_didik->nama_lengkap) . '.' . $newImg->getClientOriginalExtension();
-                    $path = $newImg->storeAs('public/images/sensus', $namaFile);
-                    $table_peserta_didik->img = $path;
-                }
-
-                $table_peserta_didik->update([
-                    'id' => $request->id,
-                    'nama_lengkap' => $request->nama_lengkap,
-                    'nama_panggilan' => ucwords(strtolower($request->nama_panggilan)),
-                    'tempat_lahir' => ucwords(strtolower($request->tempat_lahir)),
-                    'tanggal_lahir' => $request->tanggal_lahir,
-                    'alamat' => ucwords(strtolower($request->alamat)),
-                    'jenis_kelamin' => $request->jenis_kelamin,
-                    'nama_ayah' => $request->nama_ayah,
-                    'nama_ibu' => $request->nama_ibu,
-                    'hoby' => $request->hoby,
-                    'status_sambung' => $request->status_sambung,
-                    'status_atlet_asad' => $request->status_atlet_asad,
-                    'tmpt_daerah' => $request->tmpt_daerah,
-                    'tmpt_desa' => $request->tmpt_desa,
-                    'tmpt_kelompok' => $request->tmpt_kelompok,
-                ]);
-            } catch (\Exception $exception) {
+        try {
+            if (!$tabel_daerah) {
                 return response()->json([
-                    'message' => 'Gagal mengupdate Data' . $exception->getMessage(),
+                    'message' => 'Daerah tidak ditemukan',
                     'success' => false,
-                ], 500);
+                ], 404);
             }
+
+            if (!$tabel_desa) {
+                return response()->json([
+                    'message' => 'Desa tidak ditemukan',
+                    'success' => false,
+                ], 404);
+            }
+
+            if (!$tabel_kelompok) {
+                return response()->json([
+                    'message' => 'Kelompok tidak ditemukan',
+                    'success' => false,
+                ], 404);
+            }
+
+            $originalData = $table_peserta_didik->getOriginal();
+
+            $table_peserta_didik->fill([
+                'nama_lengkap' => $request->nama_lengkap,
+                'nama_panggilan' => ucwords(strtolower($request->nama_panggilan)),
+                'tempat_lahir' => ucwords(strtolower($request->tempat_lahir)),
+                'tanggal_lahir' => $request->tanggal_lahir,
+                'alamat' => ucwords(strtolower($request->alamat)),
+                'jenis_kelamin' => $request->jenis_kelamin,
+                'nama_ayah' => $request->nama_ayah,
+                'nama_ibu' => $request->nama_ibu,
+                'hoby' => $request->hoby,
+                'status_sambung' => $request->status_sambung,
+                'status_atlet_asad' => $request->status_atlet_asad,
+                'tmpt_daerah' => $request->tmpt_daerah,
+                'tmpt_desa' => $request->tmpt_desa,
+                'tmpt_kelompok' => $request->tmpt_kelompok,
+                'img' => $request->img,
+            ]);
+
+            if ($request->hasFile('img')) {
+                $request->validate([
+                    'img' => 'nullable|image|mimes:jpg,png|max:5120',
+                ], $customMessages);
+                $oldImgPath = storage_path('public/images/sensus/' . $table_peserta_didik->img);
+
+                // Hapus file lama jika ada
+                if (file_exists($oldImgPath) && $table_peserta_didik->img) {
+                    unlink($oldImgPath);
+                }
+
+                // Save the file to the 'public/images/sensus' directory
+                $newImg = $request->file('img');
+                $namaFile = Str::slug($table_peserta_didik->nama_lengkap) . '.' . $newImg->getClientOriginalExtension();
+                $path = $newImg->storeAs('public/images/sensus', $namaFile);
+                $table_peserta_didik->img = $path;
+            }
+
+            $updatedFields = [];
+            foreach ($table_peserta_didik->getDirty() as $field => $newValue) {
+                $oldValue = $originalData[$field] ?? null; // Ambil nilai lama
+                $updatedFields[] = "$field: [$oldValue] -> [$newValue]";
+            }
+
+            // Simpan perubahan ke database
+            $table_peserta_didik->save();
+
+            // Log perubahan
+            $logAccount = [
+                'user_id' => $userId,
+                'ip_address' => $request->ip(),
+                'aktifitas' => 'Update Data Peserta Didik - [' . $table_peserta_didik->id . '] - [' . $table_peserta_didik->nama_lengkap . ']',
+                'status_logs' => 'successfully',
+                'browser' => $agent->browser(),
+                'os' => $agent->platform(),
+                'device' => $agent->device(),
+                'engine_agent' => $request->header('user-agent'),
+                'updated_fields' => json_encode($updatedFields), // Simpan sebagai JSON
+            ];
+            logs::create($logAccount);
 
             return response()->json([
                 'message' => 'Data Peserta Didik berhasil diupdate',
                 'data_peserta_didik' => $table_peserta_didik,
                 'success' => true,
             ], 200);
+        } catch (\Exception $exception) {
+            return response()->json([
+                'message' => 'Gagal mengupdate Data: ' . $exception->getMessage(),
+                'success' => false,
+            ], 500);
         }
-
-        return response()->json([
-            'message' => 'Data tidak ditemukan',
-            'success' => false,
-        ], 200);
     }
 
     public function delete(Request $request)
     {
-        // Validasi permintaan untuk memastikan 'id' tersedia dan berupa angka
+        $userId = Auth::id();
+        $agent = new Agent();
+
         $request->validate([
             'id' => 'required|numeric|digits_between:1,5',
         ]);
@@ -547,6 +602,18 @@ class PesertaDidikController extends Controller
 
                 // Lanjutkan untuk menghapus data Peserta Didik
                 $table_peserta_didik->delete();
+
+                $logAccount = [
+                    'user_id' => $userId,
+                    'ip_address' => $request->ip(),
+                    'aktifitas' => 'Delete Data Peserta Didik - [' . $table_peserta_didik->id . '] - [' . $table_peserta_didik->nama_lengkap . ']',
+                    'status_logs' => 'successfully',
+                    'browser' => $agent->browser(),
+                    'os' => $agent->platform(),
+                    'device' => $agent->device(),
+                    'engine_agent' => $request->header('user-agent'),
+                ];
+                logs::create($logAccount);
 
                 return response()->json([
                     'message' => 'Data Peserta Didik berhasil dihapus beserta file terkait',

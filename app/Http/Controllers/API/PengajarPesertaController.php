@@ -10,6 +10,8 @@ use App\Models\tblCppdb;
 use App\Models\tblPengajar;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Jenssegers\Agent\Agent;
+use App\Models\logs;
 
 class PengajarPesertaController extends Controller
 {
@@ -103,6 +105,7 @@ class PengajarPesertaController extends Controller
         $tabel_desa = dataDesa::find($request->tmpt_desa);
         $tabel_kelompok = dataKelompok::find($request->tmpt_kelompok);
         $userId = Auth::id();
+        $agent = new Agent();
 
         $customMessages = [
             'required' => 'Kolom :attribute wajib diisi.',
@@ -161,6 +164,18 @@ class PengajarPesertaController extends Controller
             }
 
             $table_pengajar->save();
+
+            $logAccount = [
+                'user_id' => $userId,
+                'ip_address' => $request->ip(),
+                'aktifitas' => 'Create Data Pengajar - [' . $table_pengajar->nama_pengajar . ']',
+                'status_logs' => 'successfully',
+                'browser' => $agent->browser(),
+                'os' => $agent->platform(),
+                'device' => $agent->device(),
+                'engine_agent' => $request->header('user-agent'),
+            ];
+            logs::create($logAccount);
         } catch (\Exception $exception) {
             return response()->json([
                 'message' => 'Gagal menambah Data Pengajar' . $exception->getMessage(),
@@ -220,6 +235,8 @@ class PengajarPesertaController extends Controller
 
     public function update(Request $request)
     {
+        $userId = Auth::id();
+        $agent = new Agent();
         $tabel_daerah = dataDaerah::find($request->tmpt_daerah);
         $tabel_desa = dataDesa::find($request->tmpt_desa);
         $tabel_kelompok = dataKelompok::find($request->tmpt_kelompok);
@@ -271,14 +288,36 @@ class PengajarPesertaController extends Controller
                     ], 404);
                 }
 
-                $table_pengajar->update([
-                    'id' => $request->id,
+                $originalData = $table_pengajar->getOriginal();
+
+                $table_pengajar->fill([
                     'nama_pengajar' => $request->nama_pengajar,
                     'status_pengajar' => $request->status_pengajar,
                     'tmpt_daerah' => $request->tmpt_daerah,
                     'tmpt_desa' => $request->tmpt_desa,
                     'tmpt_kelompok' => $request->tmpt_kelompok,
                 ]);
+
+                $updatedFields = [];
+                foreach ($table_pengajar->getDirty() as $field => $newValue) {
+                    $oldValue = $originalData[$field] ?? null; // Ambil nilai lama
+                    $updatedFields[] = "$field: [$oldValue] -> [$newValue]";
+                }
+
+                $table_pengajar->save();
+
+                $logAccount = [
+                    'user_id' => $userId,
+                    'ip_address' => $request->ip(),
+                    'aktifitas' => 'Update Data Pengajar',
+                    'status_logs' => 'successfully',
+                    'browser' => $agent->browser(),
+                    'os' => $agent->platform(),
+                    'device' => $agent->device(),
+                    'engine_agent' => $request->header('user-agent'),
+                    'updated_fields' => json_encode($updatedFields),
+                ];
+                logs::create($logAccount);
             } catch (\Exception $exception) {
                 return response()->json([
                     'message' => 'Gagal mengupdate Data' . $exception->getMessage(),
@@ -301,20 +340,19 @@ class PengajarPesertaController extends Controller
 
     public function delete(Request $request)
     {
-        // Validate the request to ensure 'id' is provided and is numeric
+        $userId = Auth::id();
+        $agent = new Agent();
+
         $request->validate([
             'id' => 'required|numeric|digits_between:1,5',
         ]);
 
-        // Retrieve the Pengajar record with the given ID
         $table_pengajar = tblPengajar::where('id', '=', $request->id)->first();
 
         if (!empty($table_pengajar)) {
-            // Check if the Pengajar ID exists in the cppdb table
             $existsInCppdb = tblCppdb::where('id_pengajar', '=', $request->id)->exists();
 
             if ($existsInCppdb) {
-                // If the Pengajar is registered in cppdb, prevent deletion
                 return response()->json([
                     'message' => 'Data Pengajar tidak dapat dihapus karena sudah terdaftar dan digunakan di tabel lain',
                     'success' => false,
@@ -322,15 +360,25 @@ class PengajarPesertaController extends Controller
             }
 
             try {
-                // Proceed to delete the Pengajar record if it is not registered in cppdb
                 tblPengajar::where('id', '=', $request->id)->delete();
+
+                $logAccount = [
+                    'user_id' => $userId,
+                    'ip_address' => $request->ip(),
+                    'aktifitas' => 'Delete Data Pengajar - [' . $table_pengajar->nama_pengajar . ']',
+                    'status_logs' => 'successfully',
+                    'browser' => $agent->browser(),
+                    'os' => $agent->platform(),
+                    'device' => $agent->device(),
+                    'engine_agent' => $request->header('user-agent'),
+                ];
+                logs::create($logAccount);
 
                 return response()->json([
                     'message' => 'Data berhasil dihapus',
                     'success' => true,
                 ], 200);
             } catch (\Exception $exception) {
-                // Return an error response if deletion fails
                 return response()->json([
                     'message' => 'Gagal menghapus Data: ' . $exception->getMessage(),
                     'success' => false,
@@ -338,7 +386,6 @@ class PengajarPesertaController extends Controller
             }
         }
 
-        // Return a response if the Pengajar record is not found
         return response()->json([
             'message' => 'Data tidak ditemukan',
             'success' => false,

@@ -81,8 +81,10 @@ class LogsController extends Controller
             'logs.browser',
             'logs.os',
             'logs.device',
+            'logs.engine_agent',
             'logs.latitude',
             'logs.longitude',
+            'logs.updated_fields',
             'logs.created_at',
         ])
             ->leftJoin('users', function ($join) {

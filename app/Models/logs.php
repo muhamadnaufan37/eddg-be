@@ -19,6 +19,7 @@ class logs extends Model
         'os',
         'device',
         'engine_agent',
+        'updated_fields',
         'continent_name',
         'country_code2',
         'country_code3',
