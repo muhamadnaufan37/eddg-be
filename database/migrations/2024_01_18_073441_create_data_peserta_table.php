@@ -32,8 +32,9 @@ return new class extends Migration {
             $table->foreignId('tmpt_desa')->nullable();
             $table->foreignId('tmpt_kelompok')->nullable();
             $table->boolean('status_atlet_asad')->default(0);
+            $table->enum('jenis_kelamin', ['SENSUS', 'KBM']);
+            $table->text('img')->nullable();
             $table->foreignId('user_id');
-            $table->text('img_profile')->nullable();
             $table->timestamps();
         });
     }

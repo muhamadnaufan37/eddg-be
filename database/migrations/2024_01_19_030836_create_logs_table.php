@@ -19,6 +19,7 @@ return new class() extends Migration {
             $table->string('browser');
             $table->string('os');
             $table->string('device');
+            $table->text('engine_agent');
             $table->string('latitude')->nullable();
             $table->string('longitude')->nullable();
             $table->timestamps();

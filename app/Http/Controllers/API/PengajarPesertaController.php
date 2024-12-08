@@ -6,9 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\dataDaerah;
 use App\Models\dataDesa;
 use App\Models\dataKelompok;
+use App\Models\tblCppdb;
 use App\Models\tblPengajar;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Jenssegers\Agent\Agent;
+use App\Models\logs;
 
 class PengajarPesertaController extends Controller
 {
@@ -78,11 +81,11 @@ class PengajarPesertaController extends Controller
 
         if (!empty($keyword)) {
             $model->where(function ($q) use ($keyword) {
-                $q->where('pengajar.nama_pengajar', 'LIKE', '%'.$keyword.'%')
-                    ->orWhere('tabel_daerah.nama_daerah', 'LIKE', '%'.$keyword.'%')
-                    ->orWhere('tabel_desa.nama_desa', 'LIKE', '%'.$keyword.'%')
-                    ->orWhere('tabel_kelompok.nama_kelompok', 'LIKE', '%'.$keyword.'%')
-                    ->orWhere('users.nama_lengkap', 'LIKE', '%'.$keyword.'%');
+                $q->where('pengajar.nama_pengajar', 'LIKE', '%' . $keyword . '%')
+                    ->orWhere('tabel_daerah.nama_daerah', 'LIKE', '%' . $keyword . '%')
+                    ->orWhere('tabel_desa.nama_desa', 'LIKE', '%' . $keyword . '%')
+                    ->orWhere('tabel_kelompok.nama_kelompok', 'LIKE', '%' . $keyword . '%')
+                    ->orWhere('users.nama_lengkap', 'LIKE', '%' . $keyword . '%');
             });
         }
 
@@ -102,6 +105,7 @@ class PengajarPesertaController extends Controller
         $tabel_desa = dataDesa::find($request->tmpt_desa);
         $tabel_kelompok = dataKelompok::find($request->tmpt_kelompok);
         $userId = Auth::id();
+        $agent = new Agent();
 
         $customMessages = [
             'required' => 'Kolom :attribute wajib diisi.',
@@ -160,9 +164,21 @@ class PengajarPesertaController extends Controller
             }
 
             $table_pengajar->save();
+
+            $logAccount = [
+                'user_id' => $userId,
+                'ip_address' => $request->ip(),
+                'aktifitas' => 'Create Data Pengajar - [' . $table_pengajar->nama_pengajar . ']',
+                'status_logs' => 'successfully',
+                'browser' => $agent->browser(),
+                'os' => $agent->platform(),
+                'device' => $agent->device(),
+                'engine_agent' => $request->header('user-agent'),
+            ];
+            logs::create($logAccount);
         } catch (\Exception $exception) {
             return response()->json([
-                'message' => 'Gagal menambah Data Pengajar'.$exception->getMessage(),
+                'message' => 'Gagal menambah Data Pengajar' . $exception->getMessage(),
                 'success' => false,
             ], 500);
         }
@@ -219,6 +235,8 @@ class PengajarPesertaController extends Controller
 
     public function update(Request $request)
     {
+        $userId = Auth::id();
+        $agent = new Agent();
         $tabel_daerah = dataDaerah::find($request->tmpt_daerah);
         $tabel_desa = dataDesa::find($request->tmpt_desa);
         $tabel_kelompok = dataKelompok::find($request->tmpt_kelompok);
@@ -237,7 +255,7 @@ class PengajarPesertaController extends Controller
 
         $request->validate([
             'id' => 'required|numeric|digits_between:1,5',
-            'nama_pengajar' => 'sometimes|required|max:225|string|unique:pengajar,nama_pengajar,'.$request->id.',id',
+            'nama_pengajar' => 'sometimes|required|max:225|string|unique:pengajar,nama_pengajar,' . $request->id . ',id',
             'status_pengajar' => 'required',
             'tmpt_daerah' => 'required|integer|digits_between:1,5',
             'tmpt_desa' => 'nullable|integer|digits_between:1,5',
@@ -270,17 +288,39 @@ class PengajarPesertaController extends Controller
                     ], 404);
                 }
 
-                $table_pengajar->update([
-                    'id' => $request->id,
+                $originalData = $table_pengajar->getOriginal();
+
+                $table_pengajar->fill([
                     'nama_pengajar' => $request->nama_pengajar,
                     'status_pengajar' => $request->status_pengajar,
                     'tmpt_daerah' => $request->tmpt_daerah,
                     'tmpt_desa' => $request->tmpt_desa,
                     'tmpt_kelompok' => $request->tmpt_kelompok,
                 ]);
+
+                $updatedFields = [];
+                foreach ($table_pengajar->getDirty() as $field => $newValue) {
+                    $oldValue = $originalData[$field] ?? null; // Ambil nilai lama
+                    $updatedFields[] = "$field: [$oldValue] -> [$newValue]";
+                }
+
+                $table_pengajar->save();
+
+                $logAccount = [
+                    'user_id' => $userId,
+                    'ip_address' => $request->ip(),
+                    'aktifitas' => 'Update Data Pengajar',
+                    'status_logs' => 'successfully',
+                    'browser' => $agent->browser(),
+                    'os' => $agent->platform(),
+                    'device' => $agent->device(),
+                    'engine_agent' => $request->header('user-agent'),
+                    'updated_fields' => json_encode($updatedFields),
+                ];
+                logs::create($logAccount);
             } catch (\Exception $exception) {
                 return response()->json([
-                    'message' => 'Gagal mengupdate Data'.$exception->getMessage(),
+                    'message' => 'Gagal mengupdate Data' . $exception->getMessage(),
                     'success' => false,
                 ], 500);
             }
@@ -300,17 +340,39 @@ class PengajarPesertaController extends Controller
 
     public function delete(Request $request)
     {
+        $userId = Auth::id();
+        $agent = new Agent();
+
         $request->validate([
             'id' => 'required|numeric|digits_between:1,5',
         ]);
 
-        $table_pengajar = tblPengajar::where('id', '=', $request->id)
-            ->first();
+        $table_pengajar = tblPengajar::where('id', '=', $request->id)->first();
 
         if (!empty($table_pengajar)) {
+            $existsInCppdb = tblCppdb::where('id_pengajar', '=', $request->id)->exists();
+
+            if ($existsInCppdb) {
+                return response()->json([
+                    'message' => 'Data Pengajar tidak dapat dihapus karena sudah terdaftar dan digunakan di tabel lain',
+                    'success' => false,
+                ], 409);
+            }
+
             try {
-                $table_pengajar = tblPengajar::where('id', '=', $request->id)
-                    ->delete();
+                tblPengajar::where('id', '=', $request->id)->delete();
+
+                $logAccount = [
+                    'user_id' => $userId,
+                    'ip_address' => $request->ip(),
+                    'aktifitas' => 'Delete Data Pengajar - [' . $table_pengajar->nama_pengajar . ']',
+                    'status_logs' => 'successfully',
+                    'browser' => $agent->browser(),
+                    'os' => $agent->platform(),
+                    'device' => $agent->device(),
+                    'engine_agent' => $request->header('user-agent'),
+                ];
+                logs::create($logAccount);
 
                 return response()->json([
                     'message' => 'Data berhasil dihapus',
@@ -318,7 +380,7 @@ class PengajarPesertaController extends Controller
                 ], 200);
             } catch (\Exception $exception) {
                 return response()->json([
-                    'message' => 'Gagal menghapus Data'.$exception->getMessage(),
+                    'message' => 'Gagal menghapus Data: ' . $exception->getMessage(),
                     'success' => false,
                 ], 500);
             }
@@ -327,6 +389,6 @@ class PengajarPesertaController extends Controller
         return response()->json([
             'message' => 'Data tidak ditemukan',
             'success' => false,
-        ], 200);
+        ], 404);
     }
 }

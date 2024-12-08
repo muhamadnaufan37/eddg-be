@@ -7,10 +7,12 @@ use App\Models\tblCppdb;
 use App\Models\tblKelasPeserta;
 use App\Models\tblKlnderPndidikan;
 use App\Models\tblPengajar;
-use App\Models\tblPesertaDidik;
+use App\Models\dataSensusPeserta;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Jenssegers\Agent\Agent;
+use App\Models\logs;
 
 class CalonPPDBController extends Controller
 {
@@ -31,7 +33,7 @@ class CalonPPDBController extends Controller
             'kalender_pendidikan.semester_pelajaran AS semester_akademik',
             'kelas_peserta_didik.nama_kelas',
             'pengajar.nama_pengajar',
-            'peserta_didik.nama_lengkap AS nama_peserta',
+            'data_peserta.nama_lengkap AS nama_peserta',
             'users.nama_lengkap AS nama_petugas',
             'cppdb.status_naik_kelas',
             'cppdb.created_at',
@@ -39,7 +41,7 @@ class CalonPPDBController extends Controller
             ->leftJoin('kalender_pendidikan', 'cppdb.id_thn_akademik', '=', 'kalender_pendidikan.id')
             ->leftJoin('kelas_peserta_didik', 'cppdb.id_kelas', '=', 'kelas_peserta_didik.id')
             ->leftJoin('pengajar', 'cppdb.id_pengajar', '=', 'pengajar.id')
-            ->leftJoin('peserta_didik', 'cppdb.id_peserta', '=', 'peserta_didik.id')
+            ->leftJoin('data_peserta', 'cppdb.id_peserta', '=', 'data_peserta.id')
             ->leftJoin('users', 'cppdb.id_petugas', '=', 'users.id')
             ->where('kalender_pendidikan.status_pelajaran', 1);
 
@@ -48,12 +50,11 @@ class CalonPPDBController extends Controller
 
         if (!empty($keyword)) {
             $model->where(function ($query) use ($keyword) {
-                $query->where('peserta_didik.nama_lengkap', 'LIKE', '%' . $keyword . '%')
+                $query->where('data_peserta.nama_lengkap', 'LIKE', '%' . $keyword . '%')
                     ->orWhere('cppdb.kode_cari_ppdb', 'LIKE', '%' . $keyword . '%')
                     ->orWhere('kalender_pendidikan.tahun_pelajaran', 'LIKE', '%' . $keyword . '%')
                     ->orWhere('kelas_peserta_didik.nama_kelas', 'LIKE', '%' . $keyword . '%')
                     ->orWhere('pengajar.nama_pengajar', 'LIKE', '%' . $keyword . '%')
-                    ->orWhere('peserta_didik.nama_lengkap', 'LIKE', '%' . $keyword . '%')
                     ->orWhere('users.nama_lengkap', 'LIKE', '%' . $keyword . '%');
             });
         }
@@ -93,7 +94,7 @@ class CalonPPDBController extends Controller
             'kalender_pendidikan.semester_pelajaran AS semester_akademik',
             'kelas_peserta_didik.nama_kelas',
             'pengajar.nama_pengajar',
-            'peserta_didik.nama_lengkap AS nama_peserta',
+            'data_peserta.nama_lengkap AS nama_peserta',
             'users.nama_lengkap AS nama_petugas',
             'cppdb.status_naik_kelas',
             'cppdb.created_at',
@@ -101,7 +102,7 @@ class CalonPPDBController extends Controller
             ->leftJoin('kalender_pendidikan', 'cppdb.id_thn_akademik', '=', 'kalender_pendidikan.id')
             ->leftJoin('kelas_peserta_didik', 'cppdb.id_kelas', '=', 'kelas_peserta_didik.id')
             ->leftJoin('pengajar', 'cppdb.id_pengajar', '=', 'pengajar.id')
-            ->leftJoin('peserta_didik', 'cppdb.id_peserta', '=', 'peserta_didik.id')
+            ->leftJoin('data_peserta', 'cppdb.id_peserta', '=', 'data_peserta.id')
             ->leftJoin('users', 'cppdb.id_petugas', '=', 'users.id')
             ->where('kalender_pendidikan.status_pelajaran', 1);
 
@@ -118,12 +119,11 @@ class CalonPPDBController extends Controller
 
         if (!empty($keyword)) {
             $model->where(function ($query) use ($keyword) {
-                $query->where('peserta_didik.nama_lengkap', 'LIKE', '%' . $keyword . '%')
+                $query->where('data_peserta.nama_lengkap', 'LIKE', '%' . $keyword . '%')
                     ->orWhere('cppdb.kode_cari_ppdb', 'LIKE', '%' . $keyword . '%')
                     ->orWhere('kalender_pendidikan.tahun_pelajaran', 'LIKE', '%' . $keyword . '%')
                     ->orWhere('kelas_peserta_didik.nama_kelas', 'LIKE', '%' . $keyword . '%')
                     ->orWhere('pengajar.nama_pengajar', 'LIKE', '%' . $keyword . '%')
-                    ->orWhere('peserta_didik.nama_lengkap', 'LIKE', '%' . $keyword . '%')
                     ->orWhere('users.nama_lengkap', 'LIKE', '%' . $keyword . '%');
             });
         }
@@ -140,6 +140,8 @@ class CalonPPDBController extends Controller
 
     public function create(Request $request)
     {
+        $userId = Auth::id();
+        $agent = new Agent();
         function generateRandomCode($length = 5)
         {
             $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -223,7 +225,7 @@ class CalonPPDBController extends Controller
             ], 404);
         }
 
-        $tabel_peserta_didik = tblPesertaDidik::find($request->id_peserta);
+        $tabel_peserta_didik = dataSensusPeserta::find($request->id_peserta);
         if (!$tabel_peserta_didik) {
             return response()->json([
                 'message' => 'Peserta tidak ditemukan',
@@ -241,6 +243,18 @@ class CalonPPDBController extends Controller
 
         try {
             $table_calon_ppdb->save();
+
+            $logAccount = [
+                'user_id' => $userId,
+                'ip_address' => $request->ip(),
+                'aktifitas' => 'Create Data PPDB - [' . $table_calon_ppdb->kode_cari_ppdb . ']',
+                'status_logs' => 'successfully',
+                'browser' => $agent->browser(),
+                'os' => $agent->platform(),
+                'device' => $agent->device(),
+                'engine_agent' => $request->header('user-agent'),
+            ];
+            logs::create($logAccount);
         } catch (\Exception $exception) {
             return response()->json([
                 'message' => 'Gagal menambah Data PPDB' . $exception->getMessage(),
@@ -274,9 +288,9 @@ class CalonPPDBController extends Controller
             'kalender_pendidikan.semester_pelajaran AS semester_akademik',
             'kelas_peserta_didik.nama_kelas',
             'pengajar.nama_pengajar',
-            'peserta_didik.nomor_induk_santri',
-            'peserta_didik.nama_lengkap AS nama_peserta',
-            'peserta_didik.nama_ortu',
+            'data_peserta.kode_cari_data',
+            'data_peserta.nama_lengkap AS nama_peserta',
+            'data_peserta.nama_ayah',
             'tabel_daerah.nama_daerah', // Mengambil nama daerah dari tabel daerah
             'tabel_desa.nama_desa', // Mengambil nama desa dari tabel desa
             'tabel_kelompok.nama_kelompok', // Mengambil nama kelompok dari tabel kelompok
@@ -301,16 +315,17 @@ class CalonPPDBController extends Controller
             'cppdb.nilai_presensi_2',
             'cppdb.nilai_presensi_3',
             'cppdb.catatan_ortu',
+            'cppdb.tmpt_penetapan',
             'cppdb.status_naik_kelas',
         ])
             ->leftJoin('kalender_pendidikan', 'cppdb.id_thn_akademik', '=', 'kalender_pendidikan.id')
             ->leftJoin('kelas_peserta_didik', 'cppdb.id_kelas', '=', 'kelas_peserta_didik.id')
             ->leftJoin('pengajar', 'cppdb.id_pengajar', '=', 'pengajar.id')
-            ->leftJoin('peserta_didik', 'cppdb.id_peserta', '=', 'peserta_didik.id')
+            ->leftJoin('data_peserta', 'cppdb.id_peserta', '=', 'data_peserta.id')
             ->leftJoin('users', 'cppdb.id_petugas', '=', 'users.id')
-            ->leftJoin('tabel_daerah', 'peserta_didik.tmpt_daerah', '=', 'tabel_daerah.id') // Menghubungkan tabel desa
-            ->leftJoin('tabel_desa', 'peserta_didik.tmpt_desa', '=', 'tabel_desa.id') // Menghubungkan tabel desa
-            ->leftJoin('tabel_kelompok', 'peserta_didik.tmpt_kelompok', '=', 'tabel_kelompok.id') // Menghubungkan tabel kelompok
+            ->leftJoin('tabel_daerah', 'data_peserta.tmpt_daerah', '=', 'tabel_daerah.id') // Menghubungkan tabel desa
+            ->leftJoin('tabel_desa', 'data_peserta.tmpt_desa', '=', 'tabel_desa.id') // Menghubungkan tabel desa
+            ->leftJoin('tabel_kelompok', 'data_peserta.tmpt_kelompok', '=', 'tabel_kelompok.id') // Menghubungkan tabel kelompok
             ->where('cppdb.id', $request->id)->first();
 
         if (!empty($table_calon_ppdb)) {
@@ -329,9 +344,11 @@ class CalonPPDBController extends Controller
 
     public function update(Request $request)
     {
+        $userId = Auth::id();
+        $agent = new Agent();
         $tabel_kelas_peserta = tblKelasPeserta::find($request->id_kelas);
         $tabel_pengajar_peserta = tblPengajar::find($request->id_pengajar);
-        $tabel_peserta_didik = tblPesertaDidik::find($request->id_peserta);
+        $tabel_peserta_didik = dataSensusPeserta::find($request->id_peserta);
         $tabel_petugas_peserta = User::find($request->id_petugas);
 
         $customMessages = [
@@ -406,12 +423,36 @@ class CalonPPDBController extends Controller
 
         if (!empty($table_calon_ppdb)) {
             try {
-                $table_calon_ppdb->update([
-                    'id' => $request->id,
+                $originalData = $table_calon_ppdb->getOriginal();
+
+                $table_calon_ppdb->fill([
                     'id_kelas' => $request->id_kelas,
                     'id_pengajar' => $request->id_pengajar,
                     'id_peserta' => $request->id_peserta,
                 ]);
+
+                $updatedFields = [];
+                foreach ($table_calon_ppdb->getDirty() as $field => $newValue) {
+                    $oldValue = $originalData[$field] ?? null; // Ambil nilai lama
+                    $updatedFields[] = "$field: [$oldValue] -> [$newValue]";
+                }
+
+                // Simpan perubahan ke database
+                $table_calon_ppdb->save();
+
+                // Log perubahan
+                $logAccount = [
+                    'user_id' => $userId,
+                    'ip_address' => $request->ip(),
+                    'aktifitas' => 'Update Data Penilaian PPDB',
+                    'status_logs' => 'successfully',
+                    'browser' => $agent->browser(),
+                    'os' => $agent->platform(),
+                    'device' => $agent->device(),
+                    'engine_agent' => $request->header('user-agent'),
+                    'updated_fields' => json_encode($updatedFields), // Simpan sebagai JSON
+                ];
+                logs::create($logAccount);
 
                 return response()->json([
                     'message' => 'Data PPDB berhasil diupdate',
@@ -420,7 +461,7 @@ class CalonPPDBController extends Controller
                 ], 200);
             } catch (\Exception $exception) {
                 return response()->json([
-                    'message' => 'Gagal mengupdate Data PPDB' . $exception->getMessage(),
+                    'message' => 'Gagal mengupdate Data PPDB: ' . $exception->getMessage(),
                     'success' => false,
                 ], 500);
             }
@@ -434,6 +475,9 @@ class CalonPPDBController extends Controller
 
     public function updatePenilaian(Request $request)
     {
+        $userId = Auth::id();
+        $agent = new Agent();
+
         $customMessages = [
             'required' => 'Kolom :attribute wajib diisi.',
             'unique' => ':attribute sudah terdaftar di sistem',
@@ -467,6 +511,7 @@ class CalonPPDBController extends Controller
             'nilai_presensi_2' => 'required',
             'nilai_presensi_3' => 'required',
             'catatan_ortu' => 'required',
+            'tmpt_penetapan' => 'required',
             'status_naik_kelas' => 'required',
         ], $customMessages);
 
@@ -475,8 +520,10 @@ class CalonPPDBController extends Controller
 
         if (!empty($table_calon_ppdb)) {
             try {
-                $table_calon_ppdb->update([
-                    'id' => $request->id,
+
+                $originalData = $table_calon_ppdb->getOriginal();
+
+                $table_calon_ppdb->fill([
                     'nilai1' => $request->nilai1,
                     'nilai2' => $request->nilai2,
                     'nilai3' => $request->nilai3,
@@ -496,8 +543,32 @@ class CalonPPDBController extends Controller
                     'nilai_presensi_2' => $request->nilai_presensi_2,
                     'nilai_presensi_3' => $request->nilai_presensi_3,
                     'catatan_ortu' => $request->catatan_ortu,
+                    'tmpt_penetapan' => $request->tmpt_penetapan,
                     'status_naik_kelas' => $request->status_naik_kelas,
                 ]);
+
+                $updatedFields = [];
+                foreach ($table_calon_ppdb->getDirty() as $field => $newValue) {
+                    $oldValue = $originalData[$field] ?? null; // Ambil nilai lama
+                    $updatedFields[] = "$field: [$oldValue] -> [$newValue]";
+                }
+
+                // Simpan perubahan ke database
+                $table_calon_ppdb->save();
+
+                // Log perubahan
+                $logAccount = [
+                    'user_id' => $userId,
+                    'ip_address' => $request->ip(),
+                    'aktifitas' => 'Update Data PPDB',
+                    'status_logs' => 'successfully',
+                    'browser' => $agent->browser(),
+                    'os' => $agent->platform(),
+                    'device' => $agent->device(),
+                    'engine_agent' => $request->header('user-agent'),
+                    'updated_fields' => json_encode($updatedFields), // Simpan sebagai JSON
+                ];
+                logs::create($logAccount);
 
                 return response()->json([
                     'message' => 'Data PPDB berhasil diupdate',
@@ -520,8 +591,11 @@ class CalonPPDBController extends Controller
 
     public function delete(Request $request)
     {
+        $userId = Auth::id();
+        $agent = new Agent();
+
         $request->validate([
-            'id' => 'required',
+            'id' => 'required|numeric|digits_between:1,5',
         ]);
 
         $table_calon_ppdb = tblCppdb::where('id', '=', $request->id)
@@ -531,6 +605,18 @@ class CalonPPDBController extends Controller
             try {
                 $table_calon_ppdb = tblCppdb::where('id', '=', $request->id)
                     ->delete();
+
+                $logAccount = [
+                    'user_id' => $userId,
+                    'ip_address' => $request->ip(),
+                    'aktifitas' => 'Delete Data PPDB - [' . $table_calon_ppdb->id . '] - [' . $table_calon_ppdb->nama_lengkap . ']',
+                    'status_logs' => 'successfully',
+                    'browser' => $agent->browser(),
+                    'os' => $agent->platform(),
+                    'device' => $agent->device(),
+                    'engine_agent' => $request->header('user-agent'),
+                ];
+                logs::create($logAccount);
 
                 return response()->json([
                     'message' => 'Data PPDB berhasil dihapus',

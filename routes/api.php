@@ -15,6 +15,7 @@ use App\Http\Controllers\API\MappingTempatSambungController;
 use App\Http\Controllers\API\PekerjaanPesertaController;
 use App\Http\Controllers\API\PengajarPesertaController;
 use App\Http\Controllers\API\PesertaDidikController;
+use App\Http\Controllers\API\PresensiController;
 use App\Http\Controllers\API\ProfileController;
 use App\Http\Controllers\API\RerataNilaiController;
 use App\Http\Controllers\API\RolesController;
@@ -45,6 +46,15 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register_akun', [AuthController::class, 'register']);
 Route::post('/find_sensus', [DataSensusController::class, 'cari_data']);
 Route::get('/data_tempat_sambung', [StatistikTmptSmbngController::class, 'data_tempat_sambung']);
+Route::get('/protected/images/{filename}', function ($filename) {
+    $path = storage_path('app/images/sensus/' . $filename);
+
+    if (!file_exists($path)) {
+        abort(404);
+    }
+
+    return response()->file($path);
+})->name('protected.image');
 
 Route::middleware(['auth:sanctum'])->group(function () {
     // User Management
@@ -247,5 +257,17 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('getLaporanEvaluasi', [LaporanRaporController::class, 'getLaporanEvaluasi'])->middleware('role:1,4');
         Route::get('data_dashboard_ranking', [LaporanRaporController::class, 'data_dashboard_ranking'])->middleware('role:1,4');
         Route::get('getAverageNilai1', [LaporanRaporController::class, 'getAverageNilai1'])->middleware('role:1,4');
+    });
+
+    // Presensi Management
+    Route::group(['prefix' => '/presensi/'], function () {
+        Route::get('list', [PresensiController::class, 'list'])->middleware('role:1');
+        Route::post('create', [PresensiController::class, 'create'])->middleware('role:1');
+        Route::post('edit', [PresensiController::class, 'edit'])->middleware('role:1');
+        Route::post('update', [PresensiController::class, 'update'])->middleware('role:1');
+        Route::delete('delete', [PresensiController::class, 'delete'])->middleware('role:1');
+        Route::post('record_presensi_qrcode', [PresensiController::class, 'record_presensi_qrcode'])->middleware('role:1');
+        Route::post('record_presensi_manual', [PresensiController::class, 'record_presensi_manual'])->middleware('role:1');
+        Route::post('getPresensiReport', [PresensiController::class, 'getPresensiReport'])->middleware('role:1');
     });
 });

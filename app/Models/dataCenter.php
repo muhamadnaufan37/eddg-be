@@ -10,8 +10,10 @@ class dataCenter extends Model
     use HasFactory;
 
     protected $table = 'config';
-    public $timestamps = false;
-    public $incrementing = false;
 
-    protected $guarded = ['id'];
+    protected $fillable = [
+        'config_name',
+        'config_comment',
+        'config_status',
+    ];
 }
