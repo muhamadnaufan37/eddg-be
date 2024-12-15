@@ -45,7 +45,7 @@ class CalonPPDBController extends Controller
             ->leftJoin('users', 'cppdb.id_petugas', '=', 'users.id')
             ->where('kalender_pendidikan.status_pelajaran', 1);
 
-        // Apply orderByRaw before executing the query
+
         $model->orderByRaw('cppdb.created_at IS NULL, cppdb.created_at DESC');
 
         if (!empty($keyword)) {
@@ -598,18 +598,22 @@ class CalonPPDBController extends Controller
             'id' => 'required|numeric|digits_between:1,5',
         ]);
 
-        $table_calon_ppdb = tblCppdb::where('id', '=', $request->id)
-            ->first();
+        // Cari data terlebih dahulu
+        $table_calon_ppdb = tblCppdb::where('id', '=', $request->id)->first();
 
-        if (!empty($table_calon_ppdb)) {
+        if ($table_calon_ppdb) {
             try {
-                $table_calon_ppdb = tblCppdb::where('id', '=', $request->id)
-                    ->delete();
+                // Simpan data sebelum dihapus untuk log
+                $deletedData = $table_calon_ppdb->toArray();
 
+                // Hapus data
+                $table_calon_ppdb->delete();
+
+                // Buat log
                 $logAccount = [
                     'user_id' => $userId,
                     'ip_address' => $request->ip(),
-                    'aktifitas' => 'Delete Data PPDB - [' . $table_calon_ppdb->id . '] - [' . $table_calon_ppdb->nama_lengkap . ']',
+                    'aktifitas' => 'Delete Data PPDB - [' . $deletedData['id'] . ']',
                     'status_logs' => 'successfully',
                     'browser' => $agent->browser(),
                     'os' => $agent->platform(),
@@ -624,7 +628,7 @@ class CalonPPDBController extends Controller
                 ], 200);
             } catch (\Exception $exception) {
                 return response()->json([
-                    'message' => 'Gagal menghapus Data PPDB' . $exception->getMessage(),
+                    'message' => 'Gagal menghapus Data PPDB: ' . $exception->getMessage(),
                     'success' => false,
                 ], 500);
             }
@@ -633,6 +637,6 @@ class CalonPPDBController extends Controller
         return response()->json([
             'message' => 'Data PPDB tidak ditemukan',
             'success' => false,
-        ], 200);
+        ], 404);
     }
 }

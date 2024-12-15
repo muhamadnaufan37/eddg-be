@@ -39,6 +39,7 @@ class tblCppdb extends Model
         'nilai_presensi_2',
         'nilai_presensi_3',
         'catatan_ortu',
+        'tmpt_penetapan',
         'status_naik_kelas',
         'created_at',
     ];

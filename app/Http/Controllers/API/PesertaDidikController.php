@@ -10,6 +10,7 @@ use App\Models\dataSensusPeserta;
 use App\Models\tblCppdb;
 use Jenssegers\Agent\Agent;
 use App\Models\logs;
+use App\Models\tblKlnderPndidikan;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -20,21 +21,40 @@ class PesertaDidikController extends Controller
 {
     public function data_all_peserta_didik_aktif()
     {
-        // Ambil role_id dan user_id dari pengguna yang sedang login
         $user = auth()->user();
         $roleID = $user->role_id;
         $userID = $user->id;
 
+        // Ambil id_thn_akademik dari kalender_pendidikan dengan status_pelajaran = 1
+        $currentAcademicYearId = tblKlnderPndidikan::where('status_pelajaran', 1)
+            ->value('id');
+
+        // Pastikan id_thn_akademik tersedia
+        if (!$currentAcademicYearId) {
+            return response()->json([
+                'message' => 'ID Tahun Akademik tidak ditemukan untuk status pelajaran aktif',
+                'data_peserta_didik' => [],
+                'success' => false,
+            ], 400);
+        }
+
+        // Query peserta didik
         $table_peserta_didik = dataSensusPeserta::select(['id', 'nama_lengkap'])
             ->where('status_sambung', 1)
             ->where('status_pernikahan', 0)
-            ->where('jenis_data', "KBM");
+            ->where('jenis_data', "KBM")
+            ->whereNotIn('id', function ($query) use ($currentAcademicYearId) {
+                $query->select('id_peserta')
+                    ->from('cppdb')
+                    ->where('id_thn_akademik', $currentAcademicYearId);
+            });
 
-        // Tampilkan semua data jika role_id adalah 1, atau berdasarkan user_id jika tidak
+        // Tambahkan filter user_id jika role bukan admin
         if ($roleID != 1) {
             $table_peserta_didik = $table_peserta_didik->where('user_id', $userID);
         }
 
+        // Eksekusi query
         $table_peserta_didik = $table_peserta_didik
             ->groupBy('id', 'nama_lengkap')
             ->orderBy('nama_lengkap')
@@ -51,7 +71,7 @@ class PesertaDidikController extends Controller
     {
         $keyword = $request->get('keyword', null);
         $perPage = $request->get('per-page', 10);
-        $statusPeserta = $request->get('status_peserta', null);
+        $statusPeserta = $request->get('status_sambung', null);
         $jenisKelamin = $request->get('jenis_kelamin', null);
 
         if ($perPage > 100) {
@@ -572,19 +592,17 @@ class PesertaDidikController extends Controller
         $userId = Auth::id();
         $agent = new Agent();
 
+        // Validasi input
         $request->validate([
             'id' => 'required|numeric|digits_between:1,5',
         ]);
 
-        // Ambil data Peserta Didik dengan ID yang diberikan
         $table_peserta_didik = dataSensusPeserta::where('id', $request->id)->first();
 
-        if (!empty($table_peserta_didik)) {
-            // Periksa apakah ID Peserta Didik terdaftar di tabel cppdb
+        if ($table_peserta_didik) {
             $existsInCppdb = tblCppdb::where('id_peserta', $request->id)->exists();
 
             if ($existsInCppdb) {
-                // Jika Peserta Didik terdaftar di cppdb, cegah penghapusan dengan respons 409 Conflict
                 return response()->json([
                     'message' => 'Data Peserta Didik tidak dapat dihapus karena sudah terdaftar dan digunakan di tabel lain',
                     'success' => false,
@@ -592,21 +610,21 @@ class PesertaDidikController extends Controller
             }
 
             try {
-                // Hapus file gambar jika ada
                 if (!empty($table_peserta_didik->img)) {
-                    $filePath = storage_path('app/' . $table_peserta_didik->img); // Path lengkap file
+                    $filePath = storage_path('app/' . $table_peserta_didik->img);
                     if (file_exists($filePath)) {
-                        unlink($filePath); // Hapus file dari folder
+                        unlink($filePath);
                     }
                 }
 
-                // Lanjutkan untuk menghapus data Peserta Didik
+                $deletedData = $table_peserta_didik->toArray();
+
                 $table_peserta_didik->delete();
 
                 $logAccount = [
                     'user_id' => $userId,
                     'ip_address' => $request->ip(),
-                    'aktifitas' => 'Delete Data Peserta Didik - [' . $table_peserta_didik->id . '] - [' . $table_peserta_didik->nama_lengkap . ']',
+                    'aktifitas' => 'Delete Data Peserta Didik - [' . $deletedData['id'] . '] - [' . $deletedData['nama_lengkap'] . ']',
                     'status_logs' => 'successfully',
                     'browser' => $agent->browser(),
                     'os' => $agent->platform(),
@@ -620,7 +638,6 @@ class PesertaDidikController extends Controller
                     'success' => true,
                 ], 200);
             } catch (\Exception $exception) {
-                // Kembalikan respons kesalahan jika penghapusan gagal
                 return response()->json([
                     'message' => 'Gagal menghapus Data: ' . $exception->getMessage(),
                     'success' => false,
@@ -628,7 +645,6 @@ class PesertaDidikController extends Controller
             }
         }
 
-        // Kembalikan respons jika data Peserta Didik tidak ditemukan
         return response()->json([
             'message' => 'Data tidak ditemukan',
             'success' => false,
