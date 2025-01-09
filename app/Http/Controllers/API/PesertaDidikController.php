@@ -25,36 +25,15 @@ class PesertaDidikController extends Controller
         $roleID = $user->role_id;
         $userID = $user->id;
 
-        // Ambil id_thn_akademik dari kalender_pendidikan dengan status_pelajaran = 1
-        $currentAcademicYearId = tblKlnderPndidikan::where('status_pelajaran', 1)
-            ->value('id');
-
-        // Pastikan id_thn_akademik tersedia
-        if (!$currentAcademicYearId) {
-            return response()->json([
-                'message' => 'ID Tahun Akademik tidak ditemukan untuk status pelajaran aktif',
-                'data_peserta_didik' => [],
-                'success' => false,
-            ], 400);
-        }
-
-        // Query peserta didik
         $table_peserta_didik = dataSensusPeserta::select(['id', 'nama_lengkap'])
             ->where('status_sambung', 1)
             ->where('status_pernikahan', 0)
-            ->where('jenis_data', "KBM")
-            ->whereNotIn('id', function ($query) use ($currentAcademicYearId) {
-                $query->select('id_peserta')
-                    ->from('cppdb')
-                    ->where('id_thn_akademik', $currentAcademicYearId);
-            });
+            ->where('jenis_data', "KBM");
 
-        // Tambahkan filter user_id jika role bukan admin
         if ($roleID != 1) {
             $table_peserta_didik = $table_peserta_didik->where('user_id', $userID);
         }
 
-        // Eksekusi query
         $table_peserta_didik = $table_peserta_didik
             ->groupBy('id', 'nama_lengkap')
             ->orderBy('nama_lengkap')

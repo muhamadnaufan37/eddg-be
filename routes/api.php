@@ -249,6 +249,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('updatePenilaian', [CalonPPDBController::class, 'updatePenilaian'])->middleware('role:1,4');
         Route::post('update', [CalonPPDBController::class, 'update'])->middleware('role:1,4');
         Route::delete('delete', [CalonPPDBController::class, 'delete'])->middleware('role:1,4');
+        Route::post('getPesertaBelumInputPenilaian', [CalonPPDBController::class, 'getPesertaBelumInputPenilaian'])->middleware('role:1,4');
     });
 
     // Calon Pendaftaran Peserta Didik Management

@@ -41,8 +41,6 @@ class DataPesertaController extends Controller
             'data_kelompok' => 'nullable',
         ], $customMessages);
 
-        // $currentYear = Carbon::now()->year;
-        $currentYear = Carbon::now()->year;
         $current_timestamp = Carbon::now()->toDateTimeString();
 
         $query = dataSensusPeserta::select([
@@ -105,7 +103,6 @@ class DataPesertaController extends Controller
                     ELSE 0
                 END) AS total_muda_mudi_usia_nikah_perempuan'),
         ])
-            ->whereYear('data_peserta.created_at', '=', $currentYear)
             ->leftJoin('tabel_daerah', 'tabel_daerah.id', '=', DB::raw('CAST(data_peserta.tmpt_daerah AS UNSIGNED)'))
             ->leftJoin('tabel_desa', 'tabel_desa.id', '=', DB::raw('CAST(data_peserta.tmpt_desa AS UNSIGNED)'))
             ->leftJoin('tabel_kelompok', 'tabel_kelompok.id', '=', DB::raw('CAST(data_peserta.tmpt_kelompok AS UNSIGNED)'))
@@ -320,7 +317,6 @@ class DataPesertaController extends Controller
         $statusPernikahan = $request->get('status_pernikahan', null);
         $statusSambung = $request->get('status_sambung', null);
         $statusAtletAsad = $request->get('status_atlet_asad', null);
-        $jenisKelamin = $request->get('jenis_kelamin', null);
 
         if ($perPage > 100) {
             $perPage = 100;
@@ -351,7 +347,8 @@ class DataPesertaController extends Controller
             ->join('tabel_daerah', 'tabel_daerah.id', '=', DB::raw('CAST(data_peserta.tmpt_daerah AS UNSIGNED)'))
             ->join('tabel_desa', 'tabel_desa.id', '=', DB::raw('CAST(data_peserta.tmpt_desa AS UNSIGNED)'))
             ->join('tabel_kelompok', 'tabel_kelompok.id', '=', DB::raw('CAST(data_peserta.tmpt_kelompok AS UNSIGNED)'))
-            ->join('users', 'users.id', '=', DB::raw('CAST(data_peserta.user_id AS UNSIGNED)'));
+            ->join('users', 'users.id', '=', DB::raw('CAST(data_peserta.user_id AS UNSIGNED)'))
+            ->where('data_peserta.jenis_data', 'SENSUS');
 
         if (!is_null($dataDaerah)) {
             $query->where('tabel_daerah.id', '=', $dataDaerah);
@@ -375,10 +372,6 @@ class DataPesertaController extends Controller
 
         if (!is_null($statusAtletAsad)) {
             $query->where('data_peserta.status_atlet_asad', '=', $statusAtletAsad);
-        }
-
-        if (!is_null($jenisKelamin)) {
-            $query->where('data_peserta.jenis_kelamin', '=', $jenisKelamin);
         }
 
         // Apply orderByRaw before executing the query

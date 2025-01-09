@@ -47,7 +47,7 @@ class DataSensusController extends Controller
             // Ambil IP dari respons JSON
             $ipFromResponse = $ipInfo['IP'];
 
-            $getDaata = Http::get("http://ip-api.com/json/{$ipFromResponse}")->json();
+            // $getDaata = Http::get("http://ip-api.com/json/{$ipFromResponse}")->json();
 
             // Buat log dengan informasi IP dari respons
             $logAccount = [
@@ -58,9 +58,9 @@ class DataSensusController extends Controller
                 'browser' => $agent->browser(),
                 'os' => $agent->platform(),
                 'device' => $agent->device(),
-                'location_info' => $getDaata,
-                'latitude' => $getDaata['lat'],
-                'longitude' => $getDaata['lon'],
+                // 'location_info' => $getDaata,
+                // 'latitude' => $getDaata['lat'],
+                // 'longitude' => $getDaata['lon'],
             ];
             logs::create($logAccount);
         } else {
@@ -72,7 +72,7 @@ class DataSensusController extends Controller
 
         $sensus = dataSensusPeserta::select([
             'data_peserta.id',
-            DB::raw('CONCAT(SUBSTRING(data_peserta.kode_cari_data FROM 1 FOR 2), \'****\', SUBSTRING(data_peserta.kode_cari_data FROM 7 FOR 4)) AS kode_cari_data'),
+            'data_peserta.kode_cari_data',
             'data_peserta.nama_lengkap',
             'data_peserta.nama_panggilan',
             'data_peserta.tempat_lahir',
@@ -101,7 +101,8 @@ class DataSensusController extends Controller
             'tabel_daerah.nama_daerah',
             'tabel_desa.nama_desa',
             'tabel_kelompok.nama_kelompok',
-            'users.username AS user_petugas',
+            'data_peserta.jenis_data',
+            'users.nama_lengkap AS user_petugas',
         ])->join('tabel_daerah', function ($join) {
             $join->on('tabel_daerah.id', '=', DB::raw('CAST(data_peserta.tmpt_daerah AS UNSIGNED)'));
         })->join('tabel_desa', function ($join) {
@@ -112,14 +113,13 @@ class DataSensusController extends Controller
             $join->on('tbl_pekerjaan.id', '=', DB::raw('CAST(data_peserta.pekerjaan AS UNSIGNED)'));
         })->join('users', function ($join) {
             $join->on('users.id', '=', DB::raw('CAST(data_peserta.user_id AS UNSIGNED)'));
-        })
-            // Change this part to search based on the requested fields
-            ->where('data_peserta.nama_lengkap', $request->nama_lengkap)
-            ->where('data_peserta.tanggal_lahir', $request->tanggal_lahir)
+        })->whereRaw('LOWER(data_peserta.nama_lengkap) LIKE ?', ['%' . strtolower($request->nama_lengkap) . '%'])
+            ->whereRaw('LOWER(data_peserta.tanggal_lahir) = ?', [strtolower($request->tanggal_lahir)])
             ->where(function ($query) use ($request) {
-                $query->where('data_peserta.nama_ayah', $request->nama_ortu)
-                    ->orWhere('data_peserta.nama_ibu', $request->nama_ortu);
+                $query->whereRaw('LOWER(data_peserta.nama_ayah) LIKE ?', ['%' . strtolower($request->nama_ortu) . '%'])
+                    ->orWhereRaw('LOWER(data_peserta.nama_ibu) LIKE ?', ['%' . strtolower($request->nama_ortu) . '%']);
             })
+
             ->first();
 
         try {

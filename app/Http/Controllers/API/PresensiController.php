@@ -55,6 +55,8 @@ class PresensiController extends Controller
             'data_peserta.nama_lengkap',
             'data_peserta.tanggal_lahir',
             'data_peserta.jenis_kelamin',
+            'data_peserta.status_sambung',
+            'data_peserta.status_pernikahan',
             'presensi.id AS presensi_id',
             'presensi.status_presensi',
             'presensi.keterangan',
@@ -80,9 +82,12 @@ class PresensiController extends Controller
             })
             ->when($kegiatan->tmpt_kelompok, function ($query) use ($kegiatan) {
                 $query->where('data_peserta.tmpt_kelompok', $kegiatan->tmpt_kelompok);
+            })
+            ->where(function ($query) {
+                $query->where('data_peserta.status_sambung', 1)
+                    ->where('data_peserta.status_pernikahan', 0);
             });
 
-        // Apply filtering if a keyword is provided
         if (!empty($keyword)) {
             $pesertaQuery->where(function ($q) use ($keyword) {
                 $q->where('data_peserta.nama_lengkap', 'LIKE', '%' . $keyword . '%')
@@ -91,10 +96,8 @@ class PresensiController extends Controller
             });
         }
 
-        // Retrieve all matching data without pagination
         $reportData = $pesertaQuery->get();
 
-        // Transform the data for the response
         $transformedData = $reportData->map(function ($peserta) {
             return [
                 'id_peserta' => $peserta->id,
@@ -102,11 +105,12 @@ class PresensiController extends Controller
                 'tanggal_lahir' => $peserta->tanggal_lahir,
                 'jenis_kelamin' => $peserta->jenis_kelamin,
                 'status_presensi' => $peserta->presensi_id ? $peserta->status_presensi : 'alfa/tidak hadir',
+                'status_sambung' => $peserta->status_sambung,
+                'status_pernikahan' => $peserta->status_pernikahan,
                 'keterangan' => $peserta->keterangan,
             ];
         });
 
-        // Initialize counters for the statistics
         $statistics = [
             'hadir' => 0,
             'telat_hadir' => 0,
@@ -115,7 +119,6 @@ class PresensiController extends Controller
             'alfa' => 0,
         ];
 
-        // Update statistics based on the attendance status
         $transformedData->each(function ($peserta) use (&$statistics) {
             $status_presensi = $peserta['status_presensi'];
 
@@ -153,9 +156,7 @@ class PresensiController extends Controller
             'id_petugas' => 'required',
         ]);
 
-        // Get the event details
         $kegiatan = presensiKegiatan::find($request->id_kegiatan);
-
         if (!$kegiatan) {
             return response()->json([
                 'message' => 'Kegiatan tidak ditemukan',
@@ -163,16 +164,10 @@ class PresensiController extends Controller
             ], 404);
         }
 
-        // Mendapatkan waktu saat ini
         $currentTime = Carbon::now();
-
-        // Menggabungkan tgl_kegiatan dan jam_kegiatan menjadi satu objek Carbon
         $waktuKegiatan = Carbon::parse($kegiatan->tgl_kegiatan . ' ' . $kegiatan->jam_kegiatan);
-
-        // Menentukan waktu mulai presensi (90 menit sebelum waktu kegiatan)
         $waktuMulaiPresensi = $waktuKegiatan->copy()->subMinutes(90);
 
-        // Cek apakah waktu saat ini sudah mencapai atau melewati waktu kegiatan
         if ($currentTime->lt($waktuMulaiPresensi)) {
             return response()->json([
                 'message' => 'Presensi belum bisa dilakukan, tunggu hingga waktu kegiatan dimulai pada tanggal ' . $kegiatan->tgl_kegiatan . ' jam ' . $kegiatan->jam_kegiatan . ' waktu setempat',
@@ -180,7 +175,6 @@ class PresensiController extends Controller
             ], 403);
         }
 
-        // Check if the current time is past the expired_date_time
         if (now()->greaterThan($kegiatan->expired_date_time)) {
             return response()->json([
                 'message' => 'Presensi sudah tidak bisa dilakukan, waktu telah berakhir',
@@ -188,7 +182,6 @@ class PresensiController extends Controller
             ], 403);
         }
 
-        // Fetch the participant data with filtering by location if required
         $peserta = dataSensusPeserta::select([
             'data_peserta.id',
             'data_peserta.nama_lengkap',
@@ -222,7 +215,6 @@ class PresensiController extends Controller
         })
             ->where('data_peserta.kode_cari_data', $request->kode_cari_data);
 
-        // Apply location filters based on event settings in kegiatan
         if ($kegiatan->tmpt_daerah || $kegiatan->tmpt_desa || $kegiatan->tmpt_kelompok) {
             $peserta->where(function ($query) use ($kegiatan) {
                 // Check each location filter only if it's set in kegiatan
@@ -238,10 +230,8 @@ class PresensiController extends Controller
             });
         }
 
-        // Retrieve the first matching participant
         $peserta = $peserta->first();
 
-        // Check if participant data is valid
         if (!$peserta) {
             return response()->json([
                 'message' => 'Peserta tidak ditemukan atau data peserta presensi tidak bisa diakses di tempat sambung ini',
@@ -249,14 +239,19 @@ class PresensiController extends Controller
             ], 404);
         }
 
-        // Check age restriction
+        if ($peserta->status_sambung != 1 || $peserta->status_pernikahan != 0) {
+            return response()->json([
+                'message' => 'Presensi Ditolak, Peserta sudah pindah sambung atau sudah menikah',
+                'success' => false,
+            ], 403);
+        }
+
         $usiaOperator = $kegiatan->usia_operator;
         $usiaBatas = $kegiatan->usia_batas;
 
         if (!empty($usiaOperator) && !empty($usiaBatas)) {
             $usia = $peserta->usia;
 
-            // Evaluasi kondisi berdasarkan operator usia
             if (!eval("return {$usia} {$usiaOperator} {$usiaBatas};")) {
                 return response()->json([
                     'message' => 'Peserta tidak memenuhi kriteria usia',
@@ -265,7 +260,6 @@ class PresensiController extends Controller
             }
         }
 
-        // Check if the participant has already attended
         $existingPresensi = presensi::where('id_kegiatan', $request->id_kegiatan)
             ->where('id_peserta', $peserta->id)
             ->first();
@@ -277,10 +271,8 @@ class PresensiController extends Controller
             ], 409);
         }
 
-        // Menentukan waktu toleransi keterlambatan (30 menit setelah waktu kegiatan dimulai)
         $waktuToleransi = $waktuKegiatan->copy()->addMinutes(30);
 
-        // Determine if the attendance is late
         $isLate = now()->greaterThan($waktuToleransi);
 
         $presensi = new presensi();
@@ -310,7 +302,6 @@ class PresensiController extends Controller
             'nama_ortu' => 'required',
         ]);
 
-        // Cari detail kegiatan berdasarkan kode_kegiatan
         $kegiatan = presensiKegiatan::where('kode_kegiatan', $request->kode_kegiatan)->first();
 
         if (!$kegiatan) {
@@ -320,13 +311,9 @@ class PresensiController extends Controller
             ], 404);
         }
 
-        // Mendapatkan waktu saat ini
         $currentTime = Carbon::now();
-
-        // Menggabungkan tgl_kegiatan dan jam_kegiatan menjadi satu objek Carbon
         $waktuKegiatan = Carbon::parse($kegiatan->tgl_kegiatan . ' ' . $kegiatan->jam_kegiatan);
 
-        // Cek apakah waktu saat ini sudah mencapai atau melewati waktu kegiatan
         if ($currentTime->lt($waktuKegiatan)) {
             return response()->json([
                 'message' => 'Presensi belum bisa dilakukan, tunggu hingga waktu kegiatan dimulai pada tanggal ' . $kegiatan->tgl_kegiatan . ' jam ' . $kegiatan->jam_kegiatan . ' waktu setempat',
@@ -334,7 +321,6 @@ class PresensiController extends Controller
             ], 403);
         }
 
-        // Check if the current time is past the expired_date_time
         if (now()->greaterThan($kegiatan->expired_date_time)) {
             return response()->json([
                 'message' => 'Presensi sudah tidak bisa dilakukan, waktu telah berakhir',
@@ -342,7 +328,6 @@ class PresensiController extends Controller
             ], 403);
         }
 
-        // Fetch the participant data with filtering by location if required
         $peserta = dataSensusPeserta::select([
             'data_peserta.id',
             'data_peserta.nama_lengkap',
@@ -386,7 +371,6 @@ class PresensiController extends Controller
                     ->orWhere('data_peserta.nama_ibu', $request->nama_ortu);
             });
 
-        // Apply location filters based on event settings in kegiatan
         if ($kegiatan->tmpt_daerah || $kegiatan->tmpt_desa || $kegiatan->tmpt_kelompok) {
             $peserta->where(function ($query) use ($kegiatan) {
                 // Check each location filter only if it's set in kegiatan
@@ -402,10 +386,7 @@ class PresensiController extends Controller
             });
         }
 
-        // Retrieve the first matching participant
         $peserta = $peserta->first();
-
-        // Check if participant data is valid
         if (!$peserta) {
             return response()->json([
                 'message' => 'Peserta tidak ditemukan atau data peserta presensi tidak bisa diakses di tempat sambung ini',
@@ -413,14 +394,19 @@ class PresensiController extends Controller
             ], 404);
         }
 
-        // Check age restriction
+        if ($peserta->status_sambung != 1 || $peserta->status_pernikahan != 0) {
+            return response()->json([
+                'message' => 'Presensi Ditolak, Peserta sudah pindah sambung atau sudah menikah',
+                'success' => false,
+            ], 403);
+        }
+
         $usiaOperator = $kegiatan->usia_operator;
         $usiaBatas = $kegiatan->usia_batas;
 
         if (!empty($usiaOperator) && !empty($usiaBatas)) {
             $usia = $peserta->usia;
 
-            // Evaluasi kondisi berdasarkan operator usia
             if (!eval("return {$usia} {$usiaOperator} {$usiaBatas};")) {
                 return response()->json([
                     'message' => 'Peserta tidak memenuhi kriteria usia',
@@ -429,7 +415,6 @@ class PresensiController extends Controller
             }
         }
 
-        // Check if the participant has already attended
         $existingPresensi = presensi::where('id_kegiatan', $request->id_kegiatan)
             ->where('id_peserta', $peserta->id)
             ->first();

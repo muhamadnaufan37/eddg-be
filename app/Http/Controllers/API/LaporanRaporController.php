@@ -46,6 +46,8 @@ class LaporanRaporController extends Controller
             DB::raw('AVG(cppdb.nilai8) AS average_nilai8'),
             DB::raw('AVG(cppdb.nilai9) AS average_nilai9'),
             DB::raw('AVG(cppdb.nilai10) AS average_nilai10'),
+            DB::raw('AVG(cppdb.nilai11) AS average_nilai11'),
+            DB::raw('AVG(cppdb.nilai11_1) AS average_nilai11_1'),
             DB::raw('AVG(
                 CASE 
                     WHEN COALESCE(cppdb.nilai12, \'F\') = \'A\' THEN 100
@@ -110,7 +112,7 @@ class LaporanRaporController extends Controller
             DB::raw('AVG(cppdb.nilai_presensi_3) AS average_nilai_presensi_3'),
             DB::raw('(
                 AVG(cppdb.nilai1) + AVG(cppdb.nilai2) + AVG(cppdb.nilai3) + AVG(cppdb.nilai4) + AVG(cppdb.nilai5) + 
-                AVG(cppdb.nilai6) + AVG(cppdb.nilai7) + AVG(cppdb.nilai8) + AVG(cppdb.nilai9) + AVG(cppdb.nilai10) +
+                AVG(cppdb.nilai6) + AVG(cppdb.nilai7) + AVG(cppdb.nilai8) + AVG(cppdb.nilai9) + AVG(cppdb.nilai10) + AVG(cppdb.nilai11) + AVG(cppdb.nilai11_1) +
                 AVG(CASE 
                     WHEN COALESCE(cppdb.nilai12, \'F\') = \'A\' THEN 100
                     WHEN COALESCE(cppdb.nilai12, \'F\') = \'B\' THEN 90
@@ -156,7 +158,7 @@ class LaporanRaporController extends Controller
                     WHEN COALESCE(cppdb.nilai16, \'F\') = \'F\' THEN 50
                     ELSE 0
                 END)
-            ) / 18 AS total_nilai_average'),
+            ) / 20 AS total_nilai_average'),
         ])
             ->leftJoin('kalender_pendidikan', 'cppdb.id_thn_akademik', '=', 'kalender_pendidikan.id')
             ->leftJoin('kelas_peserta_didik', 'cppdb.id_kelas', '=', 'kelas_peserta_didik.id')
@@ -232,7 +234,7 @@ class LaporanRaporController extends Controller
             'tabel_kelompok.nama_kelompok',
             DB::raw('(
                 cppdb.nilai1 + cppdb.nilai2 + cppdb.nilai3 + cppdb.nilai4 + cppdb.nilai5 + 
-                cppdb.nilai6 + cppdb.nilai7 + cppdb.nilai8 + cppdb.nilai9 + cppdb.nilai10 +
+                cppdb.nilai6 + cppdb.nilai7 + cppdb.nilai8 + cppdb.nilai9 + cppdb.nilai10 + cppdb.nilai11 + cppdb.nilai11_1 +
                 CASE 
                     WHEN COALESCE(cppdb.nilai12, \'F\') = \'A\' THEN 100
                     WHEN COALESCE(cppdb.nilai12, \'F\') = \'B\' THEN 90
@@ -281,7 +283,7 @@ class LaporanRaporController extends Controller
             ) AS total_nilai'),
             DB::raw('(
                 cppdb.nilai1 + cppdb.nilai2 + cppdb.nilai3 + cppdb.nilai4 + cppdb.nilai5 + 
-                cppdb.nilai6 + cppdb.nilai7 + cppdb.nilai8 + cppdb.nilai9 + cppdb.nilai10 +
+                cppdb.nilai6 + cppdb.nilai7 + cppdb.nilai8 + cppdb.nilai9 + cppdb.nilai10 + cppdb.nilai11 + cppdb.nilai11_1 +
                 CASE 
                     WHEN COALESCE(cppdb.nilai12, \'F\') = \'A\' THEN 100
                     WHEN COALESCE(cppdb.nilai12, \'F\') = \'B\' THEN 90
@@ -327,7 +329,7 @@ class LaporanRaporController extends Controller
                     WHEN COALESCE(cppdb.nilai16, \'F\') = \'F\' THEN 50
                     ELSE 0
                 END - cppdb.nilai_presensi_1 - cppdb.nilai_presensi_2 - cppdb.nilai_presensi_3
-            ) / 18 AS rata_rata_nilai'),
+            ) / 20 AS rata_rata_nilai'),
         ])
             ->leftJoin('kalender_pendidikan', 'cppdb.id_thn_akademik', '=', 'kalender_pendidikan.id')
             ->leftJoin('kelas_peserta_didik', 'cppdb.id_kelas', '=', 'kelas_peserta_didik.id')
@@ -518,6 +520,8 @@ class LaporanRaporController extends Controller
             'cppdb.nilai8',
             'cppdb.nilai9',
             'cppdb.nilai10',
+            'cppdb.nilai11',
+            'cppdb.nilai11_1',
             'cppdb.nilai12',
             'cppdb.nilai13',
             'cppdb.nilai14',
@@ -529,7 +533,7 @@ class LaporanRaporController extends Controller
             'cppdb.status_naik_kelas',
             DB::raw('(
                 cppdb.nilai1 + cppdb.nilai2 + cppdb.nilai3 + cppdb.nilai4 + cppdb.nilai5 + 
-                cppdb.nilai6 + cppdb.nilai7 + cppdb.nilai8 + cppdb.nilai9 + cppdb.nilai10 +
+                cppdb.nilai6 + cppdb.nilai7 + cppdb.nilai8 + cppdb.nilai9 + cppdb.nilai10 + cppdb.nilai11 + cppdb.nilai11_1 +
                 CASE 
                     WHEN COALESCE(cppdb.nilai12, \'F\') = \'A\' THEN 100
                     WHEN COALESCE(cppdb.nilai12, \'F\') = \'B\' THEN 90
@@ -596,11 +600,7 @@ class LaporanRaporController extends Controller
         if (!is_null($status)) {
             $query->where('cppdb.status_naik_kelas', '=', $status);
         }
-
-        // Execute the query and get the results
         $table_calon_ppdb = $query->get();
-
-        // Tambahkan ranking berdasarkan total nilai dalam kelas yang sama dan tahun akademik yang sama
         $table_calon_ppdb = $table_calon_ppdb->sortByDesc('total_nilai')->values();
         $table_calon_ppdb->each(function ($item, $index) {
             $item->ranking = $index + 1;
