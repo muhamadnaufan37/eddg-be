@@ -10,7 +10,6 @@ use App\Models\dataSensusPeserta;
 use App\Models\tblCppdb;
 use Jenssegers\Agent\Agent;
 use App\Models\logs;
-use App\Models\tblKlnderPndidikan;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;

@@ -45,6 +45,8 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register_akun', [AuthController::class, 'register']);
 Route::post('/find_sensus', [DataSensusController::class, 'cari_data']);
+Route::get('/list_nama_peserta', [DataSensusController::class, 'list_nama_peserta']);
+Route::post('record_presensi_manual', [DataSensusController::class, 'record_presensi_manual']);
 Route::get('/data_tempat_sambung', [StatistikTmptSmbngController::class, 'data_tempat_sambung']);
 Route::get('/protected/images/{filename}', function ($filename) {
     $path = storage_path('app/images/sensus/' . $filename);
@@ -268,7 +270,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('update', [PresensiController::class, 'update'])->middleware('role:1');
         Route::delete('delete', [PresensiController::class, 'delete'])->middleware('role:1');
         Route::post('record_presensi_qrcode', [PresensiController::class, 'record_presensi_qrcode'])->middleware('role:1');
-        Route::post('record_presensi_manual', [PresensiController::class, 'record_presensi_manual'])->middleware('role:1');
         Route::post('getPresensiReport', [PresensiController::class, 'getPresensiReport'])->middleware('role:1');
     });
 });

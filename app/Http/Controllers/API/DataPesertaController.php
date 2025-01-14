@@ -14,6 +14,9 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Auth;
+use Jenssegers\Agent\Agent;
+use App\Models\logs;
 
 class DataPesertaController extends Controller
 {
@@ -424,6 +427,9 @@ class DataPesertaController extends Controller
 
     public function create(Request $request)
     {
+        $userId = Auth::id();
+        $agent = new Agent();
+
         $customMessages = [
             'required' => 'Kolom :attribute wajib diisi.',
             'unique' => ':attribute sudah terdaftar di sistem',
@@ -462,8 +468,8 @@ class DataPesertaController extends Controller
         $tabel_sensus = new dataSensusPeserta();
 
         $tanggalSekarang = Carbon::now();
-        $bulan = $tanggalSekarang->format('m'); // Mendapatkan bulan saat ini (format 2 digit)
-        $tahun = $tanggalSekarang->format('Y'); // Mendapatkan tahun saat ini (format 4 digit)
+        $bulan = $tanggalSekarang->format('m');
+        $tahun = $tanggalSekarang->format('Y');
 
         $tabel_sensus->kode_cari_data = $bulan . Str::random(4) . $tahun;
         $tabel_sensus->nama_lengkap = $request->nama_lengkap;
@@ -489,19 +495,19 @@ class DataPesertaController extends Controller
         $tabel_sensus->status_atlet_asad = $request->status_atlet_asad;
         $tabel_sensus->user_id = $request->user_id;
 
-        // Menyimpan gambar jika diunggah
         if ($request->hasFile('img')) {
-            // Dapatkan file foto dari permintaan
-            $foto = $request->file('img');
+            $foto = $request->file('img'); // Get the uploaded file
 
-            // Bangun nama file yang disimpan
+            // Generate a unique filename
             $namaFile = Str::slug($tabel_sensus->nama_lengkap) . '.' . $foto->getClientOriginalExtension();
 
-            // Simpan gambar ke penyimpanan dengan nama file yang disesuaikan
+            // Save the file to the 'public/images/sensus' directory
             $path = $foto->storeAs('public/images/sensus', $namaFile);
 
-            // Anda dapat menyimpan path file ini di database jika diperlukan
+            // Update the database record
             $tabel_sensus->img = $path;
+        } else {
+            $tabel_sensus->img = null; // Handle cases where no file is uploaded
         }
 
         try {
@@ -539,6 +545,18 @@ class DataPesertaController extends Controller
             }
 
             $tabel_sensus->save();
+
+            $logAccount = [
+                'user_id' => $userId,
+                'ip_address' => $request->ip(),
+                'aktifitas' => 'Create Data Sensus - [' . $tabel_sensus->id . '] - [' . $tabel_sensus->nama_lengkap . ']',
+                'status_logs' => 'successfully',
+                'browser' => $agent->browser(),
+                'os' => $agent->platform(),
+                'device' => $agent->device(),
+                'engine_agent' => $request->header('user-agent'),
+            ];
+            logs::create($logAccount);
         } catch (\Exception $exception) {
             return response()->json([
                 'message' => 'Gagal menambah data sensus' . $exception->getMessage(),
