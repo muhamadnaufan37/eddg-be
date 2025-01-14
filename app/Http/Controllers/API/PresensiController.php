@@ -10,6 +10,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
+use App\Models\logs;
+use Jenssegers\Agent\Agent;
+use Illuminate\Support\Facades\Auth;
 
 class PresensiController extends Controller
 {
@@ -55,6 +58,8 @@ class PresensiController extends Controller
             'data_peserta.nama_lengkap',
             'data_peserta.tanggal_lahir',
             'data_peserta.jenis_kelamin',
+            'data_peserta.status_sambung',
+            'data_peserta.status_pernikahan',
             'presensi.id AS presensi_id',
             'presensi.status_presensi',
             'presensi.keterangan',
@@ -80,9 +85,12 @@ class PresensiController extends Controller
             })
             ->when($kegiatan->tmpt_kelompok, function ($query) use ($kegiatan) {
                 $query->where('data_peserta.tmpt_kelompok', $kegiatan->tmpt_kelompok);
+            })
+            ->where(function ($query) {
+                $query->where('data_peserta.status_sambung', 1)
+                    ->where('data_peserta.status_pernikahan', 0);
             });
 
-        // Apply filtering if a keyword is provided
         if (!empty($keyword)) {
             $pesertaQuery->where(function ($q) use ($keyword) {
                 $q->where('data_peserta.nama_lengkap', 'LIKE', '%' . $keyword . '%')
@@ -91,10 +99,8 @@ class PresensiController extends Controller
             });
         }
 
-        // Retrieve all matching data without pagination
         $reportData = $pesertaQuery->get();
 
-        // Transform the data for the response
         $transformedData = $reportData->map(function ($peserta) {
             return [
                 'id_peserta' => $peserta->id,
@@ -102,11 +108,12 @@ class PresensiController extends Controller
                 'tanggal_lahir' => $peserta->tanggal_lahir,
                 'jenis_kelamin' => $peserta->jenis_kelamin,
                 'status_presensi' => $peserta->presensi_id ? $peserta->status_presensi : 'alfa/tidak hadir',
+                'status_sambung' => $peserta->status_sambung,
+                'status_pernikahan' => $peserta->status_pernikahan,
                 'keterangan' => $peserta->keterangan,
             ];
         });
 
-        // Initialize counters for the statistics
         $statistics = [
             'hadir' => 0,
             'telat_hadir' => 0,
@@ -115,7 +122,6 @@ class PresensiController extends Controller
             'alfa' => 0,
         ];
 
-        // Update statistics based on the attendance status
         $transformedData->each(function ($peserta) use (&$statistics) {
             $status_presensi = $peserta['status_presensi'];
 
@@ -147,15 +153,16 @@ class PresensiController extends Controller
 
     public function record_presensi_qrcode(Request $request)
     {
+        $agent = new Agent();
+        $userId = Auth::id();
+
         $request->validate([
             'kode_cari_data' => 'required|string',
             'id_kegiatan' => 'required',
             'id_petugas' => 'required',
         ]);
 
-        // Get the event details
         $kegiatan = presensiKegiatan::find($request->id_kegiatan);
-
         if (!$kegiatan) {
             return response()->json([
                 'message' => 'Kegiatan tidak ditemukan',
@@ -163,16 +170,10 @@ class PresensiController extends Controller
             ], 404);
         }
 
-        // Mendapatkan waktu saat ini
         $currentTime = Carbon::now();
-
-        // Menggabungkan tgl_kegiatan dan jam_kegiatan menjadi satu objek Carbon
         $waktuKegiatan = Carbon::parse($kegiatan->tgl_kegiatan . ' ' . $kegiatan->jam_kegiatan);
-
-        // Menentukan waktu mulai presensi (90 menit sebelum waktu kegiatan)
         $waktuMulaiPresensi = $waktuKegiatan->copy()->subMinutes(90);
 
-        // Cek apakah waktu saat ini sudah mencapai atau melewati waktu kegiatan
         if ($currentTime->lt($waktuMulaiPresensi)) {
             return response()->json([
                 'message' => 'Presensi belum bisa dilakukan, tunggu hingga waktu kegiatan dimulai pada tanggal ' . $kegiatan->tgl_kegiatan . ' jam ' . $kegiatan->jam_kegiatan . ' waktu setempat',
@@ -180,7 +181,6 @@ class PresensiController extends Controller
             ], 403);
         }
 
-        // Check if the current time is past the expired_date_time
         if (now()->greaterThan($kegiatan->expired_date_time)) {
             return response()->json([
                 'message' => 'Presensi sudah tidak bisa dilakukan, waktu telah berakhir',
@@ -188,7 +188,6 @@ class PresensiController extends Controller
             ], 403);
         }
 
-        // Fetch the participant data with filtering by location if required
         $peserta = dataSensusPeserta::select([
             'data_peserta.id',
             'data_peserta.nama_lengkap',
@@ -209,6 +208,8 @@ class PresensiController extends Controller
             'tabel_desa.nama_desa',
             'tabel_kelompok.id AS kelompok_id',
             'tabel_kelompok.nama_kelompok',
+            'data_peserta.status_sambung',
+            'data_peserta.status_pernikahan',
         ])->join('tabel_daerah', function ($join) {
             $join->on('tabel_daerah.id', '=', DB::raw('CAST(data_peserta.tmpt_daerah AS UNSIGNED)'));
         })->join('tabel_desa', function ($join) {
@@ -222,7 +223,6 @@ class PresensiController extends Controller
         })
             ->where('data_peserta.kode_cari_data', $request->kode_cari_data);
 
-        // Apply location filters based on event settings in kegiatan
         if ($kegiatan->tmpt_daerah || $kegiatan->tmpt_desa || $kegiatan->tmpt_kelompok) {
             $peserta->where(function ($query) use ($kegiatan) {
                 // Check each location filter only if it's set in kegiatan
@@ -238,10 +238,8 @@ class PresensiController extends Controller
             });
         }
 
-        // Retrieve the first matching participant
         $peserta = $peserta->first();
 
-        // Check if participant data is valid
         if (!$peserta) {
             return response()->json([
                 'message' => 'Peserta tidak ditemukan atau data peserta presensi tidak bisa diakses di tempat sambung ini',
@@ -249,14 +247,19 @@ class PresensiController extends Controller
             ], 404);
         }
 
-        // Check age restriction
+        if ($peserta->status_sambung != 1 || $peserta->status_pernikahan != 0) {
+            return response()->json([
+                'message' => 'Presensi Ditolak, Peserta sudah pindah sambung atau sudah menikah',
+                'success' => false,
+            ], 403);
+        }
+
         $usiaOperator = $kegiatan->usia_operator;
         $usiaBatas = $kegiatan->usia_batas;
 
         if (!empty($usiaOperator) && !empty($usiaBatas)) {
             $usia = $peserta->usia;
 
-            // Evaluasi kondisi berdasarkan operator usia
             if (!eval("return {$usia} {$usiaOperator} {$usiaBatas};")) {
                 return response()->json([
                     'message' => 'Peserta tidak memenuhi kriteria usia',
@@ -265,22 +268,19 @@ class PresensiController extends Controller
             }
         }
 
-        // Check if the participant has already attended
-        $existingPresensi = presensi::where('id_kegiatan', $request->id_kegiatan)
+        $alreadyPresensi = presensi::where('id_kegiatan', $kegiatan->id)
             ->where('id_peserta', $peserta->id)
-            ->first();
+            ->exists();
 
-        if ($existingPresensi) {
+        if ($alreadyPresensi) {
             return response()->json([
-                'message' => 'Peserta sudah melakukan presensi',
+                'message' => 'Peserta sudah melakukan presensi sebelumnya.',
                 'success' => false,
             ], 409);
         }
 
-        // Menentukan waktu toleransi keterlambatan (30 menit setelah waktu kegiatan dimulai)
         $waktuToleransi = $waktuKegiatan->copy()->addMinutes(30);
 
-        // Determine if the attendance is late
         $isLate = now()->greaterThan($waktuToleransi);
 
         $presensi = new presensi();
@@ -290,171 +290,32 @@ class PresensiController extends Controller
         $presensi->status_presensi = $isLate ? "TELAT HADIR" : "HADIR";
         $presensi->waktu_presensi = now();
         $presensi->keterangan = $isLate ? "TELAT HADIR" : "HADIR";
-        $presensi->save();
 
-        return response()->json([
-            'message' => 'Presensi berhasil dicatat',
-            'data_presensi' => $peserta,
-            'success' => true,
-        ], 200);
-    }
 
-    public function record_presensi_manual(Request $request)
-    {
-        $request->validate([
-            'kode_kegiatan' => 'required|string',
-            'status_presensi' => 'required',
-            'keterangan' => 'required',
-            'nama_lengkap' => 'required',
-            'tanggal_lahir' => 'required',
-            'nama_ortu' => 'required',
-        ]);
+        try {
+            $presensi->save();
+            logs::create([
+                'user_id' => $userId,
+                'ip_address' => $request->ip(),
+                'aktifitas' => "Absensi Manual Web - [{$peserta->id}] - [{$peserta->nama_lengkap}]",
+                'status_logs' => 'successfully',
+                'browser' => $agent->browser(),
+                'os' => $agent->platform(),
+                'device' => $agent->device(),
+                'engine_agent' => $request->header('user-agent'),
+            ]);
 
-        // Cari detail kegiatan berdasarkan kode_kegiatan
-        $kegiatan = presensiKegiatan::where('kode_kegiatan', $request->kode_kegiatan)->first();
-
-        if (!$kegiatan) {
             return response()->json([
-                'message' => 'Kegiatan tidak ditemukan',
-                'success' => false,
-            ], 404);
-        }
-
-        // Mendapatkan waktu saat ini
-        $currentTime = Carbon::now();
-
-        // Menggabungkan tgl_kegiatan dan jam_kegiatan menjadi satu objek Carbon
-        $waktuKegiatan = Carbon::parse($kegiatan->tgl_kegiatan . ' ' . $kegiatan->jam_kegiatan);
-
-        // Cek apakah waktu saat ini sudah mencapai atau melewati waktu kegiatan
-        if ($currentTime->lt($waktuKegiatan)) {
+                'message' => 'Presensi berhasil dicatat.',
+                'data_presensi' => $peserta,
+                'success' => true,
+            ], 200);
+        } catch (\Exception $exception) {
             return response()->json([
-                'message' => 'Presensi belum bisa dilakukan, tunggu hingga waktu kegiatan dimulai pada tanggal ' . $kegiatan->tgl_kegiatan . ' jam ' . $kegiatan->jam_kegiatan . ' waktu setempat',
+                'message' => 'Gagal menambah data presensi: ' . $exception->getMessage(),
                 'success' => false,
-            ], 403);
+            ], 500);
         }
-
-        // Check if the current time is past the expired_date_time
-        if (now()->greaterThan($kegiatan->expired_date_time)) {
-            return response()->json([
-                'message' => 'Presensi sudah tidak bisa dilakukan, waktu telah berakhir',
-                'success' => false,
-            ], 403);
-        }
-
-        // Fetch the participant data with filtering by location if required
-        $peserta = dataSensusPeserta::select([
-            'data_peserta.id',
-            'data_peserta.nama_lengkap',
-            DB::raw('TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) AS usia'),
-            'data_peserta.jenis_kelamin',
-            'tbl_pekerjaan.nama_pekerjaan AS pekerjaan',
-            DB::raw("CASE
-                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 3 AND 6 THEN 'Paud'
-                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 7 AND 12 THEN 'Caberawit'
-                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 13 AND 15 THEN 'Pra-remaja'
-                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 16 AND 18 THEN 'Remaja'
-                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) >= 19 THEN 'Muda - mudi / Usia Nikah'
-                ELSE 'Tidak dalam rentang usia'
-            END AS status_kelas"),
-            'tabel_daerah.id AS daerah_id',
-            'tabel_daerah.nama_daerah',
-            'tabel_desa.id AS desa_id',
-            'tabel_desa.nama_desa',
-            'tabel_kelompok.id AS kelompok_id',
-            'tabel_kelompok.nama_kelompok',
-        ])
-            ->join('tabel_daerah', function ($join) {
-                $join->on('tabel_daerah.id', '=', DB::raw('CAST(data_peserta.tmpt_daerah AS UNSIGNED)'));
-            })
-            ->join('tabel_desa', function ($join) {
-                $join->on('tabel_desa.id', '=', DB::raw('CAST(data_peserta.tmpt_desa AS UNSIGNED)'));
-            })
-            ->join('tabel_kelompok', function ($join) {
-                $join->on('tabel_kelompok.id', '=', DB::raw('CAST(data_peserta.tmpt_kelompok AS UNSIGNED)'));
-            })
-            ->join('tbl_pekerjaan', function ($join) {
-                $join->on('tbl_pekerjaan.id', '=', DB::raw('CAST(data_peserta.pekerjaan AS UNSIGNED)'));
-            })
-            ->join('users', function ($join) {
-                $join->on('users.id', '=', DB::raw('CAST(data_peserta.user_id AS UNSIGNED)'));
-            })
-            ->where('data_peserta.nama_lengkap', $request->nama_lengkap)
-            ->where('data_peserta.tanggal_lahir', $request->tanggal_lahir)
-            ->where(function ($query) use ($request) {
-                $query->where('data_peserta.nama_ayah', $request->nama_ortu)
-                    ->orWhere('data_peserta.nama_ibu', $request->nama_ortu);
-            });
-
-        // Apply location filters based on event settings in kegiatan
-        if ($kegiatan->tmpt_daerah || $kegiatan->tmpt_desa || $kegiatan->tmpt_kelompok) {
-            $peserta->where(function ($query) use ($kegiatan) {
-                // Check each location filter only if it's set in kegiatan
-                if ($kegiatan->tmpt_daerah) {
-                    $query->where('data_peserta.tmpt_daerah', $kegiatan->tmpt_daerah);
-                }
-                if ($kegiatan->tmpt_desa) {
-                    $query->where('data_peserta.tmpt_desa', $kegiatan->tmpt_desa);
-                }
-                if ($kegiatan->tmpt_kelompok) {
-                    $query->where('data_peserta.tmpt_kelompok', $kegiatan->tmpt_kelompok);
-                }
-            });
-        }
-
-        // Retrieve the first matching participant
-        $peserta = $peserta->first();
-
-        // Check if participant data is valid
-        if (!$peserta) {
-            return response()->json([
-                'message' => 'Peserta tidak ditemukan atau data peserta presensi tidak bisa diakses di tempat sambung ini',
-                'success' => false,
-            ], 404);
-        }
-
-        // Check age restriction
-        $usiaOperator = $kegiatan->usia_operator;
-        $usiaBatas = $kegiatan->usia_batas;
-
-        if (!empty($usiaOperator) && !empty($usiaBatas)) {
-            $usia = $peserta->usia;
-
-            // Evaluasi kondisi berdasarkan operator usia
-            if (!eval("return {$usia} {$usiaOperator} {$usiaBatas};")) {
-                return response()->json([
-                    'message' => 'Peserta tidak memenuhi kriteria usia',
-                    'success' => false,
-                ], 403);
-            }
-        }
-
-        // Check if the participant has already attended
-        $existingPresensi = presensi::where('id_kegiatan', $request->id_kegiatan)
-            ->where('id_peserta', $peserta->id)
-            ->first();
-
-        if ($existingPresensi) {
-            return response()->json([
-                'message' => 'Peserta sudah melakukan presensi',
-                'success' => false,
-            ], 409);
-        }
-
-        $presensi = new presensi();
-        $presensi->id_kegiatan = $kegiatan->id;
-        $presensi->id_peserta = $peserta->id;
-        $presensi->id_petugas = $kegiatan->add_by_petugas;
-        $presensi->status_presensi = $request->status_presensi;
-        $presensi->waktu_presensi = now();
-        $presensi->keterangan = $request->keterangan;
-        $presensi->save();
-
-        return response()->json([
-            'message' => 'Presensi berhasil dicatat',
-            'data_presensi' => $peserta,
-            'success' => true,
-        ], 200);
     }
 
     public function list(Request $request)

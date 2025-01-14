@@ -347,12 +347,13 @@ class PengajarPesertaController extends Controller
             'id' => 'required|numeric|digits_between:1,5',
         ]);
 
-        $table_pengajar = tblPengajar::where('id', '=', $request->id)->first();
+        $table_pengajar = tblPengajar::where('id', $request->id)->first();
 
-        if (!empty($table_pengajar)) {
-            $existsInCppdb = tblCppdb::where('id_pengajar', '=', $request->id)->exists();
+        if ($table_pengajar) {
+            $existsInCppdb = tblCppdb::where('id_pengajar', $request->id)->exists();
 
             if ($existsInCppdb) {
+                // Jika data digunakan di tabel lain, cegah penghapusan
                 return response()->json([
                     'message' => 'Data Pengajar tidak dapat dihapus karena sudah terdaftar dan digunakan di tabel lain',
                     'success' => false,
@@ -360,12 +361,14 @@ class PengajarPesertaController extends Controller
             }
 
             try {
-                tblPengajar::where('id', '=', $request->id)->delete();
+                $deletedData = $table_pengajar->toArray();
+
+                $table_pengajar->delete();
 
                 $logAccount = [
                     'user_id' => $userId,
                     'ip_address' => $request->ip(),
-                    'aktifitas' => 'Delete Data Pengajar - [' . $table_pengajar->nama_pengajar . ']',
+                    'aktifitas' => 'Delete Data Pengajar - [' . $deletedData['id'] . '] - [' . $deletedData['nama_pengajar'] . ']',
                     'status_logs' => 'successfully',
                     'browser' => $agent->browser(),
                     'os' => $agent->platform(),

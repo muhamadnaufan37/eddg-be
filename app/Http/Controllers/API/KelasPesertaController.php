@@ -11,8 +11,8 @@ class KelasPesertaController extends Controller
     public function data_all_kelas()
     {
         $table_kelas = tblKelasPeserta::select(['id', 'nama_kelas'])
-            ->groupBy('id', 'nama_kelas') // Mengelompokkan hasil berdasarkan nama_kelas
-            ->orderByRaw('nama_kelas') // Mengurutkan hasil berdasarkan nama_kelas
+            ->groupBy('id', 'nama_kelas')
+            ->orderBy('id', 'asc')
             ->get();
 
         return response()->json([
@@ -40,8 +40,8 @@ class KelasPesertaController extends Controller
         $model->orderByRaw('created_at IS NULL, created_at DESC');
 
         if (!empty($keyword)) {
-            $table_kelas = $model->where('nama_kelas', 'LIKE', '%'.$keyword.'%')
-                ->orWhere('id', 'LIKE', '%'.$keyword.'%')
+            $table_kelas = $model->where('nama_kelas', 'LIKE', '%' . $keyword . '%')
+                ->orWhere('id', 'LIKE', '%' . $keyword . '%')
                 ->paginate($perPage);
         } else {
             $table_kelas = $model->paginate($perPage);
@@ -80,7 +80,7 @@ class KelasPesertaController extends Controller
             $table_kelas->save();
         } catch (\Exception $exception) {
             return response()->json([
-                'message' => 'Gagal menambah Data Kelas Peserta'.$exception->getMessage(),
+                'message' => 'Gagal menambah Data Kelas Peserta' . $exception->getMessage(),
                 'success' => false,
             ], 500);
         }
@@ -134,7 +134,7 @@ class KelasPesertaController extends Controller
 
         $request->validate([
             'id' => 'required|numeric|digits_between:1,5',
-            'nama_kelas' => 'sometimes|required|max:225|string|unique:kelas_peserta_didik,nama_kelas,'.$request->id.',id',
+            'nama_kelas' => 'sometimes|required|max:225|string|unique:kelas_peserta_didik,nama_kelas,' . $request->id . ',id',
         ], $customMessages);
 
         $table_kelas = tblKelasPeserta::where('id', '=', $request->id)
@@ -148,7 +148,7 @@ class KelasPesertaController extends Controller
                 ]);
             } catch (\Exception $exception) {
                 return response()->json([
-                    'message' => 'Gagal mengupdate Data Kelas Peserta'.$exception->getMessage(),
+                    'message' => 'Gagal mengupdate Data Kelas Peserta' . $exception->getMessage(),
                     'success' => false,
                 ], 500);
             }
@@ -186,7 +186,7 @@ class KelasPesertaController extends Controller
                 ], 200);
             } catch (\Exception $exception) {
                 return response()->json([
-                    'message' => 'Gagal menghapus Data Kelas Peserta'.$exception->getMessage(),
+                    'message' => 'Gagal menghapus Data Kelas Peserta' . $exception->getMessage(),
                     'success' => false,
                 ], 500);
             }

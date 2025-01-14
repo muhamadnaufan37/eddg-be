@@ -13,6 +13,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Jenssegers\Agent\Agent;
 use App\Models\logs;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class CalonPPDBController extends Controller
 {
@@ -45,7 +47,7 @@ class CalonPPDBController extends Controller
             ->leftJoin('users', 'cppdb.id_petugas', '=', 'users.id')
             ->where('kalender_pendidikan.status_pelajaran', 1);
 
-        // Apply orderByRaw before executing the query
+
         $model->orderByRaw('cppdb.created_at IS NULL, cppdb.created_at DESC');
 
         if (!empty($keyword)) {
@@ -291,9 +293,9 @@ class CalonPPDBController extends Controller
             'data_peserta.kode_cari_data',
             'data_peserta.nama_lengkap AS nama_peserta',
             'data_peserta.nama_ayah',
-            'tabel_daerah.nama_daerah', // Mengambil nama daerah dari tabel daerah
-            'tabel_desa.nama_desa', // Mengambil nama desa dari tabel desa
-            'tabel_kelompok.nama_kelompok', // Mengambil nama kelompok dari tabel kelompok
+            'tabel_daerah.nama_daerah',
+            'tabel_desa.nama_desa',
+            'tabel_kelompok.nama_kelompok',
             'users.nama_lengkap AS nama_petugas',
             'cppdb.nilai1',
             'cppdb.nilai2',
@@ -306,6 +308,7 @@ class CalonPPDBController extends Controller
             'cppdb.nilai9',
             'cppdb.nilai10',
             'cppdb.nilai11',
+            'cppdb.nilai11_1',
             'cppdb.nilai12',
             'cppdb.nilai13',
             'cppdb.nilai14',
@@ -315,6 +318,7 @@ class CalonPPDBController extends Controller
             'cppdb.nilai_presensi_2',
             'cppdb.nilai_presensi_3',
             'cppdb.catatan_ortu',
+            'cppdb.tgl_penetapan',
             'cppdb.tmpt_penetapan',
             'cppdb.status_naik_kelas',
         ])
@@ -502,6 +506,8 @@ class CalonPPDBController extends Controller
             'nilai8' => 'required|numeric|digits_between:1,3',
             'nilai9' => 'required|numeric|digits_between:1,3',
             'nilai10' => 'required|numeric|digits_between:1,3',
+            'nilai11' => 'required|numeric|digits_between:1,3',
+            'nilai11_1' => 'required|numeric|digits_between:1,3',
             'nilai12' => 'required',
             'nilai13' => 'required',
             'nilai14' => 'required',
@@ -534,6 +540,8 @@ class CalonPPDBController extends Controller
                     'nilai8' => $request->nilai8,
                     'nilai9' => $request->nilai9,
                     'nilai10' => $request->nilai10,
+                    'nilai11' => $request->nilai11,
+                    'nilai11_1' => $request->nilai11_1,
                     'nilai12' => $request->nilai12,
                     'nilai13' => $request->nilai13,
                     'nilai14' => $request->nilai14,
@@ -543,6 +551,7 @@ class CalonPPDBController extends Controller
                     'nilai_presensi_2' => $request->nilai_presensi_2,
                     'nilai_presensi_3' => $request->nilai_presensi_3,
                     'catatan_ortu' => $request->catatan_ortu,
+                    'tgl_penetapan' => Carbon::now()->format('Y-m-d H:i:s'),
                     'tmpt_penetapan' => $request->tmpt_penetapan,
                     'status_naik_kelas' => $request->status_naik_kelas,
                 ]);
@@ -598,18 +607,22 @@ class CalonPPDBController extends Controller
             'id' => 'required|numeric|digits_between:1,5',
         ]);
 
-        $table_calon_ppdb = tblCppdb::where('id', '=', $request->id)
-            ->first();
+        // Cari data terlebih dahulu
+        $table_calon_ppdb = tblCppdb::where('id', '=', $request->id)->first();
 
-        if (!empty($table_calon_ppdb)) {
+        if ($table_calon_ppdb) {
             try {
-                $table_calon_ppdb = tblCppdb::where('id', '=', $request->id)
-                    ->delete();
+                // Simpan data sebelum dihapus untuk log
+                $deletedData = $table_calon_ppdb->toArray();
 
+                // Hapus data
+                $table_calon_ppdb->delete();
+
+                // Buat log
                 $logAccount = [
                     'user_id' => $userId,
                     'ip_address' => $request->ip(),
-                    'aktifitas' => 'Delete Data PPDB - [' . $table_calon_ppdb->id . '] - [' . $table_calon_ppdb->nama_lengkap . ']',
+                    'aktifitas' => 'Delete Data PPDB - [' . $deletedData['id'] . ']',
                     'status_logs' => 'successfully',
                     'browser' => $agent->browser(),
                     'os' => $agent->platform(),
@@ -624,7 +637,7 @@ class CalonPPDBController extends Controller
                 ], 200);
             } catch (\Exception $exception) {
                 return response()->json([
-                    'message' => 'Gagal menghapus Data PPDB' . $exception->getMessage(),
+                    'message' => 'Gagal menghapus Data PPDB: ' . $exception->getMessage(),
                     'success' => false,
                 ], 500);
             }
@@ -633,6 +646,88 @@ class CalonPPDBController extends Controller
         return response()->json([
             'message' => 'Data PPDB tidak ditemukan',
             'success' => false,
+        ], 404);
+    }
+
+    public function getPesertaBelumInputPenilaian(Request $request)
+    {
+        $user = $request->user();
+        $keyword = $request->get('keyword', null);
+        $perPage = $request->get('per-page', 10);
+        $dataDaerah = $request->get('data-daerah', $user->role_daerah);
+        $dataDesa = $request->get('data-desa', $user->role_desa);
+        $dataKelompok = $request->get('data-kelompok', $user->role_kelompok);
+
+        // Batasi maksimum per halaman
+        $perPage = min($perPage, 100);
+
+        // Query peserta yang belum ada di cppdb
+        $pesertaQuery = dataSensusPeserta::select([
+            'data_peserta.id',
+            'data_peserta.nama_lengkap',
+            'data_peserta.tmpt_daerah',
+            'data_peserta.tmpt_desa',
+            'data_peserta.tmpt_kelompok',
+        ])
+            ->leftJoin('cppdb', function ($join) {
+                $join->on('data_peserta.id', '=', 'cppdb.id_peserta')
+                    ->leftJoin('kalender_pendidikan', 'cppdb.id_thn_akademik', '=', 'kalender_pendidikan.id')
+                    ->where('kalender_pendidikan.status_pelajaran', 1);
+            })
+            ->whereNull('cppdb.id_peserta') // Peserta yang belum diinputkan penilaian
+            ->where('data_peserta.jenis_data', 'KBM') // Hanya data peserta dengan jenis_data KBM
+            ->where(function ($query) {
+                $query->whereNull('kalender_pendidikan.id')
+                    ->orWhere('kalender_pendidikan.status_pelajaran', 1);
+            });
+
+        // Filter berdasarkan keyword jika ada
+        if (!empty($keyword)) {
+            $pesertaQuery->where(function ($query) use ($keyword) {
+                $query->where('data_peserta.nama_lengkap', 'LIKE', '%' . $keyword . '%')
+                    ->orWhere('data_peserta.jenis_kelamin', 'LIKE', '%' . $keyword . '%');
+            });
+        }
+
+        // Filter lokasi jika ada
+        if (!is_null($dataDaerah)) {
+            $pesertaQuery->where('data_peserta.tmpt_daerah', $dataDaerah);
+        }
+
+        if (!is_null($dataDesa)) {
+            $pesertaQuery->where('data_peserta.tmpt_desa', $dataDesa);
+        }
+
+        if (!is_null($dataKelompok)) {
+            $pesertaQuery->where('data_peserta.tmpt_kelompok', $dataKelompok);
+        }
+
+        // Pagination dan pengambilan data
+        $paginatedData = $pesertaQuery->paginate($perPage);
+
+        // Transformasi data untuk response
+        $transformedData = $paginatedData->map(function ($peserta) {
+            return [
+                'id_peserta' => $peserta->id,
+                'nama_lengkap' => $peserta->nama_lengkap,
+                'tmpt_daerah' => $peserta->tmpt_daerah,
+                'tmpt_desa' => $peserta->tmpt_desa,
+                'tmpt_kelompok' => $peserta->tmpt_kelompok,
+                'status_naik_kelas' => 'Belum Diinputkan', // Semua data yang belum diinputkan
+            ];
+        });
+
+        // Statistik
+        $statistics = [
+            'peserta_belum_diinputkan' => $paginatedData->total(),
+        ];
+
+        // Response JSON
+        return response()->json([
+            'message' => 'Data peserta yang belum diinputkan penilaian berhasil diambil.',
+            'data_presensi_peserta' => $transformedData,
+            'statistics' => $statistics,
+            'success' => true,
         ], 200);
     }
 }
