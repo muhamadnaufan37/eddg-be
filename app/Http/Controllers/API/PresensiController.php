@@ -25,26 +25,16 @@ class PresensiController extends Controller
             $perPage = 100;
         }
 
-        $customMessages = [
-            'required' => 'Kolom :attribute wajib diisi.',
-            'unique' => ':attribute sudah terdaftar di sistem.',
-            'email' => ':attribute harus berupa alamat email yang valid.',
-            'max' => ':attribute tidak boleh lebih dari :max karakter.',
-            'confirmed' => 'Konfirmasi :attribute tidak cocok.',
-            'min' => ':attribute harus memiliki setidaknya :min karakter.',
-            'regex' => ':attribute harus mengandung setidaknya satu huruf kapital dan satu angka.',
-            'numeric' => ':attribute harus berupa angka.',
-            'digits_between' => ':attribute harus memiliki panjang antara :min dan :max digit.',
-        ];
-
-        // Validate input
         $request->validate([
-            'id_kegiatan' => 'required|numeric',
-        ], $customMessages);
+            'id_kegiatan' => 'required|string',
+        ], [
+            'required' => 'Kolom :attribute wajib diisi.',
+        ]);
 
         $id_kegiatan = $request->id_kegiatan;
 
-        $kegiatan = PresensiKegiatan::find($id_kegiatan);
+        // Cari kegiatan
+        $kegiatan = PresensiKegiatan::where('id', $id_kegiatan)->first();
 
         if (!$kegiatan) {
             return response()->json([
@@ -53,6 +43,7 @@ class PresensiController extends Controller
             ], 404);
         }
 
+        // Query dasar peserta
         $pesertaQuery = dataSensusPeserta::select([
             'data_peserta.id',
             'data_peserta.nama_lengkap',
@@ -64,34 +55,26 @@ class PresensiController extends Controller
             'presensi.status_presensi',
             'presensi.keterangan',
         ])
-            ->join('tabel_daerah', function ($join) {
-                $join->on('tabel_daerah.id', '=', DB::raw('CAST(data_peserta.tmpt_daerah AS UNSIGNED)'));
-            })
-            ->join('tabel_desa', function ($join) {
-                $join->on('tabel_desa.id', '=', DB::raw('CAST(data_peserta.tmpt_desa AS UNSIGNED)'));
-            })
-            ->join('tabel_kelompok', function ($join) {
-                $join->on('tabel_kelompok.id', '=', DB::raw('CAST(data_peserta.tmpt_kelompok AS UNSIGNED)'));
-            })
+            ->join('tabel_daerah', 'tabel_daerah.id', '=', DB::raw('CAST(data_peserta.tmpt_daerah AS UNSIGNED)'))
+            ->join('tabel_desa', 'tabel_desa.id', '=', DB::raw('CAST(data_peserta.tmpt_desa AS UNSIGNED)'))
+            ->join('tabel_kelompok', 'tabel_kelompok.id', '=', DB::raw('CAST(data_peserta.tmpt_kelompok AS UNSIGNED)'))
             ->leftJoin('presensi', function ($join) use ($id_kegiatan) {
                 $join->on('data_peserta.id', '=', 'presensi.id_peserta')
                     ->where('presensi.id_kegiatan', '=', $id_kegiatan);
             })
-            ->when($kegiatan->tmpt_daerah, function ($query) use ($kegiatan) {
-                $query->where('data_peserta.tmpt_daerah', $kegiatan->tmpt_daerah);
-            })
-            ->when($kegiatan->tmpt_desa, function ($query) use ($kegiatan) {
-                $query->where('data_peserta.tmpt_desa', $kegiatan->tmpt_desa);
-            })
-            ->when($kegiatan->tmpt_kelompok, function ($query) use ($kegiatan) {
-                $query->where('data_peserta.tmpt_kelompok', $kegiatan->tmpt_kelompok);
-            })
-            ->where(function ($query) {
-                $query->where('data_peserta.status_sambung', 1)
-                    ->where('data_peserta.status_pernikahan', 0);
-            });
+            ->when($kegiatan->tmpt_daerah, fn($q) => $q->where('data_peserta.tmpt_daerah', $kegiatan->tmpt_daerah))
+            ->when($kegiatan->tmpt_desa, fn($q) => $q->where('data_peserta.tmpt_desa', $kegiatan->tmpt_desa))
+            ->when($kegiatan->tmpt_kelompok, fn($q) => $q->where('data_peserta.tmpt_kelompok', $kegiatan->tmpt_kelompok))
+            ->where('data_peserta.status_sambung', 1)
+            ->where('data_peserta.status_pernikahan', 0);
 
-        if (!empty($keyword)) {
+        // Filter usia
+        if ($kegiatan->usia_operator && $kegiatan->usia_batas) {
+            $pesertaQuery->whereRaw("TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) {$kegiatan->usia_operator} {$kegiatan->usia_batas}");
+        }
+
+        // Filter keyword
+        if ($keyword) {
             $pesertaQuery->where(function ($q) use ($keyword) {
                 $q->where('data_peserta.nama_lengkap', 'LIKE', '%' . $keyword . '%')
                     ->orWhere('data_peserta.jenis_kelamin', 'LIKE', '%' . $keyword . '%')
@@ -99,52 +82,48 @@ class PresensiController extends Controller
             });
         }
 
-        $reportData = $pesertaQuery->get();
+        // Hitung statistik langsung dari database
+        $statistics = dataSensusPeserta::leftJoin('presensi', function ($join) use ($id_kegiatan) {
+            $join->on('data_peserta.id', '=', 'presensi.id_peserta')
+                ->where('presensi.id_kegiatan', '=', $id_kegiatan);
+        })
+            ->selectRaw('
+            COUNT(CASE WHEN presensi.status_presensi = "HADIR" THEN 1 END) AS hadir,
+            COUNT(CASE WHEN presensi.status_presensi = "TELAT HADIR" THEN 1 END) AS telat_hadir,
+            COUNT(CASE WHEN presensi.status_presensi = "IZIN" THEN 1 END) AS izin,
+            COUNT(CASE WHEN presensi.status_presensi = "SAKIT" THEN 1 END) AS sakit,
+            COUNT(CASE WHEN presensi.status_presensi IS NULL THEN 1 ELSE NULL END) AS alfa
+        ')
+            ->where('data_peserta.status_sambung', 1)
+            ->where('data_peserta.status_pernikahan', 0)
+            ->when(
+                $kegiatan->usia_operator && $kegiatan->usia_batas,
+                fn($q) =>
+                $q->whereRaw("TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) {$kegiatan->usia_operator} {$kegiatan->usia_batas}")
+            )
+            ->first();
 
-        $transformedData = $reportData->map(function ($peserta) {
-            return [
-                'id_peserta' => $peserta->id,
-                'nama_lengkap' => $peserta->nama_lengkap,
-                'tanggal_lahir' => $peserta->tanggal_lahir,
-                'jenis_kelamin' => $peserta->jenis_kelamin,
-                'status_presensi' => $peserta->presensi_id ? $peserta->status_presensi : 'alfa/tidak hadir',
-                'status_sambung' => $peserta->status_sambung,
-                'status_pernikahan' => $peserta->status_pernikahan,
-                'keterangan' => $peserta->keterangan,
-            ];
-        });
+        // Paginate data
+        $reportData = $pesertaQuery->paginate($perPage);
 
-        $statistics = [
-            'hadir' => 0,
-            'telat_hadir' => 0,
-            'izin' => 0,
-            'sakit' => 0,
-            'alfa' => 0,
-        ];
+        $reportData->appends(['per-page' => $perPage]);
 
-        $transformedData->each(function ($peserta) use (&$statistics) {
-            $status_presensi = $peserta['status_presensi'];
+        // Transformasi data
+        $transformedData = $reportData->map(fn($peserta) => [
+            'id_peserta' => $peserta->id,
+            'nama_lengkap' => $peserta->nama_lengkap,
+            'tanggal_lahir' => $peserta->tanggal_lahir,
+            'jenis_kelamin' => $peserta->jenis_kelamin,
+            'status_presensi' => $peserta->presensi_id ? $peserta->status_presensi : 'alfa/tidak hadir',
+            'status_sambung' => $peserta->status_sambung,
+            'status_pernikahan' => $peserta->status_pernikahan,
+            'keterangan' => $peserta->keterangan,
+        ]);
 
-            switch ($status_presensi) {
-                case 'HADIR':
-                    $statistics['hadir']++;
-                    break;
-                case 'TELAT HADIR':
-                    $statistics['telat_hadir']++;
-                    break;
-                case 'IZIN':
-                    $statistics['izin']++;
-                    break;
-                case 'SAKIT':
-                    $statistics['sakit']++;
-                    break;
-                default:
-                    $statistics['alfa']++;
-            }
-        });
-
+        // Respon API
         return response()->json([
             'message' => 'Data presensi berhasil diambil',
+            'list_data_presensi_peserta' => $reportData,
             'data_presensi_peserta' => $transformedData,
             'statistics' => $statistics,
             'success' => true,

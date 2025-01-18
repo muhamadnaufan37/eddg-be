@@ -14,7 +14,6 @@ use Carbon\Carbon;
 
 class DataSensusController extends Controller
 {
-
     public function list_nama_peserta()
     {
         // Query untuk mendapatkan data peserta beserta nama kelompok
@@ -103,6 +102,7 @@ class DataSensusController extends Controller
             'tabel_kelompok.nama_kelompok',
             'data_peserta.jenis_data',
             'users.nama_lengkap AS user_petugas',
+            'data_peserta.img',
         ])->join('tabel_daerah', function ($join) {
             $join->on('tabel_daerah.id', '=', DB::raw('CAST(data_peserta.tmpt_daerah AS UNSIGNED)'));
         })->join('tabel_desa', function ($join) {
@@ -119,7 +119,6 @@ class DataSensusController extends Controller
                 $query->whereRaw('LOWER(data_peserta.nama_ayah) LIKE ?', ['%' . strtolower($request->nama_ortu) . '%'])
                     ->orWhereRaw('LOWER(data_peserta.nama_ibu) LIKE ?', ['%' . strtolower($request->nama_ortu) . '%']);
             })
-
             ->first();
 
         // Tambahkan tanggal pencarian
@@ -137,22 +136,6 @@ class DataSensusController extends Controller
             $ipFromResponse = $ipInfo['IP'];
 
             // $getDaata = Http::get("http://ip-api.com/json/{$ipFromResponse}")->json();
-
-            // Buat log dengan informasi IP dari respons
-            $logAccount = [
-                'user_id' => 0,
-                'ip_address' => $ipFromResponse,
-                'aktifitas' => 'Cari Data Sensus - [' . $sensus->id . ' - ' . $sensus->nama_lengkap . ' - ' . 'Web Data Center' . ']',
-                'status_logs' => 'successfully',
-                'browser' => $agent->browser(),
-                'os' => $agent->platform(),
-                'device' => $agent->device(),
-                // 'location_info' => $getDaata,
-                // 'latitude' => $getDaata['lat'],
-                // 'longitude' => $getDaata['lon'],
-                'engine_agent' => $request->header('user-agent'),
-            ];
-            logs::create($logAccount);
         } else {
             return response()->json([
                 'message' => 'Data Sensus tidak ditemukan' . $response->status(),
@@ -162,11 +145,24 @@ class DataSensusController extends Controller
 
         try {
             if (!empty($sensus)) {
-                if ($sensus->img_sensus) {
-                    $sensus->image_url = asset($sensus->img_sensus);
-                } else {
-                    $sensus->image_url = '';
-                }
+                $sensus->img_url = $sensus->img
+                    ? asset('storage/' . str_replace('public/', '', $sensus->img))
+                    : null;
+
+                $logAccount = [
+                    'user_id' => 0,
+                    'ip_address' => $ipFromResponse,
+                    'aktifitas' => 'Cari Data Sensus - [' . $sensus->id . ' - ' . $sensus->nama_lengkap . ' - ' . 'Web Data Center' . ']',
+                    'status_logs' => 'successfully',
+                    'browser' => $agent->browser(),
+                    'os' => $agent->platform(),
+                    'device' => $agent->device(),
+                    // 'location_info' => $getDaata,
+                    // 'latitude' => $getDaata['lat'],
+                    // 'longitude' => $getDaata['lon'],
+                    'engine_agent' => $request->header('user-agent'),
+                ];
+                logs::create($logAccount);
 
                 return response()->json([
                     'success' => true,
