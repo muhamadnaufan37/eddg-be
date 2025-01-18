@@ -54,6 +54,10 @@ class PresensiController extends Controller
             'presensi.id AS presensi_id',
             'presensi.status_presensi',
             'presensi.keterangan',
+            'tabel_daerah.nama_daerah',
+            'tabel_desa.nama_desa',
+            'tabel_kelompok.nama_kelompok',
+            'presensi.waktu_presensi',
         ])
             ->join('tabel_daerah', 'tabel_daerah.id', '=', DB::raw('CAST(data_peserta.tmpt_daerah AS UNSIGNED)'))
             ->join('tabel_desa', 'tabel_desa.id', '=', DB::raw('CAST(data_peserta.tmpt_desa AS UNSIGNED)'))
@@ -103,13 +107,9 @@ class PresensiController extends Controller
             )
             ->first();
 
-        // Paginate data
-        $reportData = $pesertaQuery->paginate($perPage);
-
-        $reportData->appends(['per-page' => $perPage]);
-
         // Transformasi data
-        $transformedData = $reportData->map(fn($peserta) => [
+        $allData = $pesertaQuery->get();
+        $transformedData = $allData->map(fn($peserta) => [
             'id_peserta' => $peserta->id,
             'nama_lengkap' => $peserta->nama_lengkap,
             'tanggal_lahir' => $peserta->tanggal_lahir,
@@ -117,8 +117,17 @@ class PresensiController extends Controller
             'status_presensi' => $peserta->presensi_id ? $peserta->status_presensi : 'alfa/tidak hadir',
             'status_sambung' => $peserta->status_sambung,
             'status_pernikahan' => $peserta->status_pernikahan,
+            'nama_daerah' => $peserta->nama_daerah,
+            'nama_desa' => $peserta->nama_desa,
+            'nama_kelompok' => $peserta->nama_kelompok,
             'keterangan' => $peserta->keterangan,
+            'waktu_presensi' => $peserta->waktu_presensi,
         ]);
+
+        // Paginate data
+        $reportData = $pesertaQuery->paginate($perPage);
+
+        $reportData->appends(['per-page' => $perPage]);
 
         // Respon API
         return response()->json([
@@ -276,7 +285,7 @@ class PresensiController extends Controller
             logs::create([
                 'user_id' => $userId,
                 'ip_address' => $request->ip(),
-                'aktifitas' => "Absensi Manual Web - [{$peserta->id}] - [{$peserta->nama_lengkap}]",
+                'aktifitas' => "Absensi Scan QR - [{$peserta->id}] - [{$peserta->nama_lengkap}]",
                 'status_logs' => 'successfully',
                 'browser' => $agent->browser(),
                 'os' => $agent->platform(),

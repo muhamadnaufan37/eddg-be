@@ -6,15 +6,19 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
+use Illuminate\Support\Str;
+use Jenssegers\Agent\Agent;
+use Illuminate\Support\Facades\Auth;
+use App\Models\logs;
 
 class RolesController extends Controller
 {
     public function list_data_roles()
     {
         $roles = Role::select(['id', 'name']) // Include the 'id' column
-        ->groupBy('id', 'name') // Group by both 'id' and 'name'
-        ->orderBy('name') // Order by the role name
-        ->get();
+            ->groupBy('id', 'name') // Group by both 'id' and 'name'
+            ->orderBy('name') // Order by the role name
+            ->get();
 
         return response()->json([
             'message' => 'Sukses',
@@ -44,8 +48,8 @@ class RolesController extends Controller
 
         if (!empty($keyword) && empty($kolom)) {
             $model->where(function ($q) use ($keyword) {
-                $q->where('name', 'LIKE', '%'.$keyword.'%')
-                ->orWhere('description', 'LIKE', '%'.$keyword.'%');
+                $q->where('name', 'LIKE', '%' . $keyword . '%')
+                    ->orWhere('description', 'LIKE', '%' . $keyword . '%');
             });
         } elseif (!empty($keyword) && !empty($kolom)) {
             if ($kolom == 'name') {
@@ -54,7 +58,7 @@ class RolesController extends Controller
                 $kolom = 'description';
             }
 
-            $model->where($kolom, 'LIKE', '%'.$keyword.'%');
+            $model->where($kolom, 'LIKE', '%' . $keyword . '%');
         }
 
         $role = $model->paginate($perPage);
@@ -71,6 +75,9 @@ class RolesController extends Controller
     // Create data Role
     public function create(Request $request)
     {
+        $userId = Auth::id();
+        $agent = new Agent();
+
         $customMessages = [
             'required' => 'Kolom :attribute wajib diisi.',
             'unique' => ':attribute sudah terdaftar di sistem',
@@ -89,14 +96,27 @@ class RolesController extends Controller
         ], $customMessages);
 
         $role = new Role();
+        $role->code_uuid = Str::uuid()->toString();
         $role->name = $request->name;
         $role->guard_name = 'api';
         $role->description = $request->description;
         try {
             $role->save();
+
+            $logAccount = [
+                'user_id' => $userId,
+                'ip_address' => $request->ip(),
+                'aktifitas' => 'Create Roles - [' . $role->id . '] - [' . $role->name . '] - [' . $role->guard_name . ']',
+                'status_logs' => 'successfully',
+                'browser' => $agent->browser(),
+                'os' => $agent->platform(),
+                'device' => $agent->device(),
+                'engine_agent' => $request->header('user-agent'),
+            ];
+            logs::create($logAccount);
         } catch (\Exception $exception) {
             return response()->json([
-                'message' => 'Gagal menambah data Role'.$exception->getMessage(),
+                'message' => 'Gagal menambah data Role' . $exception->getMessage(),
                 'success' => false,
             ], 500);
         }
@@ -138,6 +158,9 @@ class RolesController extends Controller
     // Update data Role
     public function update(Request $request)
     {
+        $userId = Auth::id();
+        $agent = new Agent();
+
         $customMessages = [
             'required' => 'Kolom :attribute wajib diisi.',
             'unique' => ':attribute sudah terdaftar di sistem',
@@ -159,31 +182,53 @@ class RolesController extends Controller
         $role = Role::where('id', '=', $request->id)
             ->first();
 
-        if (!empty($role)) {
-            try {
-                $role->update([
-                    'id' => $request->id,
-                    'name' => $request->name,
-                    'description' => $request->description,
-                ]);
-            } catch (\Exception $exception) {
-                return response()->json([
-                    'message' => 'Gagal mengupdate data Role'.$exception->getMessage(),
-                    'success' => false,
-                ], 500);
+        if (!$role) {
+            return response()->json([
+                'message' => 'Data tidak ditemukan',
+                'success' => false,
+            ], 404);
+        }
+
+        try {
+
+            $originalData = $role->getOriginal();
+
+            $role->fill([
+                'name' => $request->name,
+                'description' => $request->description,
+            ]);
+
+            $updatedFields = [];
+            foreach ($role->getDirty() as $field => $newValue) {
+                $oldValue = $originalData[$field] ?? null; // Ambil nilai lama
+                $updatedFields[] = "$field: [$oldValue] -> [$newValue]";
             }
+
+            $role->save();
+
+            $logAccount = [
+                'user_id' => $userId,
+                'ip_address' => $request->ip(),
+                'aktifitas' => 'Update Roles - [' . $role->id . '] - [' . $role->name . '] - [' . $role->guard_name . ']',
+                'status_logs' => 'successfully',
+                'browser' => $agent->browser(),
+                'os' => $agent->platform(),
+                'device' => $agent->device(),
+                'engine_agent' => $request->header('user-agent'),
+            ];
+            logs::create($logAccount);
 
             return response()->json([
                 'message' => 'Data Role berhasil diupdate',
                 'data_role' => $role,
                 'success' => true,
             ], 200);
+        } catch (\Exception $exception) {
+            return response()->json([
+                'message' => 'Gagal mengupdate data Role' . $exception->getMessage(),
+                'success' => false,
+            ], 500);
         }
-
-        return response()->json([
-            'message' => 'Data Role tidak ditemukan',
-            'success' => false,
-        ], 200);
     }
 
     // Delete data Role
@@ -207,7 +252,7 @@ class RolesController extends Controller
                 ], 200);
             } catch (\Exception $exception) {
                 return response()->json([
-                    'message' => 'Gagal menghapus data Role'.$exception->getMessage(),
+                    'message' => 'Gagal menghapus data Role' . $exception->getMessage(),
                     'success' => false,
                 ], 500);
             }

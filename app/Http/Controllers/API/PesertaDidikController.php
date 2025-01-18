@@ -10,6 +10,7 @@ use App\Models\dataSensusPeserta;
 use App\Models\tblCppdb;
 use Jenssegers\Agent\Agent;
 use App\Models\logs;
+use App\Models\presensi;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -579,10 +580,11 @@ class PesertaDidikController extends Controller
 
         if ($table_peserta_didik) {
             $existsInCppdb = tblCppdb::where('id_peserta', $request->id)->exists();
+            $existsInPresensi = presensi::where('id_peserta', $request->id)->exists();
 
-            if ($existsInCppdb) {
+            if ($existsInCppdb && $existsInPresensi) {
                 return response()->json([
-                    'message' => 'Data Peserta Didik tidak dapat dihapus karena sudah terdaftar dan digunakan di tabel lain',
+                    'message' => 'Data sensus tidak dapat dihapus karena sudah terdaftar dan digunakan di tabel lain',
                     'success' => false,
                 ], 409);
             }

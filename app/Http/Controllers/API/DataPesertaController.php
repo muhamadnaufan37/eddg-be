@@ -17,6 +17,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 use Jenssegers\Agent\Agent;
 use App\Models\logs;
+use App\Models\presensi;
 
 class DataPesertaController extends Controller
 {
@@ -662,6 +663,9 @@ class DataPesertaController extends Controller
 
     public function update(Request $request)
     {
+        $userId = Auth::id();
+        $agent = new Agent();
+
         $customMessages = [
             'required' => 'Kolom :attribute wajib diisi.',
             'unique' => ':attribute sudah terdaftar di sistem',
@@ -698,70 +702,98 @@ class DataPesertaController extends Controller
         $sensus = dataSensusPeserta::where('id', '=', $request->id)
             ->first();
 
-        if (!empty($sensus)) {
-            try {
+        if (!$sensus) {
+            return response()->json([
+                'message' => 'Data tidak ditemukan',
+                'success' => false,
+            ], 404);
+        }
 
-                // Periksa apakah ada gambar baru yang diunggah
-                if ($request->hasFile('img')) {
-                    $request->validate([
-                        'img' => 'nullable|image|mimes:jpg,png|max:5120',
-                    ], $customMessages);
-                    $oldImgPath = storage_path('public/images/sensus/' . $sensus->img);
+        try {
 
-                    // Hapus file lama jika ada
-                    if (file_exists($oldImgPath) && $sensus->img) {
-                        unlink($oldImgPath);
-                    }
+            $originalData = $sensus->getOriginal();
 
-                    // Save the file to the 'public/images/sensus' directory
-                    $newImg = $request->file('img');
-                    $namaFile = Str::slug($sensus->nama_lengkap) . '.' . $newImg->getClientOriginalExtension();
-                    $path = $newImg->storeAs('public/images/sensus', $namaFile);
-                    $sensus->img = $path;
+            $sensus->fill([
+                'nama_lengkap' => $request->nama_lengkap,
+                'nama_panggilan' => ucwords(strtolower($request->nama_panggilan)),
+                'tempat_lahir' => ucwords(strtolower($request->tempat_lahir)),
+                'tanggal_lahir' => $request->tanggal_lahir,
+                'alamat' => ucwords(strtolower($request->alamat)),
+                'jenis_kelamin' => $request->jenis_kelamin,
+                'no_telepon' => $request->no_telepon,
+                'nama_ayah' => $request->nama_ayah,
+                'nama_ibu' => $request->nama_ibu,
+                'hoby' => $request->hoby,
+                'pekerjaan' => $request->pekerjaan,
+                'usia_menikah' => $request->usia_menikah,
+                'kriteria_pasangan' => $request->kriteria_pasangan,
+                'status_sambung' => $request->status_sambung,
+                'status_pernikahan' => $request->status_pernikahan,
+                'status_atlet_asad' => $request->status_atlet_asad,
+                'jenis_data' => $request->jenis_data,
+                'tmpt_daerah' => $request->tmpt_daerah,
+                'tmpt_desa' => $request->tmpt_desa,
+                'tmpt_kelompok' => $request->tmpt_kelompok,
+                'img' => $request->img,
+            ]);
+
+            if ($request->hasFile('img')) {
+                $request->validate([
+                    'img' => 'nullable|image|mimes:jpg,png|max:5120',
+                ], $customMessages);
+                $oldImgPath = storage_path('public/images/sensus/' . $sensus->img);
+
+                // Hapus file lama jika ada
+                if (file_exists($oldImgPath) && $sensus->img) {
+                    unlink($oldImgPath);
                 }
 
-                $sensus->update([
-                    'id' => $request->id,
-                    'nama_lengkap' => $request->nama_lengkap,
-                    'nama_panggilan' => ucwords(strtolower($request->nama_panggilan)),
-                    'tempat_lahir' => ucwords(strtolower($request->tempat_lahir)),
-                    'tanggal_lahir' => $request->tanggal_lahir,
-                    'alamat' => ucwords(strtolower($request->alamat)),
-                    'jenis_kelamin' => $request->jenis_kelamin,
-                    'no_telepon' => $request->no_telepon,
-                    'nama_ayah' => $request->nama_ayah,
-                    'nama_ibu' => $request->nama_ibu,
-                    'hoby' => $request->hoby,
-                    'pekerjaan' => $request->pekerjaan,
-                    'usia_menikah' => $request->usia_menikah,
-                    'kriteria_pasangan' => $request->kriteria_pasangan,
-                    'status_sambung' => $request->status_sambung,
-                    'status_pernikahan' => $request->status_pernikahan,
-                    'status_atlet_asad' => $request->status_atlet_asad,
-                    'jenis_data' => $request->jenis_data,
-                ]);
-            } catch (\Exception $exception) {
-                return response()->json([
-                    'message' => 'Gagal mengupdate data sensus' . $exception->getMessage(),
-                    'success' => false,
-                ], 500);
+                // Save the file to the 'public/images/sensus' directory
+                $newImg = $request->file('img');
+                $namaFile = Str::slug($sensus->nama_lengkap) . '.' . $newImg->getClientOriginalExtension();
+                $path = $newImg->storeAs('public/images/sensus', $namaFile);
+                $sensus->img = $path;
             }
+
+            $updatedFields = [];
+            foreach ($sensus->getDirty() as $field => $newValue) {
+                $oldValue = $originalData[$field] ?? null; // Ambil nilai lama
+                $updatedFields[] = "$field: [$oldValue] -> [$newValue]";
+            }
+
+            $sensus->save();
+
+            $logAccount = [
+                'user_id' => $userId,
+                'ip_address' => $request->ip(),
+                'aktifitas' => 'Update Data Peserta Didik - [' . $sensus->id . '] - [' . $sensus->nama_lengkap . ']',
+                'status_logs' => 'successfully',
+                'browser' => $agent->browser(),
+                'os' => $agent->platform(),
+                'device' => $agent->device(),
+                'engine_agent' => $request->header('user-agent'),
+                'updated_fields' => json_encode($updatedFields), // Simpan sebagai JSON
+            ];
+            logs::create($logAccount);
 
             return response()->json([
                 'message' => 'Data Sensus berhasil diupdate',
                 'data_sensus' => $sensus,
                 'success' => true,
             ], 200);
+        } catch (\Exception $exception) {
+            return response()->json([
+                'message' => 'Gagal mengupdate data sensus' . $exception->getMessage(),
+                'success' => false,
+            ], 500);
         }
-
-        return response()->json([
-            'message' => 'Data Sensus tidak ditemukan',
-            'success' => false,
-        ], 200);
     }
 
     public function delete(Request $request)
     {
+        $userId = Auth::id();
+        $agent = new Agent();
+
         $request->validate([
             'id' => 'required|numeric|digits_between:1,5',
         ]);
@@ -770,13 +802,12 @@ class DataPesertaController extends Controller
             ->first();
 
         if (!empty($sensus)) {
-            // Periksa apakah ID Peserta Didik terdaftar di tabel cppdb
             $existsInCppdb = tblCppdb::where('id_peserta', $request->id)->exists();
+            $existsInPresensi = presensi::where('id_peserta', $request->id)->exists();
 
-            if ($existsInCppdb) {
-                // Jika Peserta Didik terdaftar di cppdb, cegah penghapusan dengan respons 409 Conflict
+            if ($existsInCppdb && $existsInPresensi) {
                 return response()->json([
-                    'message' => 'Data Peserta Didik tidak dapat dihapus karena sudah terdaftar dan digunakan di tabel lain',
+                    'message' => 'Data sensus tidak dapat dihapus karena sudah terdaftar dan digunakan di tabel lain',
                     'success' => false,
                 ], 409);
             }
@@ -790,8 +821,22 @@ class DataPesertaController extends Controller
                     }
                 }
 
+                $deletedData = $sensus->toArray();
+
                 // Lanjutkan untuk menghapus data Peserta Didik
                 $sensus->delete();
+
+                $logAccount = [
+                    'user_id' => $userId,
+                    'ip_address' => $request->ip(),
+                    'aktifitas' => 'Delete Data Sensus - [' . $deletedData['id'] . '] - [' . $deletedData['nama_lengkap'] . ']',
+                    'status_logs' => 'successfully',
+                    'browser' => $agent->browser(),
+                    'os' => $agent->platform(),
+                    'device' => $agent->device(),
+                    'engine_agent' => $request->header('user-agent'),
+                ];
+                logs::create($logAccount);
 
                 return response()->json([
                     'message' => 'Data Peserta Didik berhasil dihapus beserta file terkait',
