@@ -264,12 +264,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Presensi Management
     Route::group(['prefix' => '/presensi/'], function () {
-        Route::get('list', [PresensiController::class, 'list'])->middleware('role:1');
-        Route::post('create', [PresensiController::class, 'create'])->middleware('role:1');
-        Route::post('edit', [PresensiController::class, 'edit'])->middleware('role:1');
-        Route::post('update', [PresensiController::class, 'update'])->middleware('role:1');
-        Route::delete('delete', [PresensiController::class, 'delete'])->middleware('role:1');
-        Route::post('record_presensi_qrcode', [PresensiController::class, 'record_presensi_qrcode'])->middleware('role:1');
-        Route::post('getPresensiReport', [PresensiController::class, 'getPresensiReport'])->middleware('role:1');
+        Route::get('list', [PresensiController::class, 'list'])->middleware('role:1,2');
+        Route::post('create', [PresensiController::class, 'create'])->middleware('role:1,2');
+        Route::post('edit', [PresensiController::class, 'edit'])->middleware('role:1,2');
+        Route::post('update', [PresensiController::class, 'update'])->middleware('role:1,2');
+        Route::delete('delete', [PresensiController::class, 'delete'])->middleware('role:1,2');
+        Route::post('record_presensi_qrcode', [PresensiController::class, 'record_presensi_qrcode'])->middleware('role:1,2');
+        Route::post('getPresensiReport', [PresensiController::class, 'getPresensiReport'])->middleware('role:1,2');
     });
 });
