@@ -14,35 +14,47 @@ use Carbon\Carbon;
 
 class DataSensusController extends Controller
 {
+    // public function list_nama_peserta()
+    // {
+    //     // Query untuk mendapatkan data peserta beserta nama kelompok
+    //     $sensus = dataSensusPeserta::select([
+    //         'tabel_kelompok.nama_kelompok as label',
+    //         'data_peserta.nama_lengkap'
+    //     ])
+    //         ->join('tabel_kelompok', 'data_peserta.tmpt_kelompok', '=', 'tabel_kelompok.id')
+    //         ->orderBy('tabel_kelompok.nama_kelompok')
+    //         ->orderBy('data_peserta.nama_lengkap')
+    //         ->get()
+    //         ->groupBy('label'); // Grup berdasarkan nama kelompok
+
+    //     // Transformasi data sesuai format yang diinginkan
+    //     $formattedData = $sensus->map(function ($items, $label) {
+    //         return [
+    //             'label' => $label,
+    //             'items' => $items->map(function ($item) {
+    //                 return [
+    //                     'nama_lengkap' => $item->nama_lengkap,
+    //                 ];
+    //             })->values()
+    //         ];
+    //     })->values();
+
+    //     // Kembalikan response dalam format JSON
+    //     return response()->json([
+    //         'message' => 'Sukses',
+    //         'data_sensus' => $formattedData,
+    //         'success' => true,
+    //     ], 200);
+    // }
+
     public function list_nama_peserta()
     {
-        // Query untuk mendapatkan data peserta beserta nama kelompok
-        $sensus = dataSensusPeserta::select([
-            'tabel_kelompok.nama_kelompok as label',
-            'data_peserta.nama_lengkap'
-        ])
-            ->join('tabel_kelompok', 'data_peserta.tmpt_kelompok', '=', 'tabel_kelompok.id')
-            ->orderBy('tabel_kelompok.nama_kelompok')
-            ->orderBy('data_peserta.nama_lengkap')
-            ->get()
-            ->groupBy('label'); // Grup berdasarkan nama kelompok
+        $sensus = dataSensusPeserta::select(['nama_lengkap'])
+            ->groupBy('nama_lengkap')->orderBy('nama_lengkap')->get();
 
-        // Transformasi data sesuai format yang diinginkan
-        $formattedData = $sensus->map(function ($items, $label) {
-            return [
-                'label' => $label,
-                'items' => $items->map(function ($item) {
-                    return [
-                        'nama_lengkap' => $item->nama_lengkap,
-                    ];
-                })->values()
-            ];
-        })->values();
-
-        // Kembalikan response dalam format JSON
         return response()->json([
             'message' => 'Sukses',
-            'data_sensus' => $formattedData,
+            'data_sensus' => $sensus,
             'success' => true,
         ], 200);
     }

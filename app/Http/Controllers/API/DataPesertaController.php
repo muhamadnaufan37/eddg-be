@@ -766,7 +766,7 @@ class DataPesertaController extends Controller
             $logAccount = [
                 'user_id' => $userId,
                 'ip_address' => $request->ip(),
-                'aktifitas' => 'Update Data Peserta Didik - [' . $sensus->id . '] - [' . $sensus->nama_lengkap . ']',
+                'aktifitas' => 'Update Data Sensus - [' . $sensus->id . '] - [' . $sensus->nama_lengkap . ']',
                 'status_logs' => 'successfully',
                 'browser' => $agent->browser(),
                 'os' => $agent->platform(),
