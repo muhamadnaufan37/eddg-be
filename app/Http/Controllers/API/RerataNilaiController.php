@@ -30,13 +30,14 @@ class RerataNilaiController extends Controller
             'r_nilai9',
             'r_nilai10',
             'r_nilai11',
+            'r_nilai11_1',
             'created_at',
             'updated_at',
         ]);
 
         if (!empty($keyword)) {
-            $table_rerata_nilai = $model->where('id', 'ILIKE', '%'.$keyword.'%')
-                ->orWhere('id', 'ILIKE', '%'.$keyword.'%')
+            $table_rerata_nilai = $model->where('id', 'ILIKE', '%' . $keyword . '%')
+                ->orWhere('id', 'ILIKE', '%' . $keyword . '%')
                 ->paginate($perPage);
         } else {
             $table_rerata_nilai = $model->paginate($perPage);
@@ -88,6 +89,7 @@ class RerataNilaiController extends Controller
             'r_nilai9' => 'required|integer|max:100',
             'r_nilai10' => 'required|integer|max:100',
             'r_nilai11' => 'required|integer|max:100',
+            'r_nilai11_1' => 'required|integer|max:100',
         ], $customMessages);
 
         // Hitung total nilai
@@ -121,7 +123,7 @@ class RerataNilaiController extends Controller
             $table_rerata_nilai->save();
         } catch (\Exception $exception) {
             return response()->json([
-                'message' => 'Gagal menambah Data Rerata Nilai'.$exception->getMessage(),
+                'message' => 'Gagal menambah Data Rerata Nilai' . $exception->getMessage(),
                 'success' => false,
             ], 500);
         }
@@ -219,10 +221,11 @@ class RerataNilaiController extends Controller
                     'r_nilai9' => $request->r_nilai9,
                     'r_nilai10' => $request->r_nilai10,
                     'r_nilai11' => $request->r_nilai11,
+                    'r_nilai11_1' => $request->r_nilai11_1,
                 ]);
             } catch (\Exception $exception) {
                 return response()->json([
-                    'message' => 'Gagal mengupdate Data Rerata Nilai'.$exception->getMessage(),
+                    'message' => 'Gagal mengupdate Data Rerata Nilai' . $exception->getMessage(),
                     'success' => false,
                 ], 500);
             }

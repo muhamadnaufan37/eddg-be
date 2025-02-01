@@ -58,7 +58,7 @@ Route::get('/protected/images/{filename}', function ($filename) {
     return response()->file($path);
 })->name('protected.image');
 
-Route::middleware(['auth:sanctum'])->group(function () {
+Route::middleware(['auth:sanctum', 'check.token.expiration'])->group(function () {
     // User Management
     Route::group(['prefix' => '/user/'], function () {
         Route::get('list', [UserController::class, 'list'])->middleware('role:1');

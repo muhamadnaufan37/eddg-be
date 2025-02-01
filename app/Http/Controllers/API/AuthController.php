@@ -10,7 +10,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Jenssegers\Agent\Agent;
 use Spatie\Permission\Models\Role;
-use Illuminate\Support\Facades\Http;
+// use Illuminate\Support\Facades\Http;
+use Carbon\Carbon;
 
 class AuthController extends Controller
 {
@@ -208,7 +209,7 @@ class AuthController extends Controller
             'username' => $user['username'],
             'email' => $user['email'],
             'status' => $user['status'],
-            'role_id' => $user['role_id'],
+            'role_id' => $role->code_uuid,
             'role_name' => $role ? $role->name : null,
             'nama_lengkap' => $user['nama_lengkap'],
             'tanggal' => $user['login_terakhir'],
@@ -217,12 +218,13 @@ class AuthController extends Controller
             'akses_kelompok' => $user['role_kelompok'],
         ];
 
-        $token = $user->createToken('token')->plainTextToken;
+        $token = $user->createToken('token', [], Carbon::now()->addHours(8))->plainTextToken;
 
         return response()->json([
             'message' => 'Login Berhasil',
             'user' => $user_balikan,
             'token' => $token,
+            'expires_at' => Carbon::now()->addHours(8)->toDateTimeString(),
             'success' => true,
         ], 200);
     }

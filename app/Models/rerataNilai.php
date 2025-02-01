@@ -23,6 +23,7 @@ class rerataNilai extends Model
         'r_nilai9',
         'r_nilai10',
         'r_nilai11',
+        'r_nilai11_1',
         'created_at',
         'updated_at',
     ];
