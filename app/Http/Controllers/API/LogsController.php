@@ -88,7 +88,7 @@ class LogsController extends Controller
             'logs.created_at',
         ])
             ->leftJoin('users', function ($join) {
-                $join->on('logs.user_id', '=', DB::raw('CAST(users.id AS CHAR)'));
+                $join->on('logs.user_id', '=', DB::raw('CAST(users.uuid AS CHAR)'));
             });
 
         $model->orderByRaw('logs.created_at IS NULL, logs.created_at DESC');

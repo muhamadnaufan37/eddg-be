@@ -12,6 +12,7 @@ use Jenssegers\Agent\Agent;
 use Spatie\Permission\Models\Role;
 // use Illuminate\Support\Facades\Http;
 use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
@@ -238,5 +239,38 @@ class AuthController extends Controller
             'message' => 'Berhasil logout',
             'success' => true,
         ]);
+    }
+
+    public function generateUuid()
+    {
+        try {
+            // Ambil semua user yang belum memiliki UUID
+            $users = User::whereNull('uuid')->get();
+
+            if ($users->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Semua user sudah memiliki UUID'
+                ], 200);
+            }
+
+            // Update UUID untuk setiap user yang belum memiliki UUID
+            foreach ($users as $user) {
+                $user->uuid = Str::uuid(); // Generate UUID
+                $user->save();
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'UUID berhasil dibuat untuk pengguna yang belum memiliki UUID.',
+                'total_updated' => $users->count(),
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat membuat UUID.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }

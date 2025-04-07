@@ -11,11 +11,19 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 use App\Models\logs;
+use App\Services\FonnteService;
 use Jenssegers\Agent\Agent;
 use Illuminate\Support\Facades\Auth;
 
 class PresensiController extends Controller
 {
+    protected $fonnteService;
+
+    public function __construct(FonnteService $fonnteService)
+    {
+        $this->fonnteService = $fonnteService;
+    }
+
     public function getPresensiReport(Request $request)
     {
         $keyword = $request->get('keyword', null);
@@ -158,6 +166,7 @@ class PresensiController extends Controller
         $userId = Auth::id();
 
         $request->validate([
+            'phone' => 'required|string',
             'kode_cari_data' => 'required|string',
             'id_kegiatan' => 'required',
             'id_petugas' => 'required',
@@ -230,6 +239,12 @@ class PresensiController extends Controller
             'data_peserta.status_pernikahan',
         ])->join('tbl_pekerjaan', function ($join) {
             $join->on('tbl_pekerjaan.id', '=', DB::raw('CAST(data_peserta.pekerjaan AS UNSIGNED)'));
+        })->join('tabel_daerah', function ($join) {
+            $join->on('tabel_daerah.id', '=', DB::raw('CAST(data_peserta.tmpt_daerah AS UNSIGNED)'));
+        })->join('tabel_desa', function ($join) {
+            $join->on('tabel_desa.id', '=', DB::raw('CAST(data_peserta.tmpt_desa AS UNSIGNED)'));
+        })->join('tabel_kelompok', function ($join) {
+            $join->on('tabel_kelompok.id', '=', DB::raw('CAST(data_peserta.tmpt_kelompok AS UNSIGNED)'));
         })->join('users', function ($join) {
             $join->on('users.id', '=', DB::raw('CAST(data_peserta.user_id AS UNSIGNED)'));
         })
@@ -301,10 +316,29 @@ class PresensiController extends Controller
         $presensi->status_presensi = $isLate ? "TELAT HADIR" : "HADIR";
         $presensi->waktu_presensi = now();
         $presensi->keterangan = $isLate ? "TELAT HADIR" : "HADIR";
+        $phone = $request->phone;
+        $countryCode = '62';
 
+        $templates = [
+            'attendance' => "✅ *Absensi Berhasil Dicatat!*\n\n"
+                . "📌 *Nama:* " . ($peserta->nama_lengkap ?? '*Peserta Tidak Diketahui*') . "\n"
+                . "📅 *Tgl. Absen:* " . $presensi->waktu_presensi . "\n"
+                . "📢 *Kegiatan:* " . ($kegiatan->nama_kegiatan ?? '*Tidak Diketahui*') . "\n"
+                . "📍 *Tempat:* " . ($kegiatan->tmpt_kegiatan ?? '*Tidak Diketahui*') . "\n"
+                . "🛠️ *Method:* Scan QR\n"
+                . "📝 *Keterangan:* *" . $presensi->keterangan . "*\n\n"
+                . "🙏 Terima kasih telah melakukan absensi. *Semoga harimu menyenangkan!* 😊"
+        ];
+
+
+        // Pilih template yang diinginkan (default ke 'attendance')
+        $message = $templates['attendance'];
 
         try {
             $presensi->save();
+
+            $Seender = $this->fonnteService->sendWhatsAppMessage($phone, $message, $countryCode);
+
             logs::create([
                 'user_id' => $userId,
                 'ip_address' => $request->ip(),
@@ -314,10 +348,12 @@ class PresensiController extends Controller
                 'os' => $agent->platform(),
                 'device' => $agent->device(),
                 'engine_agent' => $request->header('user-agent'),
+                'updated_fields' => $Seender,
             ]);
 
             return response()->json([
                 'message' => 'Presensi berhasil dicatat.',
+                'data_wa' => $Seender,
                 'data_presensi' => $peserta,
                 'success' => true,
             ], 200);

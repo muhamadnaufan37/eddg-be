@@ -22,6 +22,7 @@ use App\Http\Controllers\API\RolesController;
 use App\Http\Controllers\API\SetorKasCashlessController;
 use App\Http\Controllers\API\UserController;
 use App\Http\Controllers\API\WalletKasController;
+use App\Http\Controllers\API\WhatsAppController as APIWhatsAppController;
 use App\Http\Controllers\DataSensusController;
 use App\Http\Controllers\StatistikTmptSmbngController;
 use Illuminate\Http\Request;
@@ -44,19 +45,20 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register_akun', [AuthController::class, 'register']);
-Route::post('/find_sensus', [DataSensusController::class, 'cari_data']);
+Route::post('/generate-uuid', [AuthController::class, 'generateUuid']);
 Route::get('/list_nama_peserta', [DataSensusController::class, 'list_nama_peserta']);
 Route::post('record_presensi_manual', [DataSensusController::class, 'record_presensi_manual']);
 Route::get('/data_tempat_sambung', [StatistikTmptSmbngController::class, 'data_tempat_sambung']);
-Route::get('/protected/images/{filename}', function ($filename) {
-    $path = storage_path('app/images/sensus/' . $filename);
 
-    if (!file_exists($path)) {
-        abort(404);
-    }
+Route::group(['prefix' => '/v1/data_sensus/'], function () {
+    Route::get('/find_sensus', [DataSensusController::class, 'cari_data']);
+    Route::get('/personal', [DataSensusController::class, 'detail_sensus_personal']);
+});
 
-    return response()->file($path);
-})->name('protected.image');
+Route::group(['prefix' => '/v1/otp/'], function () {
+    Route::post('/send', [APIWhatsAppController::class, 'sendNotification']);
+    Route::post('/device-status', [APIWhatsAppController::class, 'getDeviceStatus']);
+});
 
 Route::middleware(['auth:sanctum', 'check.token.expiration'])->group(function () {
     // User Management

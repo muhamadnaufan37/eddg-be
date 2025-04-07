@@ -6,11 +6,13 @@ use App\Models\dataSensusPeserta;
 use App\Models\logs;
 use App\Models\presensi;
 use App\Models\presensiKegiatan;
+use App\Services\FonnteService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Jenssegers\Agent\Agent;
 use Carbon\Carbon;
+use Illuminate\Foundation\Auth\User;
 
 class DataSensusController extends Controller
 {
@@ -47,15 +49,47 @@ class DataSensusController extends Controller
     //     ], 200);
     // }
 
-    public function list_nama_peserta()
+    protected $fonnteService;
+
+    public function __construct(FonnteService $fonnteService)
     {
-        $sensus = dataSensusPeserta::select(['nama_lengkap'])
-            ->groupBy('nama_lengkap')->orderBy('nama_lengkap')->get();
+        $this->fonnteService = $fonnteService;
+    }
+
+    public function list_nama_peserta(Request $request)
+    {
+        $request->validate([
+            'id_operator' => 'required|exists:users,uuid',
+        ], [
+            'required' => 'Kolom :attribute wajib diisi.',
+            'exists' => ':attribute tidak ditemukan dalam sistem.',
+        ]);
+
+        // Cek role_id
+        $operator = User::where('uuid', $request->id_operator)->first();
+
+        if (!$operator || $operator->role_id != 5) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akses ditolak. Operator tidak memiliki izin.',
+            ], 403);
+        }
+
+        // Get data sensus
+        $sensus = dataSensusPeserta::selectRaw('LOWER(nama_lengkap) AS nama_lengkap')
+            ->distinct()
+            ->orderByRaw('LOWER(nama_lengkap)')
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'nama_lengkap' => ucwords($item->nama_lengkap),
+                ];
+            });
 
         return response()->json([
-            'message' => 'Sukses',
-            'data_sensus' => $sensus,
             'success' => true,
+            'message' => 'Data nama peserta berhasil diambil.',
+            'data' => $sensus,
         ], 200);
     }
 
@@ -63,23 +97,26 @@ class DataSensusController extends Controller
     {
         $agent = new Agent();
 
-        $customMessages = [
-            'required' => 'Kolom :attribute wajib diisi.',
-            'unique' => ':attribute sudah terdaftar di sistem',
-            'email' => ':attribute harus berupa alamat email yang valid.',
-            'max' => ':attribute tidak boleh lebih dari :max karakter.',
-            'confirmed' => 'Konfirmasi :attribute tidak cocok.',
-            'min' => ':attribute harus memiliki setidaknya :min karakter.',
-            'regex' => ':attribute harus mengandung setidaknya satu huruf kapital dan satu angka.',
-            'numeric' => ':attribute harus berupa angka.',
-            'digits_between' => ':attribute harus memiliki panjang antara :min dan :max digit.',
-        ];
+        $id_operator = $request->query('id_operator');
+        $nama_lengkap = $request->query('nama_lengkap');
+        $tanggal_lahir = $request->query('tanggal_lahir');
+        $nama_ortu = $request->query('nama_ortu');
 
-        $request->validate([
-            'nama_lengkap' => 'required',
-            'tanggal_lahir' => 'required',
-            'nama_ortu' => 'required',
-        ], $customMessages);
+        if (!$id_operator || !$nama_lengkap || !$tanggal_lahir || !$nama_ortu) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Semua parameter (nama_lengkap, tanggal_lahir, nama_ortu) wajib diisi.',
+            ], 400);
+        }
+
+        $userOperator = User::where('uuid', $request->id_operator)->first();
+
+        if (!$userOperator) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Petugas Operator tidak dikenali atau tidak ditemukan.',
+            ], 404);
+        }
 
         $sensus = dataSensusPeserta::select([
             'data_peserta.id',
@@ -139,21 +176,14 @@ class DataSensusController extends Controller
         // Lakukan panggilan HTTP untuk mendapatkan informasi IP
         $response = Http::get('https://www.trackip.net/ip?json');
 
-        // Periksa apakah panggilan berhasil
-        if ($response->successful()) {
-            // Ambil data JSON dari respons
-            $ipInfo = $response->json();
-
-            // Ambil IP dari respons JSON
-            $ipFromResponse = $ipInfo['IP'];
-
-            // $getDaata = Http::get("http://ip-api.com/json/{$ipFromResponse}")->json();
-        } else {
+        if (!$response->successful()) {
             return response()->json([
-                'message' => 'Data Sensus tidak ditemukan' . $response->status(),
+                'message' => 'Gagal mendapatkan IP pengguna. Status: ' . $response->status(),
                 'success' => false,
-            ], 200);
+            ], 500);
         }
+
+        $ipFromResponse = $response->json()['IP'] ?? 'Unknown IP';
 
         try {
             if (!empty($sensus)) {
@@ -162,7 +192,7 @@ class DataSensusController extends Controller
                     : null;
 
                 $logAccount = [
-                    'user_id' => 0,
+                    'user_id' => $userOperator->uuid,
                     'ip_address' => $ipFromResponse,
                     'aktifitas' => 'Cari Data Sensus - [' . $sensus->id . ' - ' . $sensus->nama_lengkap . ' - ' . 'Web Data Center' . ']',
                     'status_logs' => 'successfully',
@@ -178,7 +208,7 @@ class DataSensusController extends Controller
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'Data Berhasil Ditemukan',
+                    'message' => 'Sukses',
                     'tanggal_pencarian' => $tanggalPencarian,
                     'data_sensus' => $sensus,
                     'digital' => $logAccount,
@@ -197,20 +227,95 @@ class DataSensusController extends Controller
         }
     }
 
+    public function detail_sensus_personal(Request $request)
+    {
+        $request->validate([
+            'id_operator' => 'required|exists:users,uuid',
+            'scan' => 'required',
+        ]);
+
+        // Cari operator berdasarkan UUID
+        $operator = User::where('uuid', $request->id_operator)->first();
+
+        // Cek hak akses operator
+        if (!$operator || $operator->role_id != 5) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akses ditolak. Operator tidak memiliki izin.',
+            ], 403);
+        }
+
+        // Ambil data dari tabel dataSensusPeserta (hanya satu tabel)
+        $sensus = dataSensusPeserta::select([
+            // 'kode_cari_data',
+            'nama_lengkap',
+            'tanggal_lahir',
+            'alamat',
+            DB::raw("CASE
+            WHEN TIMESTAMPDIFF(YEAR, tanggal_lahir, CURDATE()) BETWEEN 3 AND 6 THEN 'Paud'
+            WHEN TIMESTAMPDIFF(YEAR, tanggal_lahir, CURDATE()) BETWEEN 7 AND 12 THEN 'Caberawit'
+            WHEN TIMESTAMPDIFF(YEAR, tanggal_lahir, CURDATE()) BETWEEN 13 AND 15 THEN 'Pra-remaja'
+            WHEN TIMESTAMPDIFF(YEAR, tanggal_lahir, CURDATE()) BETWEEN 16 AND 18 THEN 'Remaja'
+            WHEN TIMESTAMPDIFF(YEAR, tanggal_lahir, CURDATE()) >= 19 THEN 'Muda - mudi / Usia Nikah'
+            ELSE 'Tidak dalam rentang usia'
+        END AS status_kelas"),
+        ])
+            ->where('kode_cari_data', $request->scan)
+            ->first();
+
+        // Response jika data ditemukan
+        if ($sensus) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Sukses',
+                'data_sensus' => $sensus,
+            ], 200);
+        }
+
+        // Response jika data tidak ditemukan
+        return response()->json([
+            'success' => false,
+            'message' => 'Data sensus tidak ditemukan.',
+        ], 404);
+    }
+
     public function record_presensi_manual(Request $request)
     {
         $agent = new Agent();
+        $user = User::where('uuid', $request->id_operator)->first();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User tidak ditemukan.',
+            ], 404);
+        }
+
+        $userId = $user->id;
+
+        $customMessages = [
+            'required' => 'Kolom :attribute wajib diisi.',
+            'exists' => ':attribute tidak ditemukan dalam sistem.',
+        ];
 
         $request->validate([
+            'phone' => 'required|string',
+            'id_operator' => 'required|exists:users,uuid',
             'kode_kegiatan' => 'required|string',
             'status_presensi' => 'required',
             'keterangan' => 'required',
             'nama_lengkap' => 'required',
-            'tanggal_lahir' => 'required',
-            'nama_ortu' => 'required',
-        ]);
+        ], $customMessages);
 
+        $userOperator = User::where('uuid', $request->id_operator)->first();
         $kegiatan = presensiKegiatan::where('kode_kegiatan', $request->kode_kegiatan)->first();
+
+        if (!$userOperator) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Petugas Operator tidak dikenali atau tidak ditemukan.',
+            ], 404);
+        }
 
         if (!$kegiatan) {
             return response()->json([
@@ -245,12 +350,7 @@ class DataSensusController extends Controller
             DB::raw('TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) AS usia'),
         ])
             // Join tabel-tabel yang diperlukan
-            ->where('data_peserta.nama_lengkap', $request->nama_lengkap)
-            ->where('data_peserta.tanggal_lahir', $request->tanggal_lahir)
-            ->where(function ($query) use ($request) {
-                $query->where('data_peserta.nama_ayah', $request->nama_ortu)
-                    ->orWhere('data_peserta.nama_ibu', $request->nama_ortu);
-            });
+            ->where('data_peserta.nama_lengkap', $request->nama_lengkap);
 
         if ($kegiatan->tmpt_daerah || $kegiatan->tmpt_desa || $kegiatan->tmpt_kelompok) {
             $peserta->where(function ($query) use ($kegiatan) {
@@ -314,12 +414,31 @@ class DataSensusController extends Controller
         $presensi->status_presensi = $request->status_presensi;
         $presensi->waktu_presensi = now();
         $presensi->keterangan = $request->keterangan;
+        $phone = $request->phone;
+        $countryCode = '62';
+
+        $templates = [
+            'attendance' => "✅ *Absensi Berhasil Dicatat!*\n\n"
+                . "📌 *Nama:* " . ($peserta->nama_lengkap ?? '*Peserta Tidak Diketahui*') . "\n"
+                . "📅 *Tgl. Absen:* " . $presensi->waktu_presensi . "\n"
+                . "📢 *Kegiatan:* " . ($kegiatan->nama_kegiatan ?? '*Tidak Diketahui*') . "\n"
+                . "📍 *Tempat:* " . ($kegiatan->tmpt_kegiatan ?? '*Tidak Diketahui*') . "\n"
+                . "🛠️ *Method:* Manual Via Data Center\n"
+                . "🔍 *Status:* " . ($presensi->status_presensi ?? '*Tidak Diketahui*') . "\n"
+                . "📝 *Keterangan:* *" . $presensi->keterangan . "*\n\n"
+                . "🙏 Terima kasih telah melakukan absensi. *Semoga harimu menyenangkan!* 😊"
+        ];
+
+        // Pilih template yang diinginkan (default ke 'attendance')
+        $message = $templates['attendance'];
 
         try {
             $presensi->save();
 
+            $Seender = $this->fonnteService->sendWhatsAppMessage($phone, $message, $countryCode);
+
             logs::create([
-                'user_id' => 0,
+                'user_id' => $userId,
                 'ip_address' => $request->ip(),
                 'aktifitas' => "Absensi Manual Mandiri - [{$peserta->id}] - [{$peserta->nama_lengkap}]",
                 'status_logs' => 'successfully',
@@ -327,10 +446,12 @@ class DataSensusController extends Controller
                 'os' => $agent->platform(),
                 'device' => $agent->device(),
                 'engine_agent' => $request->header('user-agent'),
+                'updated_fields' => json_encode($Seender),
             ]);
 
             return response()->json([
                 'message' => 'Presensi berhasil dicatat.',
+                'data_wa' => $Seender,
                 'data_presensi' => $peserta,
                 'success' => true,
             ], 200);

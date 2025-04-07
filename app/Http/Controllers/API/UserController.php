@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Spatie\Permission\Models\Role;
+use Illuminate\Support\Str;
 
 class UserController extends Controller
 {
@@ -101,6 +102,7 @@ class UserController extends Controller
         ], $customMessages);
 
         $user = new User();
+        $user->uuid = Str::uuid();
         $user->username = $request->username;
         $user->password = bcrypt(1);
         $user->email = $request->email;
@@ -114,21 +116,20 @@ class UserController extends Controller
 
         try {
             // Periksa apakah role_id valid
-            $role = Role::find($request->role_id);
+            $role = Role::where('id', $request->role_id)->where('guard_name', 'web')->first();
 
             if (!$role) {
                 return response()->json([
-                    'message' => 'Role dengan ID yang diberikan tidak ditemukan',
+                    'message' => 'Role dengan ID yang diberikan tidak ditemukan atau tidak cocok dengan guard "web"',
                     'success' => false,
                 ], 404);
             }
 
-            if (!empty($role)) {
-                $user->assignRole($role);
-            }
-
             // $user->sendEmailVerificationNotification();
-            $user->save();
+            $user->save(); // Simpan user sebelum menetapkan peran
+
+            // Assign role dengan guard yang sesuai
+            $user->assignRole($role->name);
         } catch (\Exception $exception) {
             return response()->json([
                 'message' => 'Gagal menambah data User ' . $exception->getMessage(),
@@ -155,6 +156,7 @@ class UserController extends Controller
         $user = User::leftjoin('roles', 'roles.id', '=', 'users.role_id')
             ->select([
                 'users.id',
+                'users.uuid',
                 'users.username',
                 'users.email',
                 'users.nama_lengkap',

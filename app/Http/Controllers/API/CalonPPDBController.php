@@ -674,7 +674,6 @@ class CalonPPDBController extends Controller
                     ->leftJoin('kalender_pendidikan', 'cppdb.id_thn_akademik', '=', 'kalender_pendidikan.id')
                     ->where('kalender_pendidikan.status_pelajaran', 1);
             })
-            ->whereNull('cppdb.id_peserta') // Peserta yang belum diinputkan penilaian
             ->where('data_peserta.jenis_data', 'KBM') // Hanya data peserta dengan jenis_data KBM
             ->where(function ($query) {
                 $query->whereNull('kalender_pendidikan.id')
@@ -701,31 +700,42 @@ class CalonPPDBController extends Controller
         if (!is_null($dataKelompok)) {
             $pesertaQuery->where('data_peserta.tmpt_kelompok', $dataKelompok);
         }
+        // Peserta yang belum diinputkan penilaian
+        $pesertaBelumDiinputkan = clone $pesertaQuery;
+        $pesertaBelumDiinputkan->whereNull('cppdb.id_peserta');
 
-        // Pagination dan pengambilan data
-        $paginatedData = $pesertaQuery->paginate($perPage);
+        // Peserta yang sudah diinputkan tetapi belum dinilai (status naik kelas = 0)
+        $pesertaSudahDiinputkanBelumDinilai = clone $pesertaQuery;
+        $pesertaSudahDiinputkanBelumDinilai->whereNotNull('cppdb.id_peserta')
+            ->where('cppdb.status_naik_kelas', 0);
+
+        // Peserta yang sudah diinputkan dan sudah dinilai (status naik kelas = 1)
+        $pesertaSudahDiinputkanSudahDinilai = clone $pesertaQuery;
+        $pesertaSudahDiinputkanSudahDinilai->whereNotNull('cppdb.id_peserta')
+            ->where('cppdb.status_naik_kelas', 1);
 
         // Transformasi data untuk response
-        $transformedData = $paginatedData->map(function ($peserta) {
-            return [
-                'id_peserta' => $peserta->id,
-                'nama_lengkap' => $peserta->nama_lengkap,
-                'tmpt_daerah' => $peserta->tmpt_daerah,
-                'tmpt_desa' => $peserta->tmpt_desa,
-                'tmpt_kelompok' => $peserta->tmpt_kelompok,
-                'status_naik_kelas' => 'Belum Diinputkan', // Semua data yang belum diinputkan
-            ];
-        });
+        // $transformedData = $paginatedData->map(function ($peserta) {
+        //     return [
+        //         'id_peserta' => $peserta->id,
+        //         'nama_lengkap' => $peserta->nama_lengkap,
+        //         'tmpt_daerah' => $peserta->tmpt_daerah,
+        //         'tmpt_desa' => $peserta->tmpt_desa,
+        //         'tmpt_kelompok' => $peserta->tmpt_kelompok,
+        //         'status_naik_kelas' => 'Belum Diinputkan', // Semua data yang belum diinputkan
+        //     ];
+        // });
 
         // Statistik
         $statistics = [
-            'peserta_belum_diinputkan' => $paginatedData->total(),
+            'peserta_belum_diinputkan' => $pesertaBelumDiinputkan->count(),
+            'peserta_sudah_diinputkan_belum_dinilai' => $pesertaSudahDiinputkanBelumDinilai->count(),
+            'peserta_sudah_diinputkan_sudah_dinilai' => $pesertaSudahDiinputkanSudahDinilai->count(),
         ];
 
         // Response JSON
         return response()->json([
-            'message' => 'Data peserta yang belum diinputkan penilaian berhasil diambil.',
-            'data_presensi_peserta' => $transformedData,
+            'message' => 'Sukses',
             'statistics' => $statistics,
             'success' => true,
         ], 200);
