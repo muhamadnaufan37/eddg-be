@@ -45,6 +45,7 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register_akun', [AuthController::class, 'register']);
+Route::post('/generate-kodeUnik', [AuthController::class, 'generateKodeUnik']);
 Route::post('/generate-uuid', [AuthController::class, 'generateUuid']);
 Route::get('/list_nama_peserta', [DataSensusController::class, 'list_nama_peserta']);
 Route::post('record_presensi_manual', [DataSensusController::class, 'record_presensi_manual']);
@@ -273,5 +274,8 @@ Route::middleware(['auth:sanctum', 'check.token.expiration'])->group(function ()
         Route::delete('delete', [PresensiController::class, 'delete'])->middleware('role:1,2');
         Route::post('record_presensi_qrcode', [PresensiController::class, 'record_presensi_qrcode'])->middleware('role:1,2');
         Route::post('getPresensiReport', [PresensiController::class, 'getPresensiReport'])->middleware('role:1,2');
+        Route::post('update_data_wa_sensus', [PresensiController::class, 'updateDataWaSensus'])->middleware('role:1,2');
+        Route::get('list_nama_peserta', [PresensiController::class, 'list_nama_peserta'])->middleware('role:1,2');
+        Route::post('record_presensi_manual', [PresensiController::class, 'record_presensi_manual'])->middleware('role:1');
     });
 });

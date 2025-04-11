@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\logs;
 use App\Models\User;
 use App\Models\dataCenter;
+use App\Models\dataSensusPeserta;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Jenssegers\Agent\Agent;
@@ -239,6 +240,49 @@ class AuthController extends Controller
             'message' => 'Berhasil logout',
             'success' => true,
         ]);
+    }
+
+    public function generateKodeUnik()
+    {
+        try {
+            $data = dataSensusPeserta::whereNull('kode_cari_data')
+                ->whereIn('jenis_data', ['SENSUS', 'KBM'])
+                ->get();
+
+            if ($data->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Semua data sudah memiliki kode unik.'
+                ], 200);
+            }
+
+            foreach ($data as $item) {
+                $prefix = $item->jenis_data === 'SENSUS' ? 'SEN' : 'KBM';
+
+                // Contoh: SEN + YmdHis + 3 digit acak = 16 digit
+                $kode = $prefix . date('ymdHis') . str_pad(random_int(0, 999), 3, '0', STR_PAD_LEFT);
+
+                // Pastikan unik
+                while (dataSensusPeserta::where('kode_cari_data', $kode)->exists()) {
+                    $kode = $prefix . date('ymdHis') . str_pad(random_int(0, 999), 3, '0', STR_PAD_LEFT);
+                }
+
+                $item->kode_cari_data = $kode;
+                $item->save();
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Kode unik berhasil dibuat untuk data yang belum memiliki kode.',
+                'total_updated' => $data->count(),
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat membuat kode unik.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function generateUuid()

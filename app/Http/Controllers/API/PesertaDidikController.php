@@ -252,16 +252,15 @@ class PesertaDidikController extends Controller
             'status_atlet_asad' => 'required|integer',
         ], $customMessages);
 
-        // Generate nomor induk santri dengan nomor random 4 digit
-        $random_number = str_pad(mt_rand(0, 9999), 4, '0', STR_PAD_LEFT); // Menghasilkan nomor random 4 digit
-
         $table_peserta_didik = new dataSensusPeserta();
-
         $tanggalSekarang = Carbon::now();
-        $bulan = $tanggalSekarang->format('m'); // Mendapatkan bulan saat ini (format 2 digit)
-        $tahun = $tanggalSekarang->format('Y'); // Mendapatkan tahun saat ini (format 4 digit)
+        $prefix = 'KBM';
 
-        $table_peserta_didik->kode_cari_data = $request->tmpt_daerah . $request->tmpt_desa . $request->tmpt_kelompok . $userId . $random_number . $bulan . '313354' . $tahun;
+        do {
+            $kodeUnik = $prefix . $tanggalSekarang->format('ymdHis') . str_pad(random_int(0, 999), 3, '0', STR_PAD_LEFT);
+        } while (\App\Models\dataSensusPeserta::where('kode_cari_data', $kodeUnik)->exists());
+
+        $table_peserta_didik->kode_cari_data = $kodeUnik;
         $table_peserta_didik->nama_lengkap = $request->nama_lengkap;
         $table_peserta_didik->nama_panggilan = ucwords(strtolower($request->nama_panggilan));
         $table_peserta_didik->tempat_lahir = ucwords(strtolower($request->tempat_lahir));

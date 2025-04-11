@@ -478,10 +478,13 @@ class DataPesertaController extends Controller
         $tabel_sensus = new dataSensusPeserta();
 
         $tanggalSekarang = Carbon::now();
-        $bulan = $tanggalSekarang->format('m');
-        $tahun = $tanggalSekarang->format('Y');
+        $prefix = 'SEN';
 
-        $tabel_sensus->kode_cari_data = $bulan . Str::random(4) . $tahun;
+        do {
+            $kodeUnik = $prefix . $tanggalSekarang->format('ymdHis') . str_pad(random_int(0, 999), 3, '0', STR_PAD_LEFT);
+        } while (\App\Models\dataSensusPeserta::where('kode_cari_data', $kodeUnik)->exists());
+
+        $tabel_sensus->kode_cari_data = $kodeUnik;
         $tabel_sensus->nama_lengkap = $request->nama_lengkap;
         $tabel_sensus->nama_panggilan = ucwords(strtolower($request->nama_panggilan));
         $tabel_sensus->tempat_lahir = ucwords(strtolower($request->tempat_lahir));
@@ -591,7 +594,8 @@ class DataPesertaController extends Controller
 
         $sensus = dataSensusPeserta::select([
             'data_peserta.id',
-            DB::raw('CONCAT(SUBSTRING(data_peserta.kode_cari_data FROM 1 FOR 2), \'****\', SUBSTRING(data_peserta.kode_cari_data FROM 7 FOR 4)) AS kode_cari_data'),
+            // DB::raw('CONCAT(SUBSTRING(data_peserta.kode_cari_data FROM 1 FOR 2), \'****\', SUBSTRING(data_peserta.kode_cari_data FROM 7 FOR 4)) AS kode_cari_data'),
+            'data_peserta.kode_cari_data',
             'data_peserta.nama_lengkap',
             'data_peserta.nama_panggilan',
             'data_peserta.tempat_lahir',
@@ -691,12 +695,12 @@ class DataPesertaController extends Controller
             'nama_ibu' => 'required|string',
             'hoby' => 'required|string',
             'pekerjaan' => 'required|integer',
-            'usia_menikah' => 'nullable|string',
-            'kriteria_pasangan' => 'nullable|string',
+            'usia_menikah' => 'sometimes|string',
+            'kriteria_pasangan' => 'sometimes|string',
             'status_sambung' => 'integer',
             'status_pernikahan' => 'boolean',
             'status_atlet_asad' => 'required|integer',
-            'jenis_data' => 'required|string',
+            'jenis_data' => 'sometimes|required|string',
         ], $customMessages);
 
         $sensus = dataSensusPeserta::where('id', '=', $request->id)
@@ -753,6 +757,18 @@ class DataPesertaController extends Controller
                 $namaFile = Str::slug($sensus->nama_lengkap) . '.' . $newImg->getClientOriginalExtension();
                 $path = $newImg->storeAs('public/images/sensus', $namaFile);
                 $sensus->img = $path;
+            }
+
+            // Cek apakah jenis_data berubah
+            if (array_key_exists('jenis_data', $sensus->getDirty())) {
+                $prefix = $sensus->jenis_data === 'SENSUS' ? 'SEN' : 'KBM';
+
+                // Generate kode unik 16 digit
+                do {
+                    $kodeBaru = $prefix . date('ymdHis') . str_pad(random_int(0, 999), 3, '0', STR_PAD_LEFT);
+                } while (dataSensusPeserta::where('kode_cari_data', $kodeBaru)->exists());
+
+                $sensus->kode_cari_data = $kodeBaru;
             }
 
             $updatedFields = [];
@@ -888,17 +904,11 @@ class DataPesertaController extends Controller
                 WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) >= 19 THEN 'Muda - mudi / Usia Nikah'
                 ELSE 'Tidak dalam rentang usia'
             END AS status_kelas"),
-            'data_peserta.tmpt_daerah',
-            'tabel_daerah.nama_daerah',
-            'data_peserta.tmpt_desa',
-            'tabel_desa.nama_desa',
             'data_peserta.tmpt_kelompok',
             'tabel_kelompok.nama_kelompok',
             'data_peserta.jenis_data',
         ])
             ->join('tbl_pekerjaan', 'tbl_pekerjaan.id', '=', DB::raw('CAST(data_peserta.pekerjaan AS UNSIGNED)'))
-            ->join('tabel_daerah', 'tabel_daerah.id', '=', DB::raw('CAST(data_peserta.tmpt_daerah AS UNSIGNED)'))
-            ->join('tabel_desa', 'tabel_desa.id', '=', DB::raw('CAST(data_peserta.tmpt_desa AS UNSIGNED)'))
             ->join('tabel_kelompok', 'tabel_kelompok.id', '=', DB::raw('CAST(data_peserta.tmpt_kelompok AS UNSIGNED)'))
             ->join('users', 'users.id', '=', DB::raw('CAST(data_peserta.user_id AS UNSIGNED)'))
             ->orderByRaw('data_peserta.created_at IS NULL, data_peserta.created_at DESC');

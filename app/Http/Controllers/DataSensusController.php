@@ -247,7 +247,7 @@ class DataSensusController extends Controller
 
         // Ambil data dari tabel dataSensusPeserta (hanya satu tabel)
         $sensus = dataSensusPeserta::select([
-            // 'kode_cari_data',
+            'kode_cari_data AS scan',
             'nama_lengkap',
             'tanggal_lahir',
             'alamat',
@@ -259,6 +259,7 @@ class DataSensusController extends Controller
             WHEN TIMESTAMPDIFF(YEAR, tanggal_lahir, CURDATE()) >= 19 THEN 'Muda - mudi / Usia Nikah'
             ELSE 'Tidak dalam rentang usia'
         END AS status_kelas"),
+            'status_sambung',
         ])
             ->where('kode_cari_data', $request->scan)
             ->first();
