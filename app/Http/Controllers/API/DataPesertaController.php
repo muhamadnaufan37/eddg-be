@@ -197,6 +197,20 @@ class DataPesertaController extends Controller
         ], 200);
     }
 
+    public function list_users_sensus()
+    {
+        $users = User::select(['id', 'nama_lengkap'])
+            ->whereIn('role_id', [2, 4])
+            ->orderBy('nama_lengkap')
+            ->get();
+
+        return response()->json([
+            'message' => 'Sukses',
+            'data' => $users,
+            'success' => true,
+        ], 200);
+    }
+
     public function list(Request $request)
     {
         $keyword = $request->get('keyword', null);
@@ -468,8 +482,8 @@ class DataPesertaController extends Controller
             'nama_ibu' => 'required|string',
             'hoby' => 'required|string',
             'pekerjaan' => 'required|integer',
-            'usia_menikah' => 'nullable|string',
-            'kriteria_pasangan' => 'nullable|string',
+            'usia_menikah' => 'nullable',
+            'kriteria_pasangan' => 'nullable',
             'status_atlet_asad' => 'required|integer',
             'tmpt_daerah' => 'required|integer|digits_between:1,5',
             'tmpt_desa' => 'required|integer|digits_between:1,5',
@@ -606,7 +620,7 @@ class DataPesertaController extends Controller
             'tabel_kelompok.nama_kelompok',
             'data_peserta.jenis_data',
             'data_peserta.status_atlet_asad',
-            'users.username AS user_petugas',
+            'users.id AS user_petugas',
             'data_peserta.img',
             DB::raw("CASE
                 WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 3 AND 6 THEN 'Paud'
@@ -674,17 +688,18 @@ class DataPesertaController extends Controller
             'tanggal_lahir' => 'required|date',
             'alamat' => 'required|string',
             'jenis_kelamin' => 'required|in:LAKI-LAKI,PEREMPUAN',
-            'no_telepon' => 'sometimes|required|string|digits_between:8,13',
+            'no_telepon' => 'sometimes|nullable',
             'nama_ayah' => 'required|string',
             'nama_ibu' => 'required|string',
             'hoby' => 'required|string',
             'pekerjaan' => 'required|integer',
-            'usia_menikah' => 'sometimes|string',
-            'kriteria_pasangan' => 'sometimes|string',
+            'usia_menikah' => 'sometimes|nullable',
+            'kriteria_pasangan' => 'sometimes|nullable',
             'status_sambung' => 'integer',
             'status_pernikahan' => 'boolean',
             'status_atlet_asad' => 'required|integer',
             'jenis_data' => 'sometimes|required|string',
+            'user_id' => 'sometimes|nullable',
         ], $customMessages);
 
         $sensus = dataSensusPeserta::where('id', '=', $request->id)
@@ -722,6 +737,7 @@ class DataPesertaController extends Controller
                 'tmpt_daerah' => $request->tmpt_daerah,
                 'tmpt_desa' => $request->tmpt_desa,
                 'tmpt_kelompok' => $request->tmpt_kelompok,
+                'user_id' => $request->user_id,
                 'img' => $request->img,
             ]);
 

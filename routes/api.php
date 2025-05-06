@@ -102,7 +102,7 @@ Route::middleware(['auth:sanctum', 'check.token.expiration'])->group(function ()
 
     // Daerah Management
     Route::group(['prefix' => '/daerah/'], function () {
-        Route::get('list_daerah', [DaerahController::class, 'list_daerah'])->middleware('role:1,2,3,4');
+        Route::get('list_daerah', [DaerahController::class, 'list_daerah'])->middleware('role:1,2,3,4,7');
         Route::get('list', [DaerahController::class, 'list'])->middleware('role:1,2');
         Route::post('create', [DaerahController::class, 'create'])->middleware('role:1');
         Route::post('edit', [DaerahController::class, 'edit'])->middleware('role:1');
@@ -132,8 +132,8 @@ Route::middleware(['auth:sanctum', 'check.token.expiration'])->group(function ()
 
     // Mapping Tempat Sambung
     Route::group(['prefix' => '/mapping_tempat_sambung/'], function () {
-        Route::get('list_data_desa', [MappingTempatSambungController::class, 'list_data_desa'])->middleware('role:1,2,3,4');
-        Route::get('list_data_kelompok', [MappingTempatSambungController::class, 'list_data_kelompok'])->middleware('role:1,2,3,4');
+        Route::get('list_data_desa', [MappingTempatSambungController::class, 'list_data_desa'])->middleware('role:1,2,3,4,7');
+        Route::get('list_data_kelompok', [MappingTempatSambungController::class, 'list_data_kelompok'])->middleware('role:1,2,3,4,7');
     });
 
     // Sensus Management
@@ -141,6 +141,7 @@ Route::middleware(['auth:sanctum', 'check.token.expiration'])->group(function ()
         Route::get('dashboard_sensus', [DataPesertaController::class, 'dashboard_sensus'])->middleware('role:1,2');
         Route::get('list_pekerjaan', [DataPesertaController::class, 'list_pekerjaan'])->middleware('role:1,2');
         Route::get('list', [DataPesertaController::class, 'list']);
+        Route::get('list_users_sensus', [DataPesertaController::class, 'list_users_sensus'])->middleware('role:1,2');
         Route::get('listByPtgs', [DataPesertaController::class, 'listByPtgs'])->middleware('role:1,2');
         Route::post('create', [DataPesertaController::class, 'create'])->middleware('role:1,2');
         Route::post('edit', [DataPesertaController::class, 'edit'])->middleware('role:1,2');
@@ -266,17 +267,17 @@ Route::middleware(['auth:sanctum', 'check.token.expiration'])->group(function ()
 
     // Presensi Management
     Route::group(['prefix' => '/presensi/'], function () {
-        Route::get('list', [PresensiController::class, 'list'])->middleware('role:1,2');
-        Route::post('create', [PresensiController::class, 'create'])->middleware('role:1,2');
-        Route::post('edit', [PresensiController::class, 'edit'])->middleware('role:1,2');
-        Route::post('update', [PresensiController::class, 'update'])->middleware('role:1,2');
-        Route::delete('delete', [PresensiController::class, 'delete'])->middleware('role:1,2');
-        Route::post('record_presensi_qrcode', [PresensiController::class, 'record_presensi_qrcode'])->middleware('role:1,2');
-        Route::post('getPresensiReport', [PresensiController::class, 'getPresensiReport'])->middleware('role:1,2');
-        Route::post('update_data_wa_sensus', [PresensiController::class, 'updateDataWaSensus'])->middleware('role:1,2');
-        Route::get('list_nama_peserta', [PresensiController::class, 'list_nama_peserta'])->middleware('role:1,2');
+        Route::get('list', [PresensiController::class, 'list'])->middleware('role:1,7');
+        Route::post('create', [PresensiController::class, 'create'])->middleware('role:1,7');
+        Route::post('edit', [PresensiController::class, 'edit'])->middleware('role:1,7');
+        Route::post('update', [PresensiController::class, 'update'])->middleware('role:1,7');
+        Route::delete('delete', [PresensiController::class, 'delete'])->middleware('role:1,7');
+        Route::post('record_presensi_qrcode', [PresensiController::class, 'record_presensi_qrcode'])->middleware('role:1,7');
+        Route::post('getPresensiReport', [PresensiController::class, 'getPresensiReport'])->middleware('role:1,7');
+        Route::post('update_data_wa_sensus', [PresensiController::class, 'updateDataWaSensus'])->middleware('role:1,7');
+        Route::get('list_nama_peserta', [PresensiController::class, 'list_nama_peserta'])->middleware('role:1,7');
         Route::post('record_presensi_manual', [PresensiController::class, 'record_presensi_manual'])->middleware('role:1');
-        Route::post('record_presensi_bypass', [PresensiController::class, 'record_presensi_bypass'])->middleware('role:1');
+        Route::post('record_presensi_bypass', [PresensiController::class, 'record_presensi_bypass'])->middleware('role:1,7');
     });
 
     Route::group(['prefix' => '/v1/pengaduan/'], function () {
