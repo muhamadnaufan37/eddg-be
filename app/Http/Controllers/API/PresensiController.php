@@ -100,6 +100,7 @@ class PresensiController extends Controller
             ->when($kegiatan->tmpt_kelompok, fn($q) => $q->where('data_peserta.tmpt_kelompok', $kegiatan->tmpt_kelompok))
             ->where('data_peserta.status_sambung', 1)
             ->where('data_peserta.status_pernikahan', 0);
+        // ->orderBy('data_peserta.nama_lengkap');
 
         // Filter usia
         if ($kegiatan->usia_operator && $kegiatan->usia_batas) {
@@ -190,7 +191,7 @@ class PresensiController extends Controller
         $userId = Auth::id();
 
         $request->validate([
-            'phone' => 'required|string',
+            // 'phone' => 'required|string',
             'kode_cari_data' => 'required|string',
             'id_kegiatan' => 'required',
             'id_petugas' => 'required',
@@ -238,6 +239,7 @@ class PresensiController extends Controller
             'data_peserta.id',
             'data_peserta.kode_cari_data',
             'data_peserta.nama_lengkap',
+            DB::raw('TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) AS usia'),
             'data_peserta.tmpt_daerah',
             'tabel_daerah.nama_daerah',
             'data_peserta.tmpt_desa',
@@ -317,27 +319,27 @@ class PresensiController extends Controller
         $presensi->status_presensi = $request->status_presensi;
         $presensi->waktu_presensi = now();
         $presensi->keterangan = $request->keterangan;
-        $phone = $request->phone;
-        $countryCode = '62';
+        // $phone = $request->phone;
+        // $countryCode = '62';
 
-        $templates = [
-            'attendance' => "✅ *Absensi Berhasil Dicatat!*\n\n"
-                . "📌 *Nama:* " . ($peserta->nama_lengkap ?? '*Peserta Tidak Diketahui*') . "\n"
-                . "📅 *Tgl. Absen:* " . $presensi->waktu_presensi . "\n"
-                . "📢 *Kegiatan:* " . ($kegiatan->nama_kegiatan ?? '*Tidak Diketahui*') . "\n"
-                . "📍 *Tempat:* " . ($kegiatan->tmpt_kegiatan ?? '*Tidak Diketahui*') . "\n"
-                . "🛠️ *Method:* Diabsen oleh Petugas\n"
-                . "📝 *Keterangan:* *" . $presensi->keterangan . "*\n\n"
-                . "🙏 Terima kasih telah melakukan absensi. *Semoga harimu menyenangkan!* 😊"
-        ];
+        // $templates = [
+        //     'attendance' => "✅ *Absensi Berhasil Dicatat!*\n\n"
+        //         . "📌 *Nama:* " . ($peserta->nama_lengkap ?? '*Peserta Tidak Diketahui*') . "\n"
+        //         . "📅 *Tgl. Absen:* " . $presensi->waktu_presensi . "\n"
+        //         . "📢 *Kegiatan:* " . ($kegiatan->nama_kegiatan ?? '*Tidak Diketahui*') . "\n"
+        //         . "📍 *Tempat:* " . ($kegiatan->tmpt_kegiatan ?? '*Tidak Diketahui*') . "\n"
+        //         . "🛠️ *Method:* Diabsen oleh Petugas\n"
+        //         . "📝 *Keterangan:* *" . $presensi->keterangan . "*\n\n"
+        //         . "🙏 Terima kasih telah melakukan absensi. *Semoga harimu menyenangkan!* 😊"
+        // ];
 
         // Pilih template yang diinginkan (default ke 'attendance')
-        $message = $templates['attendance'];
+        // $message = $templates['attendance'];
 
         try {
             $presensi->save();
 
-            $Seender = $this->fonnteService->sendWhatsAppMessage($phone, $message, $countryCode);
+            // $Seender = $this->fonnteService->sendWhatsAppMessage($phone, $message, $countryCode);
 
             logs::create([
                 'user_id' => $userId,
@@ -348,12 +350,12 @@ class PresensiController extends Controller
                 'os' => $agent->platform(),
                 'device' => $agent->device(),
                 'engine_agent' => $request->header('user-agent'),
-                'updated_fields' => json_encode($Seender),
+                // 'updated_fields' => json_encode($Seender),
             ]);
 
             return response()->json([
                 'message' => 'Presensi berhasil dicatat',
-                'data_wa' => $Seender,
+                // 'data_wa' => $Seender,
                 'data_presensi' => $peserta,
                 'success' => true,
             ], 200);
@@ -371,7 +373,7 @@ class PresensiController extends Controller
         $userId = Auth::id();
 
         $request->validate([
-            'phone' => 'required|string',
+            // 'phone' => 'required|string',
             'kode_cari_data' => 'required|string',
             'id_kegiatan' => 'required',
             'id_petugas' => 'required',
@@ -478,7 +480,6 @@ class PresensiController extends Controller
             ], 404);
         }
 
-
         if ($peserta->status_sambung != 1 || $peserta->status_pernikahan != 0) {
             return response()->json([
                 'message' => 'Presensi Ditolak, Peserta sudah pindah sambung atau sudah menikah',
@@ -522,27 +523,27 @@ class PresensiController extends Controller
         $presensi->status_presensi = $isLate ? "TELAT HADIR" : "HADIR";
         $presensi->waktu_presensi = now();
         $presensi->keterangan = $isLate ? "TELAT HADIR" : "HADIR";
-        $phone = $request->phone;
-        $countryCode = '62';
+        // $phone = $request->phone;
+        // $countryCode = '62';
 
-        $templates = [
-            'attendance' => "✅ *Absensi Berhasil Dicatat!*\n\n"
-                . "📌 *Nama:* " . ($peserta->nama_lengkap ?? '*Peserta Tidak Diketahui*') . "\n"
-                . "📅 *Tgl. Absen:* " . $presensi->waktu_presensi . "\n"
-                . "📢 *Kegiatan:* " . ($kegiatan->nama_kegiatan ?? '*Tidak Diketahui*') . "\n"
-                . "📍 *Tempat:* " . ($kegiatan->tmpt_kegiatan ?? '*Tidak Diketahui*') . "\n"
-                . "🛠️ *Method:* Scan QR\n"
-                . "📝 *Keterangan:* *" . $presensi->keterangan . "*\n\n"
-                . "🙏 Terima kasih telah melakukan absensi. *Semoga harimu menyenangkan!* 😊"
-        ];
+        // $templates = [
+        //     'attendance' => "✅ *Absensi Berhasil Dicatat!*\n\n"
+        //         . "📌 *Nama:* " . ($peserta->nama_lengkap ?? '*Peserta Tidak Diketahui*') . "\n"
+        //         . "📅 *Tgl. Absen:* " . $presensi->waktu_presensi . "\n"
+        //         . "📢 *Kegiatan:* " . ($kegiatan->nama_kegiatan ?? '*Tidak Diketahui*') . "\n"
+        //         . "📍 *Tempat:* " . ($kegiatan->tmpt_kegiatan ?? '*Tidak Diketahui*') . "\n"
+        //         . "🛠️ *Method:* Scan QR\n"
+        //         . "📝 *Keterangan:* *" . $presensi->keterangan . "*\n\n"
+        //         . "🙏 Terima kasih telah melakukan absensi. *Semoga harimu menyenangkan!* 😊"
+        // ];
 
         // Pilih template yang diinginkan (default ke 'attendance')
-        $message = $templates['attendance'];
+        // $message = $templates['attendance'];
 
         try {
             $presensi->save();
 
-            $Seender = $this->fonnteService->sendWhatsAppMessage($phone, $message, $countryCode);
+            // $Seender = $this->fonnteService->sendWhatsAppMessage($phone, $message, $countryCode);
 
             logs::create([
                 'user_id' => $userId,
@@ -553,12 +554,12 @@ class PresensiController extends Controller
                 'os' => $agent->platform(),
                 'device' => $agent->device(),
                 'engine_agent' => $request->header('user-agent'),
-                'updated_fields' => json_encode($Seender),
+                // 'updated_fields' => json_encode($Seender),
             ]);
 
             return response()->json([
                 'message' => 'Presensi berhasil dicatat',
-                'data_wa' => $Seender,
+                // 'data_wa' => $Seender,
                 'data_presensi' => $peserta,
                 'success' => true,
             ], 200);
@@ -948,5 +949,145 @@ class PresensiController extends Controller
             'message' => 'Data Presensi tidak ditemukan',
             'success' => false,
         ], 200);
+    }
+
+    public function record_presensi_bypass(Request $request)
+    {
+        $agent = new Agent();
+        $userId = Auth::id();
+
+        $request->validate([
+            'kode_cari_data' => 'required|string',
+            'id_kegiatan' => 'required',
+            'id_petugas' => 'required',
+            'status_presensi' => 'required',
+            'keterangan' => 'nullable|string',
+        ]);
+
+        $kegiatan = presensiKegiatan::find($request->id_kegiatan);
+        if (!$kegiatan) {
+            return response()->json([
+                'message' => 'Kegiatan tidak ditemukan',
+                'success' => false,
+            ], 404);
+        }
+
+        if (empty($kegiatan->tgl_kegiatan) || empty($kegiatan->jam_kegiatan)) {
+            return response()->json([
+                'message' => 'Tanggal atau jam kegiatan tidak valid.',
+                'success' => false,
+            ], 400);
+        }
+
+        $peserta = dataSensusPeserta::select([
+            'data_peserta.id',
+            'data_peserta.kode_cari_data',
+            'data_peserta.nama_lengkap',
+            DB::raw('TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) AS usia'),
+            'data_peserta.tmpt_daerah',
+            'tabel_daerah.nama_daerah',
+            'data_peserta.tmpt_desa',
+            'tabel_desa.nama_desa',
+            'data_peserta.tmpt_kelompok',
+            'tabel_kelompok.nama_kelompok',
+            'data_peserta.status_sambung',
+            'data_peserta.status_pernikahan',
+        ])
+            ->join('tabel_daerah', function ($join) {
+                $join->on('tabel_daerah.id', '=', DB::raw('CAST(data_peserta.tmpt_daerah AS UNSIGNED)'));
+            })
+            ->join('tabel_desa', function ($join) {
+                $join->on('tabel_desa.id', '=', DB::raw('CAST(data_peserta.tmpt_desa AS UNSIGNED)'));
+            })
+            ->join('tabel_kelompok', function ($join) {
+                $join->on('tabel_kelompok.id', '=', DB::raw('CAST(data_peserta.tmpt_kelompok AS UNSIGNED)'));
+            })
+            ->join('users', function ($join) {
+                $join->on('users.id', '=', DB::raw('CAST(data_peserta.user_id AS UNSIGNED)'));
+            })
+            ->where('data_peserta.kode_cari_data', $request->kode_cari_data)
+            ->when($kegiatan->tmpt_daerah, function ($query) use ($kegiatan) {
+                return $query->where('data_peserta.tmpt_daerah', $kegiatan->tmpt_daerah);
+            })
+            ->when($kegiatan->tmpt_desa, function ($query) use ($kegiatan) {
+                return $query->where('data_peserta.tmpt_desa', $kegiatan->tmpt_desa);
+            })
+            ->when($kegiatan->tmpt_kelompok, function ($query) use ($kegiatan) {
+                return $query->where('data_peserta.tmpt_kelompok', $kegiatan->tmpt_kelompok);
+            })
+            ->first();
+
+        if (!$peserta) {
+            return response()->json([
+                'message' => 'Peserta tidak ditemukan atau data peserta presensi tidak bisa diakses di tempat sambung ini',
+                'success' => false,
+            ], 404);
+        }
+
+        if ($peserta->status_sambung != 1 || $peserta->status_pernikahan != 0) {
+            return response()->json([
+                'message' => 'Presensi Ditolak, Peserta sudah pindah sambung atau sudah menikah',
+                'success' => false,
+            ], 403);
+        }
+
+        $usiaOperator = $kegiatan->usia_operator;
+        $usiaBatas = $kegiatan->usia_batas;
+
+        if (!empty($usiaOperator) && !empty($usiaBatas)) {
+            $usia = $peserta->usia;
+
+            if (!eval("return {$usia} {$usiaOperator} {$usiaBatas};")) {
+                return response()->json([
+                    'message' => 'Peserta tidak memenuhi kriteria usia',
+                    'success' => false,
+                ], 403);
+            }
+        }
+
+        $alreadyPresensi = presensi::where('id_kegiatan', $kegiatan->id)
+            ->where('id_peserta', $peserta->id)
+            ->exists();
+
+        if ($alreadyPresensi) {
+            return response()->json([
+                'message' => 'Peserta sudah melakukan presensi sebelumnya.',
+                'success' => false,
+            ], 409);
+        }
+
+        $presensi = new presensi();
+        $presensi->id_kegiatan = $request->id_kegiatan;
+        $presensi->id_peserta = $peserta->id;
+        $presensi->id_petugas = $request->id_petugas;
+        $presensi->status_presensi = $request->status_presensi;
+        $presensi->waktu_presensi = now();
+        $presensi->keterangan = $request->keterangan;
+
+        try {
+            $presensi->save();
+
+            logs::create([
+                'user_id' => $userId,
+                'ip_address' => $request->ip(),
+                'aktifitas' => "Absensi ByPass - [{$peserta->id}] - [{$peserta->nama_lengkap}]",
+                'status_logs' => 'successfully',
+                'browser' => $agent->browser(),
+                'os' => $agent->platform(),
+                'device' => $agent->device(),
+                'engine_agent' => $request->header('user-agent'),
+            ]);
+
+            return response()->json([
+                'message' => 'Presensi berhasil dicatat',
+                'data_presensi' => $peserta,
+                'success' => true,
+            ], 200);
+        } catch (\Exception $exception) {
+            return response()->json([
+                'message' => 'Gagal menambah data presensi: ' . $exception->getMessage(),
+                'success' => false,
+            ], 500);
+        }
     }
 }

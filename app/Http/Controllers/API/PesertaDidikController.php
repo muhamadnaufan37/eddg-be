@@ -235,7 +235,6 @@ class PesertaDidikController extends Controller
         ];
 
         $request->validate([
-            'kode_cari_data' => 'unique:data_peserta',
             'nama_lengkap' => 'required|max:225|unique:data_peserta',
             'nama_panggilan' => 'required|string',
             'tempat_lahir' => 'required|string',
@@ -287,7 +286,7 @@ class PesertaDidikController extends Controller
             $foto = $request->file('img'); // Get the uploaded file
 
             // Generate a unique filename
-            $namaFile = Str::slug($table_peserta_didik->nama_lengkap) . '.' . $foto->getClientOriginalExtension();
+            $namaFile = Str::slug($table_peserta_didik->kode_cari_data) . '.' . $foto->getClientOriginalExtension();
 
             // Save the file to the 'public/images/sensus' directory
             $path = $foto->storeAs('public/images/sensus', $namaFile);
@@ -297,34 +296,21 @@ class PesertaDidikController extends Controller
         } else {
             $table_peserta_didik->img = null; // Handle cases where no file is uploaded
         }
+
+        if (!$tabel_daerah || !$tabel_desa || !$tabel_kelompok || !$userId) {
+            return response()->json([
+                'message' => 'Validasi lokasi atau user gagal',
+                'success' => false,
+                'errors' => [
+                    'tmpt_daerah' => !$tabel_daerah ? 'Daerah tidak ditemukan' : null,
+                    'tmpt_desa' => !$tabel_desa ? 'Desa tidak ditemukan' : null,
+                    'tmpt_kelompok' => !$tabel_kelompok ? 'Kelompok tidak ditemukan' : null,
+                    'user_id' => !$userId ? 'User tidak ditemukan' : null,
+                ]
+            ], 404);
+        }
+
         try {
-            if (!$tabel_daerah) {
-                return response()->json([
-                    'message' => 'Daerah tidak ditemukan',
-                    'success' => false,
-                ], 404);
-            }
-
-            if (!$tabel_desa) {
-                return response()->json([
-                    'message' => 'Desa tidak ditemukan',
-                    'success' => false,
-                ], 404);
-            }
-
-            if (!$tabel_kelompok) {
-                return response()->json([
-                    'message' => 'Kelompok tidak ditemukan',
-                    'success' => false,
-                ], 404);
-            }
-
-            if (!$userId) {
-                return response()->json([
-                    'message' => 'Data Petugas tidak ditemukan',
-                    'success' => false,
-                ], 404);
-            }
 
             $table_peserta_didik->save();
 

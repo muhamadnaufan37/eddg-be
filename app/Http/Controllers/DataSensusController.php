@@ -9,10 +9,14 @@ use App\Models\presensiKegiatan;
 use App\Services\FonnteService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
+// use Illuminate\Support\Facades\Http;
 use Jenssegers\Agent\Agent;
 use Carbon\Carbon;
 use Illuminate\Foundation\Auth\User;
+use App\Models\dataDaerah;
+use App\Models\dataDesa;
+use App\Models\dataKelompok;
+use Illuminate\Support\Str;
 
 class DataSensusController extends Controller
 {
@@ -174,16 +178,16 @@ class DataSensusController extends Controller
         $tanggalPencarian = now()->format('Y-m-d H:i:s');
 
         // Lakukan panggilan HTTP untuk mendapatkan informasi IP
-        $response = Http::get('https://www.trackip.net/ip?json');
+        // $response = Http::get('https://www.trackip.net/ip?json');
 
-        if (!$response->successful()) {
-            return response()->json([
-                'message' => 'Gagal mendapatkan IP pengguna. Status: ' . $response->status(),
-                'success' => false,
-            ], 500);
-        }
+        // if (!$response->successful()) {
+        //     return response()->json([
+        //         'message' => 'Gagal mendapatkan IP pengguna. Status: ' . $response->status(),
+        //         'success' => false,
+        //     ], 500);
+        // }
 
-        $ipFromResponse = $response->json()['IP'] ?? 'Unknown IP';
+        // $ipFromResponse = $response->json()['IP'] ?? 'Unknown IP';
 
         try {
             if (!empty($sensus)) {
@@ -193,7 +197,7 @@ class DataSensusController extends Controller
 
                 $logAccount = [
                     'user_id' => $userOperator->uuid,
-                    'ip_address' => $ipFromResponse,
+                    'ip_address' => $request->ip(),
                     'aktifitas' => 'Cari Data Sensus - [' . $sensus->id . ' - ' . $sensus->nama_lengkap . ' - ' . 'Web Data Center' . ']',
                     'status_logs' => 'successfully',
                     'browser' => $agent->browser(),
@@ -300,7 +304,7 @@ class DataSensusController extends Controller
         ];
 
         $request->validate([
-            'phone' => 'required|string',
+            // 'phone' => 'required|string',
             'id_operator' => 'required|exists:users,uuid',
             'kode_kegiatan' => 'required|string',
             'status_presensi' => 'required',
@@ -415,28 +419,28 @@ class DataSensusController extends Controller
         $presensi->status_presensi = $request->status_presensi;
         $presensi->waktu_presensi = now();
         $presensi->keterangan = $request->keterangan;
-        $phone = $request->phone;
-        $countryCode = '62';
+        // $phone = $request->phone;
+        // $countryCode = '62';
 
-        $templates = [
-            'attendance' => "✅ *Absensi Berhasil Dicatat!*\n\n"
-                . "📌 *Nama:* " . ($peserta->nama_lengkap ?? '*Peserta Tidak Diketahui*') . "\n"
-                . "📅 *Tgl. Absen:* " . $presensi->waktu_presensi . "\n"
-                . "📢 *Kegiatan:* " . ($kegiatan->nama_kegiatan ?? '*Tidak Diketahui*') . "\n"
-                . "📍 *Tempat:* " . ($kegiatan->tmpt_kegiatan ?? '*Tidak Diketahui*') . "\n"
-                . "🛠️ *Method:* Manual Via Data Center\n"
-                . "🔍 *Status:* " . ($presensi->status_presensi ?? '*Tidak Diketahui*') . "\n"
-                . "📝 *Keterangan:* *" . $presensi->keterangan . "*\n\n"
-                . "🙏 Terima kasih telah melakukan absensi. *Semoga harimu menyenangkan!* 😊"
-        ];
+        // $templates = [
+        //     'attendance' => "✅ *Absensi Berhasil Dicatat!*\n\n"
+        //         . "📌 *Nama:* " . ($peserta->nama_lengkap ?? '*Peserta Tidak Diketahui*') . "\n"
+        //         . "📅 *Tgl. Absen:* " . $presensi->waktu_presensi . "\n"
+        //         . "📢 *Kegiatan:* " . ($kegiatan->nama_kegiatan ?? '*Tidak Diketahui*') . "\n"
+        //         . "📍 *Tempat:* " . ($kegiatan->tmpt_kegiatan ?? '*Tidak Diketahui*') . "\n"
+        //         . "🛠️ *Method:* Manual Via Data Center\n"
+        //         . "🔍 *Status:* " . ($presensi->status_presensi ?? '*Tidak Diketahui*') . "\n"
+        //         . "📝 *Keterangan:* *" . $presensi->keterangan . "*\n\n"
+        //         . "🙏 Terima kasih telah melakukan absensi. *Semoga harimu menyenangkan!* 😊"
+        // ];
 
         // Pilih template yang diinginkan (default ke 'attendance')
-        $message = $templates['attendance'];
+        // $message = $templates['attendance'];
 
         try {
             $presensi->save();
 
-            $Seender = $this->fonnteService->sendWhatsAppMessage($phone, $message, $countryCode);
+            // $Seender = $this->fonnteService->sendWhatsAppMessage($phone, $message, $countryCode);
 
             logs::create([
                 'user_id' => $userId,
@@ -447,12 +451,12 @@ class DataSensusController extends Controller
                 'os' => $agent->platform(),
                 'device' => $agent->device(),
                 'engine_agent' => $request->header('user-agent'),
-                'updated_fields' => json_encode($Seender),
+                // 'updated_fields' => json_encode($Seender),
             ]);
 
             return response()->json([
                 'message' => 'Presensi berhasil dicatat.',
-                'data_wa' => $Seender,
+                // 'data_wa' => $Seender,
                 'data_presensi' => $peserta,
                 'success' => true,
             ], 200);
@@ -462,5 +466,139 @@ class DataSensusController extends Controller
                 'success' => false,
             ], 500);
         }
+    }
+
+    public function create_data_sensus(Request $request)
+    {
+        $agent = new Agent();
+        $tabel_daerah = dataDaerah::find($request->tmpt_daerah);
+        $tabel_desa = dataDesa::find($request->tmpt_desa);
+        $tabel_kelompok = dataKelompok::find($request->tmpt_kelompok);
+        $sensus = User::find($request->user_id);
+
+        $customMessages = [
+            'required' => 'Kolom :attribute wajib diisi.',
+            'unique' => ':attribute sudah terdaftar di sistem',
+            'email' => ':attribute harus berupa alamat email yang valid.',
+            'max' => ':attribute tidak boleh lebih dari :max karakter.',
+            'confirmed' => 'Konfirmasi :attribute tidak cocok.',
+            'min' => ':attribute harus memiliki setidaknya :min karakter.',
+            'regex' => ':attribute harus mengandung setidaknya satu huruf kapital dan satu angka.',
+            'numeric' => ':attribute harus berupa angka.',
+            'digits_between' => ':attribute harus memiliki panjang antara :min dan :max digit.',
+        ];
+
+        $request->validate([
+            'nama_lengkap' => 'required|string|unique:data_peserta',
+            'nama_panggilan' => 'required|string',
+            'tempat_lahir' => 'required|string',
+            'tanggal_lahir' => 'required|date',
+            'alamat' => 'required|string',
+            'jenis_kelamin' => 'required|in:LAKI-LAKI,PEREMPUAN',
+            'no_telepon' => 'required|string|digits_between:8,13',
+            'nama_ayah' => 'required|string',
+            'nama_ibu' => 'required|string',
+            'hoby' => 'required|string',
+            'pekerjaan' => 'required|integer',
+            'usia_menikah' => 'nullable|string',
+            'kriteria_pasangan' => 'nullable|string',
+            'status_atlet_asad' => 'required|integer',
+            'tmpt_daerah' => 'required|integer|digits_between:1,5',
+            'tmpt_desa' => 'required|integer|digits_between:1,5',
+            'tmpt_kelompok' => 'required|integer|digits_between:1,5',
+            'img' => 'required|image|mimes:jpg,png|max:5120',
+            'user_id' => 'required|integer',
+        ], $customMessages);
+
+        $tabel_sensus = new dataSensusPeserta();
+
+        $tanggalSekarang = Carbon::now();
+        $prefix = 'SEN';
+
+        do {
+            $kodeUnik = $prefix . $tanggalSekarang->format('ymdHis') . str_pad(random_int(0, 999), 3, '0', STR_PAD_LEFT);
+        } while (\App\Models\dataSensusPeserta::where('kode_cari_data', $kodeUnik)->exists());
+
+        $tabel_sensus->kode_cari_data = $kodeUnik;
+        $tabel_sensus->nama_lengkap = $request->nama_lengkap;
+        $tabel_sensus->nama_panggilan = ucwords(strtolower($request->nama_panggilan));
+        $tabel_sensus->tempat_lahir = ucwords(strtolower($request->tempat_lahir));
+        $tabel_sensus->tanggal_lahir = $request->tanggal_lahir;
+        $tabel_sensus->alamat = ucwords(strtolower($request->alamat));
+        $tabel_sensus->jenis_kelamin = $request->jenis_kelamin;
+        $tabel_sensus->no_telepon = $request->no_telepon;
+        $tabel_sensus->nama_ayah = $request->nama_ayah;
+        $tabel_sensus->nama_ibu = $request->nama_ibu;
+        $tabel_sensus->hoby = $request->hoby;
+        $tabel_sensus->pekerjaan = $request->pekerjaan;
+        $tabel_sensus->usia_menikah = $request->usia_menikah;
+        $tabel_sensus->kriteria_pasangan = $request->kriteria_pasangan;
+        $tabel_sensus->tmpt_daerah = $request->tmpt_daerah;
+        $tabel_sensus->tmpt_desa = $request->tmpt_desa;
+        $tabel_sensus->tmpt_kelompok = $request->tmpt_kelompok;
+        $tabel_sensus->status_sambung = 1;
+        $tabel_sensus->status_pernikahan = 0;
+        $tabel_sensus->jenis_data = "SENSUS";
+        $tabel_sensus->img = $request->img;
+        $tabel_sensus->status_atlet_asad = $request->status_atlet_asad;
+        $tabel_sensus->user_id = $request->user_id;
+
+        if ($request->hasFile('img')) {
+            $foto = $request->file('img'); // Get the uploaded file
+
+            // Generate a unique filename
+            $namaFile = Str::slug($tabel_sensus->kode_cari_data) . '.' . $foto->getClientOriginalExtension();
+
+            // Save the file to the 'public/images/sensus' directory
+            $path = $foto->storeAs('public/images/sensus', $namaFile);
+
+            // Update the database record
+            $tabel_sensus->img = $path;
+        } else {
+            $tabel_sensus->img = null; // Handle cases where no file is uploaded
+        }
+
+        if (!$tabel_daerah || !$tabel_desa || !$tabel_kelompok || !$sensus) {
+            return response()->json([
+                'message' => 'Validasi lokasi atau user gagal',
+                'success' => false,
+                'errors' => [
+                    'tmpt_daerah' => !$tabel_daerah ? 'Daerah tidak ditemukan' : null,
+                    'tmpt_desa' => !$tabel_desa ? 'Desa tidak ditemukan' : null,
+                    'tmpt_kelompok' => !$tabel_kelompok ? 'Kelompok tidak ditemukan' : null,
+                    'user_id' => !$sensus ? 'User tidak ditemukan' : null,
+                ]
+            ], 404);
+        }
+
+        try {
+
+            $tabel_sensus->save();
+
+            $logAccount = [
+                'user_id' => $request->user_id,
+                'ip_address' => $request->ip(),
+                'aktifitas' => 'Create Data Sensus By Data Center - [' . $tabel_sensus->id . '] - [' . $tabel_sensus->nama_lengkap . ']',
+                'status_logs' => 'successfully',
+                'browser' => $agent->browser(),
+                'os' => $agent->platform(),
+                'device' => $agent->device(),
+                'engine_agent' => $request->header('user-agent'),
+            ];
+            logs::create($logAccount);
+        } catch (\Exception $exception) {
+            return response()->json([
+                'message' => 'Gagal menambah data sensus' . $exception->getMessage(),
+                'success' => false,
+            ], 500);
+        }
+
+        unset($tabel_sensus->created_at, $tabel_sensus->updated_at);
+
+        return response()->json([
+            'message' => 'Data sensus berhasil ditambahkan',
+            'data_sensus' => $tabel_sensus,
+            'success' => true,
+        ], 200);
     }
 }

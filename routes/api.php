@@ -1,11 +1,11 @@
 <?php
 
 use App\Http\Controllers\API\AuthController;
-use App\Http\Controllers\API\BoardCastController;
 use App\Http\Controllers\API\CalonPPDBController;
 use App\Http\Controllers\API\DaerahController;
 use App\Http\Controllers\API\DataPesertaController;
 use App\Http\Controllers\API\DesaController;
+use App\Http\Controllers\API\DigitalSignatureController;
 use App\Http\Controllers\API\KalenderPesertaController;
 use App\Http\Controllers\API\KelasPesertaController;
 use App\Http\Controllers\API\KelompokController;
@@ -13,6 +13,7 @@ use App\Http\Controllers\API\LaporanRaporController;
 use App\Http\Controllers\API\LogsController;
 use App\Http\Controllers\API\MappingTempatSambungController;
 use App\Http\Controllers\API\PekerjaanPesertaController;
+use App\Http\Controllers\API\PengaduanController;
 use App\Http\Controllers\API\PengajarPesertaController;
 use App\Http\Controllers\API\PesertaDidikController;
 use App\Http\Controllers\API\PresensiController;
@@ -54,6 +55,12 @@ Route::get('/data_tempat_sambung', [StatistikTmptSmbngController::class, 'data_t
 Route::group(['prefix' => '/v1/data_sensus/'], function () {
     Route::get('/find_sensus', [DataSensusController::class, 'cari_data']);
     Route::get('/personal', [DataSensusController::class, 'detail_sensus_personal']);
+    Route::get('/register', [DataSensusController::class, 'create_data_sensus']);
+});
+
+Route::group(['prefix' => '/v1/pengaduan/'], function () {
+    Route::get('/check', [PengaduanController::class, 'cekStatus']);
+    Route::post('/send-pengaduan', [PengaduanController::class, 'kirimPengaduan']);
 });
 
 Route::group(['prefix' => '/v1/otp/'], function () {
@@ -75,11 +82,12 @@ Route::middleware(['auth:sanctum', 'check.token.expiration'])->group(function ()
 
     // Logs
     Route::group(['prefix' => '/logs/'], function () {
-        Route::get('list_browser', [LogsController::class, 'list_browser'])->middleware('role:1');
-        Route::get('list_os', [LogsController::class, 'list_os'])->middleware('role:1');
-        Route::get('list_device', [LogsController::class, 'list_device'])->middleware('role:1');
-        Route::get('list_status', [LogsController::class, 'list_status'])->middleware('role:1');
-        Route::get('list', [LogsController::class, 'list'])->middleware('role:1');
+        Route::get('list_browser', [LogsController::class, 'list_browser'])->middleware('role:1,5');
+        Route::get('list_os', [LogsController::class, 'list_os'])->middleware('role:1,5');
+        Route::get('list_device', [LogsController::class, 'list_device'])->middleware('role:1,5');
+        Route::get('list_status', [LogsController::class, 'list_status'])->middleware('role:1,5');
+        Route::get('list', [LogsController::class, 'list'])->middleware('role:1,5');
+        Route::get('listOp', [LogsController::class, 'listOp'])->middleware('role:1,5');
     });
 
     // Role Management
@@ -139,15 +147,6 @@ Route::middleware(['auth:sanctum', 'check.token.expiration'])->group(function ()
         Route::post('update', [DataPesertaController::class, 'update'])->middleware('role:1,2');
         Route::delete('delete', [DataPesertaController::class, 'delete'])->middleware('role:1,2');
         Route::post('sensus_report_pdf', [DataPesertaController::class, 'sensus_report_pdf'])->middleware('role:1,2');
-    });
-
-    // Pengumuman
-    Route::group(['prefix' => '/boardcast/'], function () {
-        Route::get('list', [BoardCastController::class, 'list'])->middleware('role:1,2,3,4');
-        Route::post('create', [BoardCastController::class, 'create'])->middleware('role:1');
-        Route::post('edit', [BoardCastController::class, 'edit'])->middleware('role:1,2,3,4');
-        Route::post('update', [BoardCastController::class, 'update'])->middleware('role:1');
-        Route::delete('delete', [BoardCastController::class, 'delete'])->middleware('role:1');
     });
 
     // Profile Management
@@ -277,5 +276,19 @@ Route::middleware(['auth:sanctum', 'check.token.expiration'])->group(function ()
         Route::post('update_data_wa_sensus', [PresensiController::class, 'updateDataWaSensus'])->middleware('role:1,2');
         Route::get('list_nama_peserta', [PresensiController::class, 'list_nama_peserta'])->middleware('role:1,2');
         Route::post('record_presensi_manual', [PresensiController::class, 'record_presensi_manual'])->middleware('role:1');
+        Route::post('record_presensi_bypass', [PresensiController::class, 'record_presensi_bypass'])->middleware('role:1');
+    });
+
+    Route::group(['prefix' => '/v1/pengaduan/'], function () {
+        Route::get('/list', [PengaduanController::class, 'list_pengaduan'])->middleware('role:1,5');
+        Route::post('/detail', [PengaduanController::class, 'detail_pengaduan'])->middleware('role:1,5');
+        Route::post('/reply_complaint', [PengaduanController::class, 'balasPengaduan'])->middleware('role:1,5');
+    });
+
+    Route::group(['prefix' => '/signature/'], function () {
+        Route::get('/list', [DigitalSignatureController::class, 'list'])->middleware('role:1,5');
+        Route::get('/sign', [DigitalSignatureController::class, 'sign'])->middleware('role:1,5');
+        Route::get('/get-ttd', [DigitalSignatureController::class, 'getSignature'])->middleware('role:1,5');
+        Route::post('/request', [DigitalSignatureController::class, 'requestCertificate'])->middleware('role:1,5');
     });
 });

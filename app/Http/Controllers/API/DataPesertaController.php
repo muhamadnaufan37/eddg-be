@@ -439,6 +439,10 @@ class DataPesertaController extends Controller
     {
         $userId = Auth::id();
         $agent = new Agent();
+        $tabel_daerah = dataDaerah::find($request->tmpt_daerah);
+        $tabel_desa = dataDesa::find($request->tmpt_desa);
+        $tabel_kelompok = dataKelompok::find($request->tmpt_kelompok);
+        $sensus = User::find($request->user_id);
 
         $customMessages = [
             'required' => 'Kolom :attribute wajib diisi.',
@@ -453,7 +457,6 @@ class DataPesertaController extends Controller
         ];
 
         $request->validate([
-            'kode_cari_data' => 'unique:data_peserta',
             'nama_lengkap' => 'required|string|unique:data_peserta',
             'nama_panggilan' => 'required|string',
             'tempat_lahir' => 'required|string',
@@ -512,7 +515,7 @@ class DataPesertaController extends Controller
             $foto = $request->file('img'); // Get the uploaded file
 
             // Generate a unique filename
-            $namaFile = Str::slug($tabel_sensus->nama_lengkap) . '.' . $foto->getClientOriginalExtension();
+            $namaFile = Str::slug($tabel_sensus->kode_cari_data) . '.' . $foto->getClientOriginalExtension();
 
             // Save the file to the 'public/images/sensus' directory
             $path = $foto->storeAs('public/images/sensus', $namaFile);
@@ -523,39 +526,20 @@ class DataPesertaController extends Controller
             $tabel_sensus->img = null; // Handle cases where no file is uploaded
         }
 
+        if (!$tabel_daerah || !$tabel_desa || !$tabel_kelompok || !$sensus) {
+            return response()->json([
+                'message' => 'Validasi lokasi atau user gagal',
+                'success' => false,
+                'errors' => [
+                    'tmpt_daerah' => !$tabel_daerah ? 'Daerah tidak ditemukan' : null,
+                    'tmpt_desa' => !$tabel_desa ? 'Desa tidak ditemukan' : null,
+                    'tmpt_kelompok' => !$tabel_kelompok ? 'Kelompok tidak ditemukan' : null,
+                    'user_id' => !$sensus ? 'User tidak ditemukan' : null,
+                ]
+            ], 404);
+        }
+
         try {
-            $tabel_daerah = dataDaerah::find($request->tmpt_daerah);
-            $tabel_desa = dataDesa::find($request->tmpt_desa);
-            $tabel_kelompok = dataKelompok::find($request->tmpt_kelompok);
-            $sensus = User::find($request->user_id);
-
-            if (!$tabel_daerah) {
-                return response()->json([
-                    'message' => 'Daerah tidak ditemukan',
-                    'success' => false,
-                ], 404);
-            }
-
-            if (!$tabel_desa) {
-                return response()->json([
-                    'message' => 'Desa tidak ditemukan',
-                    'success' => false,
-                ], 404);
-            }
-
-            if (!$tabel_kelompok) {
-                return response()->json([
-                    'message' => 'Kelompok tidak ditemukan',
-                    'success' => false,
-                ], 404);
-            }
-
-            if (!$sensus) {
-                return response()->json([
-                    'message' => 'Data Petugas tidak ditemukan',
-                    'success' => false,
-                ], 404);
-            }
 
             $tabel_sensus->save();
 
