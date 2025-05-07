@@ -98,7 +98,7 @@ class RolesController extends Controller
         $role = new Role();
         $role->code_uuid = Str::uuid()->toString();
         $role->name = $request->name;
-        $role->guard_name = 'api';
+        $role->guard_name = 'web';
         $role->description = $request->description;
         try {
             $role->save();
