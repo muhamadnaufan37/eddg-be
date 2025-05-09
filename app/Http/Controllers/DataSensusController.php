@@ -17,6 +17,7 @@ use App\Models\dataDaerah;
 use App\Models\dataDesa;
 use App\Models\dataKelompok;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 
 class DataSensusController extends Controller
 {
@@ -54,6 +55,14 @@ class DataSensusController extends Controller
     // }
 
     protected $fonnteService;
+
+    private function normalizeNama($nama)
+    {
+        // Normalisasi: hilangkan karakter non-huruf, ubah ke huruf kecil, transliterasi ASCII
+        return strtolower(
+            preg_replace('/[^a-z]/', '', Str::ascii($nama))
+        );
+    }
 
     public function __construct(FonnteService $fonnteService)
     {
@@ -468,13 +477,48 @@ class DataSensusController extends Controller
         }
     }
 
+    public function check_nama_lengkap(Request $request)
+    {
+        $request->validate([
+            'nama_lengkap' => 'required|string',
+        ], [
+            'required' => 'Kolom :attribute wajib diisi.',
+        ]);
+
+        $inputNama = $request->input('nama_lengkap');
+        $normalizedInput = $this->normalizeNama($inputNama);
+
+        $dataSemuaPeserta = \App\Models\dataSensusPeserta::select('nama_lengkap')->get();
+
+        $thresholdSimilarity = 90; // persen kemiripan minimal dianggap sama
+        $namaMirip = [];
+
+        foreach ($dataSemuaPeserta as $peserta) {
+            $normalizedExisting = $this->normalizeNama($peserta->nama_lengkap);
+
+            similar_text($normalizedInput, $normalizedExisting, $percent);
+
+            if ($percent >= $thresholdSimilarity) {
+                $namaMirip[] = $peserta->nama_lengkap . " ({$percent}%)";
+            }
+        }
+
+        if (count($namaMirip) > 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Nama lengkap mirip dengan yang sudah terdaftar: ' . implode(', ', $namaMirip),
+            ], 200);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Nama lengkap tersedia.',
+        ], 200);
+    }
+
     public function create_data_sensus(Request $request)
     {
         $agent = new Agent();
-        $tabel_daerah = dataDaerah::find($request->tmpt_daerah);
-        $tabel_desa = dataDesa::find($request->tmpt_desa);
-        $tabel_kelompok = dataKelompok::find($request->tmpt_kelompok);
-        $sensus = User::find($request->user_id);
 
         $customMessages = [
             'required' => 'Kolom :attribute wajib diisi.',
@@ -489,7 +533,8 @@ class DataSensusController extends Controller
         ];
 
         $request->validate([
-            'nama_lengkap' => 'required|string|unique:data_peserta',
+            'id_operator' => 'required|exists:users,uuid',
+            'nama_lengkap' => 'required|string',
             'nama_panggilan' => 'required|string',
             'tempat_lahir' => 'required|string',
             'tanggal_lahir' => 'required|date',
@@ -507,98 +552,137 @@ class DataSensusController extends Controller
             'tmpt_desa' => 'required|integer|digits_between:1,5',
             'tmpt_kelompok' => 'required|integer|digits_between:1,5',
             'img' => 'required|image|mimes:jpg,png|max:5120',
-            'user_id' => 'required|integer',
         ], $customMessages);
 
-        $tabel_sensus = new dataSensusPeserta();
+        // Ambil data referensi awal
+        $tabel_daerah = dataDaerah::find($request->tmpt_daerah);
+        $tabel_desa = dataDesa::find($request->tmpt_desa);
+        $tabel_kelompok = dataKelompok::find($request->tmpt_kelompok);
+        $sensus = User::find($request->user_id);
+        $operator = User::where('uuid', $request->id_operator)->first();
 
-        $tanggalSekarang = Carbon::now();
-        $prefix = 'SEN';
-
-        do {
-            $kodeUnik = $prefix . $tanggalSekarang->format('ymdHis') . str_pad(random_int(0, 999), 3, '0', STR_PAD_LEFT);
-        } while (\App\Models\dataSensusPeserta::where('kode_cari_data', $kodeUnik)->exists());
-
-        $tabel_sensus->kode_cari_data = $kodeUnik;
-        $tabel_sensus->nama_lengkap = $request->nama_lengkap;
-        $tabel_sensus->nama_panggilan = ucwords(strtolower($request->nama_panggilan));
-        $tabel_sensus->tempat_lahir = ucwords(strtolower($request->tempat_lahir));
-        $tabel_sensus->tanggal_lahir = $request->tanggal_lahir;
-        $tabel_sensus->alamat = ucwords(strtolower($request->alamat));
-        $tabel_sensus->jenis_kelamin = $request->jenis_kelamin;
-        $tabel_sensus->no_telepon = $request->no_telepon;
-        $tabel_sensus->nama_ayah = $request->nama_ayah;
-        $tabel_sensus->nama_ibu = $request->nama_ibu;
-        $tabel_sensus->hoby = $request->hoby;
-        $tabel_sensus->pekerjaan = $request->pekerjaan;
-        $tabel_sensus->usia_menikah = $request->usia_menikah;
-        $tabel_sensus->kriteria_pasangan = $request->kriteria_pasangan;
-        $tabel_sensus->tmpt_daerah = $request->tmpt_daerah;
-        $tabel_sensus->tmpt_desa = $request->tmpt_desa;
-        $tabel_sensus->tmpt_kelompok = $request->tmpt_kelompok;
-        $tabel_sensus->status_sambung = 1;
-        $tabel_sensus->status_pernikahan = 0;
-        $tabel_sensus->jenis_data = "SENSUS";
-        $tabel_sensus->img = $request->img;
-        $tabel_sensus->status_atlet_asad = $request->status_atlet_asad;
-        $tabel_sensus->user_id = $request->user_id;
-
-        if ($request->hasFile('img')) {
-            $foto = $request->file('img'); // Get the uploaded file
-
-            // Generate a unique filename
-            $namaFile = Str::slug($tabel_sensus->kode_cari_data) . '.' . $foto->getClientOriginalExtension();
-
-            // Save the file to the 'public/images/sensus' directory
-            $path = $foto->storeAs('public/images/sensus', $namaFile);
-
-            // Update the database record
-            $tabel_sensus->img = $path;
-        } else {
-            $tabel_sensus->img = null; // Handle cases where no file is uploaded
-        }
-
-        if (!$tabel_daerah || !$tabel_desa || !$tabel_kelompok || !$sensus) {
+        // Validasi referensi
+        if (!$tabel_daerah || !$tabel_desa || !$tabel_kelompok || !$sensus || !$operator) {
             return response()->json([
-                'message' => 'Validasi lokasi atau user gagal',
                 'success' => false,
+                'message' => 'Validasi referensi gagal.',
                 'errors' => [
                     'tmpt_daerah' => !$tabel_daerah ? 'Daerah tidak ditemukan' : null,
                     'tmpt_desa' => !$tabel_desa ? 'Desa tidak ditemukan' : null,
                     'tmpt_kelompok' => !$tabel_kelompok ? 'Kelompok tidak ditemukan' : null,
                     'user_id' => !$sensus ? 'User tidak ditemukan' : null,
+                    'id_operator' => !$operator ? 'Operator tidak ditemukan' : null,
                 ]
             ], 404);
         }
 
+        // Validasi role operator
+        if ($operator->role_id != 5) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akses ditolak. Operator tidak memiliki izin.',
+            ], 403);
+        }
+
+        // Cek kemiripan nama_lengkap
+        $namaInput = strtolower(preg_replace('/[^a-z0-9]/', '', $request->nama_lengkap));
+        $existing = \App\Models\dataSensusPeserta::get(['nama_lengkap'])->filter(function ($item) use ($namaInput) {
+            $namaDB = strtolower(preg_replace('/[^a-z0-9]/', '', $item->nama_lengkap));
+            similar_text($namaInput, $namaDB, $percent);
+            return $percent >= 85; // Sesuaikan threshold
+        });
+
+        if ($existing->count()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Nama lengkap mirip dengan data yang sudah ada: ' . $existing->implode('nama_lengkap', ', '),
+            ], 409);
+        }
+
+        DB::beginTransaction();
+
         try {
+            $kodeUnik = '';
+            $prefix = 'SEN';
+            $tanggalSekarang = Carbon::now();
+
+            do {
+                $kodeUnik = $prefix . $tanggalSekarang->format('ymdHis') . str_pad(random_int(0, 999), 3, '0', STR_PAD_LEFT);
+            } while (\App\Models\dataSensusPeserta::where('kode_cari_data', $kodeUnik)->exists());
+
+            $tabel_sensus = new dataSensusPeserta();
+            $tabel_sensus->kode_cari_data = $kodeUnik;
+            $tabel_sensus->nama_lengkap = $request->nama_lengkap;
+            $tabel_sensus->nama_panggilan = ucwords(strtolower($request->nama_panggilan));
+            $tabel_sensus->tempat_lahir = ucwords(strtolower($request->tempat_lahir));
+            $tabel_sensus->tanggal_lahir = $request->tanggal_lahir;
+            $tabel_sensus->alamat = ucwords(strtolower($request->alamat));
+            $tabel_sensus->jenis_kelamin = $request->jenis_kelamin;
+            $tabel_sensus->no_telepon = $request->no_telepon;
+            $tabel_sensus->nama_ayah = $request->nama_ayah;
+            $tabel_sensus->nama_ibu = $request->nama_ibu;
+            $tabel_sensus->hoby = $request->hoby;
+            $tabel_sensus->pekerjaan = $request->pekerjaan;
+            $tabel_sensus->usia_menikah = $request->usia_menikah;
+            $tabel_sensus->kriteria_pasangan = $request->kriteria_pasangan;
+            $tabel_sensus->tmpt_daerah = $request->tmpt_daerah;
+            $tabel_sensus->tmpt_desa = $request->tmpt_desa;
+            $tabel_sensus->tmpt_kelompok = $request->tmpt_kelompok;
+            $tabel_sensus->status_sambung = 1;
+            $tabel_sensus->status_pernikahan = 0;
+            $tabel_sensus->jenis_data = "SENSUS";
+            $tabel_sensus->status_atlet_asad = $request->status_atlet_asad;
+            $tabel_sensus->user_id = "41";
+
+            if ($request->hasFile('img')) {
+                $foto = $request->file('img'); // Get the uploaded file
+
+                // Generate a unique filename
+                $namaFile = Str::slug($tabel_sensus->kode_cari_data) . '.' . $foto->getClientOriginalExtension();
+
+                // Save the file to the 'public/images/sensus' directory
+                $path = $foto->storeAs('public/images/sensus', $namaFile);
+
+                // Update the database record
+                $tabel_sensus->img = $path;
+            } else {
+                $tabel_sensus->img = null; // Handle cases where no file is uploaded
+            }
 
             $tabel_sensus->save();
 
-            $logAccount = [
+            logs::create([
                 'user_id' => $request->user_id,
                 'ip_address' => $request->ip(),
-                'aktifitas' => 'Create Data Sensus By Data Center - [' . $tabel_sensus->id . '] - [' . $tabel_sensus->nama_lengkap . ']',
+                'aktifitas' => 'Create Data Sensus - [' . $tabel_sensus->id . '] - [' . $tabel_sensus->nama_lengkap . ']',
                 'status_logs' => 'successfully',
                 'browser' => $agent->browser(),
                 'os' => $agent->platform(),
                 'device' => $agent->device(),
                 'engine_agent' => $request->header('user-agent'),
-            ];
-            logs::create($logAccount);
-        } catch (\Exception $exception) {
+            ]);
+
+            DB::commit();
+
+            unset($tabel_sensus->created_at, $tabel_sensus->updated_at);
+
             return response()->json([
-                'message' => 'Gagal menambah data sensus' . $exception->getMessage(),
+                'message' => 'Data sensus berhasil ditambahkan',
+                'data_sensus' => $tabel_sensus,
+                'success' => true,
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Gagal membuat data sensus', [
+                'error' => $e->getMessage(),
+                'stack' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'message' => 'Gagal menambah data sensus: ' . $e->getMessage(),
                 'success' => false,
             ], 500);
         }
-
-        unset($tabel_sensus->created_at, $tabel_sensus->updated_at);
-
-        return response()->json([
-            'message' => 'Data sensus berhasil ditambahkan',
-            'data_sensus' => $tabel_sensus,
-            'success' => true,
-        ], 200);
     }
 }

@@ -53,9 +53,10 @@ Route::post('record_presensi_manual', [DataSensusController::class, 'record_pres
 Route::get('/data_tempat_sambung', [StatistikTmptSmbngController::class, 'data_tempat_sambung']);
 
 Route::group(['prefix' => '/v1/data_sensus/'], function () {
+    Route::get('/cek-nama', [DataSensusController::class, 'check_nama_lengkap']);
     Route::get('/find_sensus', [DataSensusController::class, 'cari_data']);
     Route::get('/personal', [DataSensusController::class, 'detail_sensus_personal']);
-    Route::get('/register', [DataSensusController::class, 'create_data_sensus']);
+    Route::post('/register', [DataSensusController::class, 'create_data_sensus']);
 });
 
 Route::group(['prefix' => '/v1/pengaduan/'], function () {
@@ -276,7 +277,6 @@ Route::middleware(['auth:sanctum', 'check.token.expiration'])->group(function ()
         Route::post('getPresensiReport', [PresensiController::class, 'getPresensiReport'])->middleware('role:1,7');
         Route::post('update_data_wa_sensus', [PresensiController::class, 'updateDataWaSensus'])->middleware('role:1,7');
         Route::get('list_nama_peserta', [PresensiController::class, 'list_nama_peserta'])->middleware('role:1,7');
-        Route::post('record_presensi_manual', [PresensiController::class, 'record_presensi_manual'])->middleware('role:1');
         Route::post('record_presensi_bypass', [PresensiController::class, 'record_presensi_bypass'])->middleware('role:1,7');
     });
 
