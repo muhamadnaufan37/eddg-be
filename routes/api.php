@@ -26,6 +26,7 @@ use App\Http\Controllers\API\WalletKasController;
 use App\Http\Controllers\API\WhatsAppController as APIWhatsAppController;
 use App\Http\Controllers\DataSensusController;
 use App\Http\Controllers\StatistikTmptSmbngController;
+use App\Http\Controllers\TempatSambungController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -52,11 +53,18 @@ Route::get('/list_nama_peserta', [DataSensusController::class, 'list_nama_pesert
 Route::post('record_presensi_manual', [DataSensusController::class, 'record_presensi_manual']);
 Route::get('/data_tempat_sambung', [StatistikTmptSmbngController::class, 'data_tempat_sambung']);
 
-Route::group(['prefix' => '/v1/data_sensus/'], function () {
-    Route::get('/cek-nama', [DataSensusController::class, 'check_nama_lengkap']);
-    Route::get('/find_sensus', [DataSensusController::class, 'cari_data']);
-    Route::get('/personal', [DataSensusController::class, 'detail_sensus_personal']);
-    Route::post('/register', [DataSensusController::class, 'create_data_sensus']);
+Route::prefix('v1/data_sensus')->group(function () {
+    Route::get('cek-nama', [DataSensusController::class, 'check_nama_lengkap']);
+    Route::get('find_sensus', [DataSensusController::class, 'cari_data']);
+    Route::get('personal', [DataSensusController::class, 'detail_sensus_personal']);
+    Route::post('register', [DataSensusController::class, 'create_data_sensus']);
+    Route::get('list_pekerjaan', [DataSensusController::class, 'list_pekerjaan']);
+
+    Route::prefix('mapping_tempat_sambung')->group(function () {
+        Route::get('data_daerah', [TempatSambungController::class, 'list_all_daerah']);
+        Route::get('data_desa', [TempatSambungController::class, 'list_data_desa']);
+        Route::get('data_kelompok', [TempatSambungController::class, 'list_data_kelompok']);
+    });
 });
 
 Route::group(['prefix' => '/v1/pengaduan/'], function () {

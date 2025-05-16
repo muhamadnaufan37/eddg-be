@@ -15,7 +15,7 @@ class PengaduanController extends Controller
     {
         $request->validate([
             'id_operator' => 'required|exists:users,uuid',
-            'kontak' => 'required|string'
+            'kontak' => 'required'
         ], [
             'required' => 'Kolom :attribute wajib diisi',
             'exists' => ':attribute tidak ditemukan dalam sistem',
@@ -140,19 +140,26 @@ class PengaduanController extends Controller
             'digits_between' => ':attribute harus memiliki panjang antara :min dan :max digit',
         ];
 
-        $request->validate([
-            'id_operator' => 'required|exists:users,uuid',
-            'nama_lengkap' => 'required|string|max:255',
-            'kontak' => 'required|string',
+        // Validasi input
+        $validated = $request->validate([
+            'id_operator'     => 'required|exists:users,uuid',
+            'nama_lengkap'    => 'required|string|max:255',
+            'kontak'          => 'required|string',
             'jenis_pengaduan' => 'required',
-            'subjek' => 'required|string|max:255',
-            'isi_pengaduan' => 'required|string',
-            'nama_kelompok' => 'required',
-            'lampiran' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            'subjek'          => 'required|string|max:255',
+            'isi_pengaduan'   => 'required|string',
+            'nama_kelompok'   => 'required',
+            'lampiran'        => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ], $customMessages);
 
-        $operator = User::firstWhere('uuid', $request->id_operator);
+        // Normalisasi nomor kontak
+        $kontak = preg_replace('/[^0-9]/', '', $validated['kontak']);
+        if (Str::startsWith($kontak, '62')) {
+            $kontak = '0' . substr($kontak, 2);
+        }
 
+        // Validasi operator dan role
+        $operator = User::firstWhere('uuid', $validated['id_operator']);
         if (!$operator || $operator->role_id != 5) {
             return response()->json([
                 'success' => false,
@@ -160,8 +167,9 @@ class PengaduanController extends Controller
             ], 403);
         }
 
+        // Cek jumlah pengaduan hari ini berdasarkan kontak
         $pengaduanHariIni = Pengaduan::whereDate('created_at', now()->toDateString())
-            ->where('kontak', $request->kontak)
+            ->where('kontak', $kontak)
             ->count();
 
         if ($pengaduanHariIni >= 3) {
@@ -171,26 +179,28 @@ class PengaduanController extends Controller
             ], 429);
         }
 
-        $pengaduan = new Pengaduan();
-        $pengaduan->uuid = Str::uuid()->toString();
-        $pengaduan->nama_lengkap = $request->nama_lengkap;
-        $pengaduan->kontak = $request->kontak;
-        $pengaduan->jenis_pengaduan = $request->jenis_pengaduan;
-        $pengaduan->subjek = $request->subjek;
-        $pengaduan->isi_pengaduan = $request->isi_pengaduan;
-        $pengaduan->nama_kelompok = $request->nama_kelompok;
-        $pengaduan->ip_address = $request->ip();
-        $pengaduan->user_agent = $request->header('User-Agent');
+        // Buat objek pengaduan
+        $pengaduan = new Pengaduan([
+            'uuid'           => Str::uuid()->toString(),
+            'nama_lengkap'   => $validated['nama_lengkap'],
+            'kontak'         => $kontak,
+            'jenis_pengaduan' => $validated['jenis_pengaduan'],
+            'subjek'         => $validated['subjek'],
+            'isi_pengaduan'  => $validated['isi_pengaduan'],
+            'nama_kelompok'  => $validated['nama_kelompok'],
+            'ip_address'     => $request->ip(),
+            'user_agent'     => $request->header('User-Agent'),
+        ]);
 
+        // Simpan lampiran jika ada
         if ($request->hasFile('lampiran')) {
             $foto = $request->file('lampiran');
             $namaFile = Str::slug($pengaduan->uuid) . '.' . $foto->getClientOriginalExtension();
             $path = $foto->storeAs('public/images/pengaduan', $namaFile);
             $pengaduan->lampiran = $path;
-        } else {
-            $pengaduan->lampiran = null;
         }
 
+        // Simpan data ke database
         try {
             $pengaduan->save();
 
@@ -198,12 +208,12 @@ class PengaduanController extends Controller
 
             return response()->json([
                 'message' => 'Data Pengaduan berhasil ditambahkan',
-                'data' => $pengaduan,
+                'data'    => $pengaduan,
                 'success' => true,
             ], 200);
-        } catch (\Exception $exception) {
+        } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Gagal menambah data Pengaduan: ' . $exception->getMessage(),
+                'message' => 'Gagal menambah data Pengaduan: ' . $e->getMessage(),
                 'success' => false,
             ], 500);
         }
