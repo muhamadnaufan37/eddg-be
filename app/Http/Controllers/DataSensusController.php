@@ -603,6 +603,7 @@ class DataSensusController extends Controller
             'tmpt_daerah' => 'required|integer|digits_between:1,5',
             'tmpt_desa' => 'required|integer|digits_between:1,5',
             'tmpt_kelompok' => 'required|integer|digits_between:1,5',
+            'img' => 'nullable|image|mimes:jpg,png|max:5120',
             'user_id' => 'required|integer',
         ], $customMessages);
 
@@ -642,9 +643,24 @@ class DataSensusController extends Controller
         $tabel_sensus->status_sambung = 1;
         $tabel_sensus->status_pernikahan = 0;
         $tabel_sensus->jenis_data = "SENSUS";
-        $tabel_sensus->img = null;
+        $tabel_sensus->img = $request->img;
         $tabel_sensus->status_atlet_asad = $request->status_atlet_asad;
         $tabel_sensus->user_id = $request->user_id;
+
+        if ($request->hasFile('img')) {
+            $foto = $request->file('img'); // Get the uploaded file
+
+            // Generate a unique filename
+            $namaFile = Str::slug($tabel_sensus->kode_cari_data) . '.' . $foto->getClientOriginalExtension();
+
+            // Save the file to the 'public/images/sensus' directory
+            $path = $foto->storeAs('public/images/sensus', $namaFile);
+
+            // Update the database record
+            $tabel_sensus->img = $path;
+        } else {
+            $tabel_sensus->img = null; // Handle cases where no file is uploaded
+        }
 
         if (!$tabel_daerah || !$tabel_desa || !$tabel_kelompok || !$sensus) {
             return response()->json([

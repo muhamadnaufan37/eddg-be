@@ -26,6 +26,7 @@ class DataPesertaController extends Controller
         $modelDataDaerah = $request->get('data_daerah');
         $modelDataDesa = $request->get('data_desa');
         $modelDataKelompok = $request->get('data_kelompok');
+        $jenisData = $request->get('jenis_data');
 
         $customMessages = [
             'required' => 'Kolom :attribute wajib diisi.',
@@ -43,6 +44,7 @@ class DataPesertaController extends Controller
             'data_daerah' => 'required|string',
             'data_desa' => 'nullable',
             'data_kelompok' => 'nullable',
+            'jenis_data' => 'nullable',
         ], $customMessages);
 
         $current_timestamp = Carbon::now()->toDateTimeString();
@@ -124,6 +126,10 @@ class DataPesertaController extends Controller
 
         if (!is_null($modelDataKelompok)) {
             $query->where('tabel_kelompok.id', '=', $modelDataKelompok);
+        }
+
+        if (!is_null($modelDataKelompok)) {
+            $query->where('data_peserta.jenis_data', '=', $jenisData);
         }
 
         $results = $query->get();
@@ -897,13 +903,24 @@ class DataPesertaController extends Controller
             'data_peserta.hoby',
             'tbl_pekerjaan.nama_pekerjaan AS pekerjaan',
             DB::raw("CASE
-                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 3 AND 6 THEN 'Paud'
-                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 7 AND 12 THEN 'Caberawit'
-                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 13 AND 15 THEN 'Pra-remaja'
-                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 16 AND 18 THEN 'Remaja'
-                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) >= 19 THEN 'Muda - mudi / Usia Nikah'
-                ELSE 'Tidak dalam rentang usia'
-            END AS status_kelas"),
+        WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 3 AND 6 THEN 'Paud'
+        WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 7 AND 12 THEN 'Caberawit'
+        WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 13 AND 15 THEN 'Pra-remaja'
+        WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 16 AND 18 THEN 'Remaja'
+        WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) >= 19 THEN 'Muda - mudi / Usia Nikah'
+        ELSE 'Tidak dalam rentang usia'
+        END AS status_kelas"),
+            DB::raw("CASE 
+            WHEN data_peserta.status_sambung = 1 THEN 'Sambung' 
+            WHEN data_peserta.status_sambung = 0 THEN 'Tidak Sambung' 
+            WHEN data_peserta.status_sambung = 2 THEN 'Pindah Sambung' 
+            ELSE 'Tidak Diketahui' 
+        END AS status_sambung"),
+            DB::raw("CASE 
+            WHEN data_peserta.status_pernikahan = 1 THEN 'Sudah Menikah' 
+            WHEN data_peserta.status_pernikahan = 0 THEN 'Belum Menikah' 
+            ELSE 'Tidak Diketahui' 
+        END AS status_pernikahan"),
             'data_peserta.tmpt_kelompok',
             'tabel_kelompok.nama_kelompok',
             'data_peserta.jenis_data',
@@ -911,7 +928,12 @@ class DataPesertaController extends Controller
             ->join('tbl_pekerjaan', 'tbl_pekerjaan.id', '=', DB::raw('CAST(data_peserta.pekerjaan AS UNSIGNED)'))
             ->join('tabel_kelompok', 'tabel_kelompok.id', '=', DB::raw('CAST(data_peserta.tmpt_kelompok AS UNSIGNED)'))
             ->join('users', 'users.id', '=', DB::raw('CAST(data_peserta.user_id AS UNSIGNED)'))
+            // Prioritaskan yang status_sambung ≠ 1 (bukan sambung)
+            ->orderByRaw("CASE WHEN data_peserta.status_sambung != 1 THEN 0 ELSE 1 END")
+            // Prioritaskan yang status_pernikahan ≠ 0 (bukan belum menikah)
+            ->orderByRaw("CASE WHEN data_peserta.status_pernikahan != 0 THEN 0 ELSE 1 END")
             ->orderByRaw('data_peserta.created_at IS NULL, data_peserta.created_at DESC');
+
 
         if (!is_null($modelDataDaerah)) {
             $query->where('data_peserta.tmpt_daerah', '=', $modelDataDaerah);
@@ -945,6 +967,20 @@ class DataPesertaController extends Controller
             $query->where('data_peserta.jenis_data', '=', $jenisData);
         }
 
+        $statistikQuery = clone $query;
+
+        // Hitung statistik status_sambung
+        $statistikSambung = (clone $statistikQuery)
+            ->select('data_peserta.status_sambung', DB::raw('COUNT(*) as total'))
+            ->groupBy('data_peserta.status_sambung')
+            ->pluck('total', 'status_sambung');
+
+        // Hitung statistik status_pernikahan
+        $statistikPernikahan = (clone $statistikQuery)
+            ->select('data_peserta.status_pernikahan', DB::raw('COUNT(*) as total'))
+            ->groupBy('data_peserta.status_pernikahan')
+            ->pluck('total', 'status_pernikahan');
+
         // Fetch data in chunks for better performance
         $data = [];
         $query->chunk(1000, function ($results) use (&$data) {
@@ -956,7 +992,19 @@ class DataPesertaController extends Controller
         return response()->json([
             'message' => 'Data Ditemukan',
             'data_sensus_report' => $data,
+            'statistik' => [
+                'data_sambung' => [
+                    'tidak_sambung' => $statistikSambung[0] ?? 0,
+                    'sambung' => $statistikSambung[1] ?? 0,
+                    'pindah_sambung' => $statistikSambung[2] ?? 0,
+                ],
+                'data_pernikahan' => [
+                    'belum_menikah' => $statistikPernikahan[0] ?? 0,
+                    'sudah_menikah' => $statistikPernikahan[1] ?? 0,
+                ],
+            ],
             'success' => true,
+
         ], 200);
     }
 }

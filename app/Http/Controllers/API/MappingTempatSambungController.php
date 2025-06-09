@@ -29,9 +29,9 @@ class MappingTempatSambungController extends Controller
         ], $customMessages);
 
         $mapping_tempat_sambung = dataDesa::where('daerah_id', $request->daerah_id)
-        ->select('id', 'nama_desa') // Selecting both id and nama_desa columns
-        ->orderBy('nama_desa')
-        ->get();
+            ->select('id', 'nama_desa') // Selecting both id and nama_desa columns
+            ->orderBy('nama_desa')
+            ->get();
 
         return response()->json([
             'message' => 'Sukses',
@@ -60,14 +60,14 @@ class MappingTempatSambungController extends Controller
         ], $customMessages);
 
         $mapping_tempat_sambung = dataKelompok::where('desa_id', $request->desa_id)
-        ->select('id', 'nama_kelompok')
-        ->orderBy('nama_kelompok')
-        ->get();
+            ->select('id', 'nama_kelompok')
+            ->orderBy('nama_kelompok')
+            ->get();
 
         return response()->json([
-        'message' => 'Sukses',
-        'data_tempat_sambung' => $mapping_tempat_sambung,
-        'success' => true,
+            'message' => 'Sukses',
+            'data_tempat_sambung' => $mapping_tempat_sambung,
+            'success' => true,
         ], 200);
     }
 }
