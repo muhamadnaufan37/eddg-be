@@ -3,9 +3,10 @@
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\CalonPPDBController;
 use App\Http\Controllers\API\DaerahController;
+use App\Http\Controllers\API\dataCaiController;
 use App\Http\Controllers\API\DataPesertaController;
+use App\Http\Controllers\API\DataPointController;
 use App\Http\Controllers\API\DesaController;
-use App\Http\Controllers\API\DigitalSignatureController;
 use App\Http\Controllers\API\KalenderPesertaController;
 use App\Http\Controllers\API\KelasPesertaController;
 use App\Http\Controllers\API\KelompokController;
@@ -294,10 +295,22 @@ Route::middleware(['auth:sanctum', 'check.token.expiration'])->group(function ()
         Route::post('/reply_complaint', [PengaduanController::class, 'balasPengaduan'])->middleware('role:1,5');
     });
 
-    Route::group(['prefix' => '/signature/'], function () {
-        Route::get('/list', [DigitalSignatureController::class, 'list'])->middleware('role:1,5');
-        Route::get('/sign', [DigitalSignatureController::class, 'sign'])->middleware('role:1,5');
-        Route::get('/get-ttd', [DigitalSignatureController::class, 'getSignature'])->middleware('role:1,5');
-        Route::post('/request', [DigitalSignatureController::class, 'requestCertificate'])->middleware('role:1,5');
+    // Presensi CAI Management
+    Route::group(['prefix' => '/cai/'], function () {
+        Route::get('list_nama_peserta', [dataCaiController::class, 'list_nama_peserta'])->middleware('role:1,7');
+        Route::post('record_presensi_qrcode', [dataCaiController::class, 'record_presensi_qrcode'])->middleware('role:1,7');
+        Route::post('record_presensi_bypass', [dataCaiController::class, 'record_presensi_bypass'])->middleware('role:1,7');
+        Route::post('getPresensiReport', [dataCaiController::class, 'getPresensiReport'])->middleware('role:1,7');
+        Route::get('list_data_peserta_cai', [dataCaiController::class, 'list_data_peserta_cai'])->middleware('role:1,2');
+        Route::post('create_data_peserta_cai', [dataCaiController::class, 'create_data_peserta_cai'])->middleware('role:1,2');
+        Route::post('edit_data_peserta_cai', [dataCaiController::class, 'edit_data_peserta_cai'])->middleware('role:1,2');
+        Route::post('update_data_peserta_cai', [dataCaiController::class, 'update_data_peserta_cai'])->middleware('role:1,2');
+        Route::delete('delete_data_peserta_cai', [dataCaiController::class, 'delete_data_peserta_cai'])->middleware('role:1,2');
+    });
+
+    // Logs
+    Route::group(['prefix' => '/points/'], function () {
+        Route::get('list', [DataPointController::class, 'list']);
+        Route::post('create', [DataPointController::class, 'create']);
     });
 });

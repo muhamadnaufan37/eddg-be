@@ -479,6 +479,7 @@ class PresensiController extends Controller
             'presensi_kegiatan.tmpt_kegiatan',
             'presensi_kegiatan.tgl_kegiatan',
             'presensi_kegiatan.jam_kegiatan',
+            'presensi_kegiatan.category',
             DB::raw('(SELECT COUNT(*) FROM presensi WHERE presensi.id_kegiatan = presensi_kegiatan.id) as presensi_count'),
             'users.nama_lengkap AS operator',
         ])
@@ -617,6 +618,7 @@ class PresensiController extends Controller
             'presensi_kegiatan.expired_date_time',
             'presensi_kegiatan.usia_batas',
             'presensi_kegiatan.usia_operator',
+            'presensi_kegiatan.category',
             'presensi_kegiatan.tmpt_daerah',
             'presensi_kegiatan.tmpt_desa',
             'presensi_kegiatan.tmpt_kelompok',

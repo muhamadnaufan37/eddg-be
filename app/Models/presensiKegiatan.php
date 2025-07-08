@@ -15,6 +15,7 @@ class presensiKegiatan extends Model
         'kode_kegiatan',
         'nama_kegiatan',
         'tmpt_kegiatan',
+        'category',
         'type_kegiatan',
         'tgl_kegiatan',
         'jam_kegiatan',
