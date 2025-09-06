@@ -21,6 +21,7 @@ use App\Http\Controllers\API\PresensiController;
 use App\Http\Controllers\API\ProfileController;
 use App\Http\Controllers\API\RerataNilaiController;
 use App\Http\Controllers\API\RolesController;
+use App\Http\Controllers\API\SambaraController;
 use App\Http\Controllers\API\SetorKasCashlessController;
 use App\Http\Controllers\API\UserController;
 use App\Http\Controllers\API\WalletKasController;
@@ -53,6 +54,11 @@ Route::post('/generate-uuid', [AuthController::class, 'generateUuid']);
 Route::get('/list_nama_peserta', [DataSensusController::class, 'list_nama_peserta']);
 Route::post('record_presensi_manual', [DataSensusController::class, 'record_presensi_manual']);
 Route::get('/data_tempat_sambung', [StatistikTmptSmbngController::class, 'data_tempat_sambung']);
+
+Route::prefix('v1/sambara')->group(function () {
+    Route::post('/info-pkb', [SambaraController::class, 'infoPajak']);
+    Route::post('/cek-bayar-kedepan', [SambaraController::class, 'cekBisaBayarKedepan']);
+});
 
 Route::prefix('v1/data_sensus')->group(function () {
     Route::get('cek-nama', [DataSensusController::class, 'check_nama_lengkap']);
