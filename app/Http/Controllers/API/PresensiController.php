@@ -47,8 +47,13 @@ class PresensiController extends Controller
 
     public function getPresensiReport(Request $request)
     {
+        $user = $request->user();
         $keyword = $request->get('keyword', null);
         $perPage = $request->get('per-page', 10);
+
+        $dataDaerah   = $request->get('data-daerah', $user->role_daerah);
+        $dataDesa     = $request->get('data-desa', $user->role_desa);
+        $dataKelompok = $request->get('data-kelompok', $user->role_kelompok);
 
         if ($perPage > 100) {
             $perPage = 100;
@@ -99,34 +104,53 @@ class PresensiController extends Controller
             ->when($kegiatan->tmpt_desa, fn($q) => $q->where('data_peserta.tmpt_desa', $kegiatan->tmpt_desa))
             ->when($kegiatan->tmpt_kelompok, fn($q) => $q->where('data_peserta.tmpt_kelompok', $kegiatan->tmpt_kelompok))
             ->where('data_peserta.status_sambung', 1)
-            ->where('data_peserta.status_pernikahan', 0);
-        // ->orderBy('data_peserta.nama_lengkap');
-
-        // Filter usia
-        if ($kegiatan->usia_operator && $kegiatan->usia_batas) {
-            $pesertaQuery->whereRaw("TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) {$kegiatan->usia_operator} {$kegiatan->usia_batas}");
-        }
-
-        // Filter keyword
-        if ($keyword) {
-            $pesertaQuery->where(function ($q) use ($keyword) {
-                $q->where('data_peserta.nama_lengkap', 'LIKE', '%' . $keyword . '%')
-                    ->orWhere('data_peserta.jenis_kelamin', 'LIKE', '%' . $keyword . '%')
-                    ->orWhere('presensi.status_presensi', 'LIKE', '%' . $keyword . '%')
-                    ->orWhere('tabel_daerah.nama_daerah', 'LIKE', '%' . $keyword . '%')
-                    ->orWhere('tabel_desa.nama_desa', 'LIKE', '%' . $keyword . '%')
-                    ->orWhere('tabel_kelompok.nama_kelompok', 'LIKE', '%' . $keyword . '%');
+            ->where('data_peserta.status_pernikahan', 0)
+            ->when($dataDaerah, fn($q) => $q->where('tabel_daerah.id', $dataDaerah))
+            ->when($dataDesa, fn($q) => $q->where('tabel_desa.id', $dataDesa))
+            ->when($dataKelompok, fn($q) => $q->where('tabel_kelompok.id', $dataKelompok))
+            ->when(
+                $kegiatan->usia_operator && $kegiatan->usia_batas,
+                fn($q) => $q->whereRaw("TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) {$kegiatan->usia_operator} {$kegiatan->usia_batas}")
+            )
+            ->when($keyword, function ($q) use ($keyword) {
+                $q->where(function ($query) use ($keyword) {
+                    $query->where('data_peserta.nama_lengkap', 'LIKE', "%{$keyword}%")
+                        ->orWhere('data_peserta.jenis_kelamin', 'LIKE', "%{$keyword}%")
+                        ->orWhere('presensi.status_presensi', 'LIKE', "%{$keyword}%")
+                        ->orWhere('tabel_daerah.nama_daerah', 'LIKE', "%{$keyword}%")
+                        ->orWhere('tabel_desa.nama_desa', 'LIKE', "%{$keyword}%")
+                        ->orWhere('tabel_kelompok.nama_kelompok', 'LIKE', "%{$keyword}%");
+                });
             });
-        }
+        // ->orderBy('data_peserta.nama_lengkap');
 
         // Hitung statistik langsung dari database
         $statistics = dataSensusPeserta::leftJoin('presensi', function ($join) use ($id_kegiatan) {
             $join->on('data_peserta.id', '=', 'presensi.id_peserta')
                 ->where('presensi.id_kegiatan', '=', $id_kegiatan);
         })
-            ->leftJoin('tabel_daerah', 'tabel_daerah.id', '=', 'data_peserta.tmpt_daerah')
-            ->leftJoin('tabel_desa', 'tabel_desa.id', '=', 'data_peserta.tmpt_desa')
-            ->leftJoin('tabel_kelompok', 'tabel_kelompok.id', '=', 'data_peserta.tmpt_kelompok')
+            ->join('tabel_daerah', 'tabel_daerah.id', '=', DB::raw('CAST(data_peserta.tmpt_daerah AS UNSIGNED)'))
+            ->join('tabel_desa', 'tabel_desa.id', '=', DB::raw('CAST(data_peserta.tmpt_desa AS UNSIGNED)'))
+            ->join('tabel_kelompok', 'tabel_kelompok.id', '=', DB::raw('CAST(data_peserta.tmpt_kelompok AS UNSIGNED)'))
+            ->when($kegiatan->tmpt_daerah, fn($q) => $q->where('data_peserta.tmpt_daerah', $kegiatan->tmpt_daerah))
+            ->when($kegiatan->tmpt_desa, fn($q) => $q->where('data_peserta.tmpt_desa', $kegiatan->tmpt_desa))
+            ->when($kegiatan->tmpt_kelompok, fn($q) => $q->where('data_peserta.tmpt_kelompok', $kegiatan->tmpt_kelompok))
+            ->where('data_peserta.status_sambung', 1)
+            ->where('data_peserta.status_pernikahan', 0)
+            ->when($dataDaerah, fn($q) => $q->where('tabel_daerah.id', $dataDaerah))
+            ->when($dataDesa, fn($q) => $q->where('tabel_desa.id', $dataDesa))
+            ->when($dataKelompok, fn($q) => $q->where('tabel_kelompok.id', $dataKelompok))
+            ->when(
+                $kegiatan->usia_operator && $kegiatan->usia_batas,
+                fn($q) => $q->whereRaw("TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) {$kegiatan->usia_operator} {$kegiatan->usia_batas}")
+            )
+            ->when($keyword, function ($q) use ($keyword) {
+                $q->where(function ($query) use ($keyword) {
+                    $query->where('tabel_daerah.nama_daerah', 'LIKE', "%{$keyword}%")
+                        ->orWhere('tabel_desa.nama_desa', 'LIKE', "%{$keyword}%")
+                        ->orWhere('tabel_kelompok.nama_kelompok', 'LIKE', "%{$keyword}%");
+                });
+            })
             ->selectRaw('
             COUNT(CASE WHEN presensi.status_presensi = "HADIR" THEN 1 END) AS hadir,
             COUNT(CASE WHEN presensi.status_presensi = "TELAT HADIR" THEN 1 END) AS telat_hadir,
@@ -134,23 +158,6 @@ class PresensiController extends Controller
             COUNT(CASE WHEN presensi.status_presensi = "SAKIT" THEN 1 END) AS sakit,
             COUNT(CASE WHEN presensi.status_presensi IS NULL THEN 1 ELSE NULL END) AS alfa
         ')
-            ->when($kegiatan->tmpt_daerah, fn($q) => $q->where('data_peserta.tmpt_daerah', $kegiatan->tmpt_daerah))
-            ->when($kegiatan->tmpt_desa, fn($q) => $q->where('data_peserta.tmpt_desa', $kegiatan->tmpt_desa))
-            ->when($kegiatan->tmpt_kelompok, fn($q) => $q->where('data_peserta.tmpt_kelompok', $kegiatan->tmpt_kelompok))
-            ->where('data_peserta.status_sambung', 1)
-            ->where('data_peserta.status_pernikahan', 0)
-            ->when(
-                $kegiatan->usia_operator && $kegiatan->usia_batas,
-                fn($q) =>
-                $q->whereRaw("TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) {$kegiatan->usia_operator} {$kegiatan->usia_batas}")
-            )
-            ->when($keyword, function ($q) use ($keyword) {
-                $q->where(function ($query) use ($keyword) {
-                    $query->where('tabel_daerah.nama_daerah', 'LIKE', '%' . $keyword . '%')
-                        ->orWhere('tabel_desa.nama_desa', 'LIKE', '%' . $keyword . '%')
-                        ->orWhere('tabel_kelompok.nama_kelompok', 'LIKE', '%' . $keyword . '%');
-                });
-            })
             ->first();
 
         // Transformasi data
@@ -184,6 +191,7 @@ class PresensiController extends Controller
             'success' => true,
         ], 200);
     }
+
 
     public function record_presensi_qrcode(Request $request)
     {
@@ -467,6 +475,7 @@ class PresensiController extends Controller
         $keyword = $request->get('keyword', null);
         $perPage = $request->get('per-page', 10);
         $kolom = $request->get('kolom', null);
+        $category = $request->get('category', null);
 
         if ($perPage > 100) {
             $perPage = 100;
@@ -480,17 +489,23 @@ class PresensiController extends Controller
             'presensi_kegiatan.tgl_kegiatan',
             'presensi_kegiatan.jam_kegiatan',
             'presensi_kegiatan.category',
+            'presensi_kegiatan.type_kegiatan',
             DB::raw('(SELECT COUNT(*) FROM presensi WHERE presensi.id_kegiatan = presensi_kegiatan.id) as presensi_count'),
             'users.nama_lengkap AS operator',
         ])
             ->join('users', function ($join) {
                 $join->on('users.id', '=', DB::raw('CAST(presensi_kegiatan.add_by_petugas AS UNSIGNED)'));
             });
+        $model->orderByRaw('presensi_kegiatan.created_at IS NULL, presensi_kegiatan.created_at DESC');
 
         // Tambahkan pengecekan role_id
-        if (auth()->user()->role_id != 1) {
-            // Jika bukan role_id 1, tambahkan filter berdasarkan add_by_petugas
-            $model->where('presensi_kegiatan.add_by_petugas', auth()->user()->id);
+        // if (auth()->user()->role_id != 1) {
+        //     // Jika bukan role_id 1, tambahkan filter berdasarkan add_by_petugas
+        //     $model->where('presensi_kegiatan.add_by_petugas', auth()->user()->id);
+        // }
+
+        if (!is_null($category)) {
+            $model->where('presensi_kegiatan.category', '=', $category);
         }
 
         if (!empty($keyword) && empty($kolom)) {
@@ -541,6 +556,7 @@ class PresensiController extends Controller
             'type_kegiatan' => 'required',
             'tgl_kegiatan' => 'required',
             'jam_kegiatan' => 'required',
+            'category' => 'required',
             'expired_date_time' => 'required',
             'tmpt_daerah' => 'required',
             'tmpt_desa' => 'nullable',
@@ -576,6 +592,7 @@ class PresensiController extends Controller
         $presensi->type_kegiatan = $request->type_kegiatan;
         $presensi->tgl_kegiatan = $request->tgl_kegiatan;
         $presensi->jam_kegiatan = $request->jam_kegiatan;
+        $presensi->category = $request->category;
         $presensi->expired_date_time = $request->expired_date_time;
         $presensi->tmpt_daerah = $request->tmpt_daerah;
         $presensi->tmpt_desa = $request->tmpt_desa;
@@ -663,6 +680,7 @@ class PresensiController extends Controller
             'tmpt_kegiatan' => 'required|max:225',
             'tgl_kegiatan' => 'required',
             'jam_kegiatan' => 'required',
+            'category' => 'required',
             'expired_date_time' => 'required',
             'usia_batas' => 'nullable',
             'usia_operator' => 'nullable',
@@ -706,6 +724,7 @@ class PresensiController extends Controller
                     'tmpt_kegiatan' => $request->tmpt_kegiatan,
                     'tgl_kegiatan' => $request->tgl_kegiatan,
                     'jam_kegiatan' => $request->jam_kegiatan,
+                    'category' => $request->category,
                     'expired_date_time' => $request->expired_date_time,
                     'usia_batas' => $request->usia_batas,
                     'usia_operator' => $request->usia_operator,

@@ -163,6 +163,7 @@ Route::middleware(['auth:sanctum', 'check.token.expiration'])->group(function ()
         Route::post('edit', [DataPesertaController::class, 'edit'])->middleware('role:1,2');
         Route::post('update', [DataPesertaController::class, 'update'])->middleware('role:1,2');
         Route::delete('delete', [DataPesertaController::class, 'delete'])->middleware('role:1,2');
+        Route::post('presensi_peserta', [DataPesertaController::class, 'presensi_peserta'])->middleware('role:1,2');
         Route::post('sensus_report_pdf', [DataPesertaController::class, 'sensus_report_pdf'])->middleware('role:1,2');
     });
 
@@ -283,13 +284,13 @@ Route::middleware(['auth:sanctum', 'check.token.expiration'])->group(function ()
 
     // Presensi Management
     Route::group(['prefix' => '/presensi/'], function () {
-        Route::get('list', [PresensiController::class, 'list'])->middleware('role:1,7');
+        Route::get('list', [PresensiController::class, 'list'])->middleware('role:1,2,7');
         Route::post('create', [PresensiController::class, 'create'])->middleware('role:1,7');
-        Route::post('edit', [PresensiController::class, 'edit'])->middleware('role:1,7');
+        Route::post('edit', [PresensiController::class, 'edit'])->middleware('role:1,2,7');
         Route::post('update', [PresensiController::class, 'update'])->middleware('role:1,7');
         Route::delete('delete', [PresensiController::class, 'delete'])->middleware('role:1,7');
         Route::post('record_presensi_qrcode', [PresensiController::class, 'record_presensi_qrcode'])->middleware('role:1,7');
-        Route::post('getPresensiReport', [PresensiController::class, 'getPresensiReport'])->middleware('role:1,7');
+        Route::post('getPresensiReport', [PresensiController::class, 'getPresensiReport'])->middleware('role:1,2,7');
         Route::post('update_data_wa_sensus', [PresensiController::class, 'updateDataWaSensus'])->middleware('role:1,7');
         Route::get('list_nama_peserta', [PresensiController::class, 'list_nama_peserta'])->middleware('role:1,7');
         Route::post('record_presensi_bypass', [PresensiController::class, 'record_presensi_bypass'])->middleware('role:1,7');

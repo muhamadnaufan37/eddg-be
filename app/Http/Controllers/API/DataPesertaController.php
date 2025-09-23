@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Auth;
 use Jenssegers\Agent\Agent;
 use App\Models\logs;
 use App\Models\presensi;
+use App\Models\presensiKegiatan;
 
 class DataPesertaController extends Controller
 {
@@ -876,6 +877,79 @@ class DataPesertaController extends Controller
         return response()->json([
             'message' => 'Data tidak ditemukan',
             'success' => false,
+        ], 200);
+    }
+
+    public function presensi_peserta(Request $request)
+    {
+        $request->validate([
+            'id_peserta' => 'required|numeric',
+        ], [
+            'required' => 'Kolom :attribute wajib diisi.',
+        ]);
+
+        // Cari data peserta
+        $peserta = dataSensusPeserta::find($request->id_peserta);
+
+        if (!$peserta) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Peserta tidak ditemukan',
+            ], 404);
+        }
+
+        // Ambil hanya kegiatan dengan category = MUMI
+        $kegiatanList = presensiKegiatan::where('category', 'MUMI')->get();
+
+        if ($kegiatanList->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Belum ada kegiatan kategori MUMI yang terdaftar',
+            ], 404);
+        }
+
+        $statusKeseluruhan = 'HADIR';
+        $detailPresensi = [];
+
+        foreach ($kegiatanList as $kegiatan) {
+            $presensi = Presensi::where('id_peserta', $peserta->id)
+                ->where('id_kegiatan', $kegiatan->id)
+                ->first();
+
+            if ($presensi) {
+                $detailPresensi[] = [
+                    'id_kegiatan' => $kegiatan->id,
+                    'nama_kegiatan' => $kegiatan->nama_kegiatan ?? null,
+                    'status_presensi' => $presensi->status_presensi,
+                    'keterangan' => $presensi->keterangan,
+                    'waktu_presensi' => $presensi->waktu_presensi,
+                ];
+            } else {
+                $detailPresensi[] = [
+                    'id_kegiatan' => $kegiatan->id,
+                    'nama_kegiatan' => $kegiatan->nama_kegiatan ?? null,
+                    'status_presensi' => 'ALFA',
+                    'keterangan' => null,
+                    'waktu_presensi' => null,
+                ];
+                $statusKeseluruhan = 'ALFA'; // kalau ada 1 saja yg alfa langsung terindikasi alfa
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $statusKeseluruhan === 'ALFA'
+                ? 'Peserta terindikasi ALFA pada salah satu kegiatan'
+                : 'Peserta hadir di semua kegiatan',
+            'data' => [
+                'id_peserta' => $peserta->kode_cari_data,
+                'nama_lengkap' => $peserta->nama_lengkap,
+                'status_keseluruhan' => $statusKeseluruhan,
+                'keterangan' => $statusKeseluruhan === 'ALFA'
+                    ? 'Peserta terindikasi ALFA pada salah satu kegiatan'
+                    : 'Peserta hadir di semua kegiatan',
+                'detail_presensi' => $detailPresensi,
+            ]
         ], 200);
     }
 
