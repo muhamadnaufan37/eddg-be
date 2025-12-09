@@ -883,13 +883,13 @@ class DataPesertaController extends Controller
     public function presensi_peserta(Request $request)
     {
         $request->validate([
-            'id_peserta' => 'required|numeric',
+            'id_peserta' => 'required', // kode_cari_data bukan numeric
         ], [
             'required' => 'Kolom :attribute wajib diisi.',
         ]);
 
         // Cari data peserta
-        $peserta = dataSensusPeserta::find($request->id_peserta);
+        $peserta = dataSensusPeserta::where('id', $request->id_peserta)->first();
 
         if (!$peserta) {
             return response()->json([
@@ -898,41 +898,67 @@ class DataPesertaController extends Controller
             ], 404);
         }
 
-        // Ambil hanya kegiatan dengan category = MUMI
-        $kegiatanList = presensiKegiatan::where('category', 'MUMI')->get();
-
-        if ($kegiatanList->isEmpty()) {
+        // Hanya peserta dengan status_pernikahan=0 dan status_sambung=1 yang bisa punya presensi
+        if ($peserta->status_pernikahan != 0 || $peserta->status_sambung != 1) {
             return response()->json([
-                'success' => false,
-                'message' => 'Belum ada kegiatan kategori MUMI yang terdaftar',
-            ], 404);
+                'success' => true,
+                'message' => 'Peserta tidak memenuhi syarat presensi',
+                'data' => [
+                    'id_peserta' => $peserta->kode_cari_data,
+                    'nama_lengkap' => $peserta->nama_lengkap,
+                    'status_pernikahan' => $peserta->status_pernikahan,
+                    'status_sambung' => $peserta->status_sambung,
+                    'tanggal_lahir' => $peserta->tanggal_lahir,
+                    'status_keseluruhan' => null,
+                    'keterangan' => 'Peserta tidak memenuhi syarat presensi',
+                    'detail_presensi' => [],
+                ]
+            ], 200);
         }
+
+        // Hitung usia peserta
+        $usiaPeserta = \Carbon\Carbon::parse($peserta->tanggal_lahir)->age;
+
+        // Ambil hanya kegiatan kategori MUMI
+        $kegiatanList = presensiKegiatan::where('category', 'MUMI')->get();
 
         $statusKeseluruhan = 'HADIR';
         $detailPresensi = [];
 
         foreach ($kegiatanList as $kegiatan) {
+            // Cari presensi peserta di kegiatan ini
             $presensi = Presensi::where('id_peserta', $peserta->id)
                 ->where('id_kegiatan', $kegiatan->id)
                 ->first();
 
-            if ($presensi) {
-                $detailPresensi[] = [
-                    'id_kegiatan' => $kegiatan->id,
-                    'nama_kegiatan' => $kegiatan->nama_kegiatan ?? null,
-                    'status_presensi' => $presensi->status_presensi,
-                    'keterangan' => $presensi->keterangan,
-                    'waktu_presensi' => $presensi->waktu_presensi,
-                ];
-            } else {
-                $detailPresensi[] = [
-                    'id_kegiatan' => $kegiatan->id,
-                    'nama_kegiatan' => $kegiatan->nama_kegiatan ?? null,
-                    'status_presensi' => 'ALFA',
-                    'keterangan' => null,
-                    'waktu_presensi' => null,
-                ];
-                $statusKeseluruhan = 'ALFA'; // kalau ada 1 saja yg alfa langsung terindikasi alfa
+            // Kalau tidak ada presensi, skip → tidak ditampilkan
+            if (!$presensi) {
+                continue;
+            }
+
+            // Validasi usia jika kegiatan punya aturan
+            if (!empty($kegiatan->usia_batas) && !empty($kegiatan->usia_operator)) {
+                $operator = $kegiatan->usia_operator; // misal '>=', '<=', '='
+                $usiaBatas = (int) $kegiatan->usia_batas;
+
+                // Jika tidak sesuai syarat → skip kegiatan ini walaupun ada presensi
+                if (!eval("return {$usiaPeserta} {$operator} {$usiaBatas};")) {
+                    continue;
+                }
+            }
+
+            // Masukkan ke detail_presensi
+            $detailPresensi[] = [
+                'id_kegiatan' => $kegiatan->id,
+                'nama_kegiatan' => $kegiatan->nama_kegiatan ?? null,
+                'status_presensi' => $presensi->status_presensi,
+                'keterangan' => $presensi->keterangan,
+                'waktu_presensi' => $presensi->waktu_presensi,
+            ];
+
+            // Kalau ada satu saja ALFA → status keseluruhan ALFA
+            if ($presensi->status_presensi === 'ALFA') {
+                $statusKeseluruhan = 'ALFA';
             }
         }
 
@@ -940,18 +966,22 @@ class DataPesertaController extends Controller
             'success' => true,
             'message' => $statusKeseluruhan === 'ALFA'
                 ? 'Peserta terindikasi ALFA pada salah satu kegiatan'
-                : 'Peserta hadir di semua kegiatan',
+                : 'Peserta hadir di semua kegiatan yang sesuai aturan',
             'data' => [
                 'id_peserta' => $peserta->kode_cari_data,
                 'nama_lengkap' => $peserta->nama_lengkap,
+                'status_pernikahan' => $peserta->status_pernikahan,
+                'status_sambung' => $peserta->status_sambung,
+                'tanggal_lahir' => $peserta->tanggal_lahir,
                 'status_keseluruhan' => $statusKeseluruhan,
                 'keterangan' => $statusKeseluruhan === 'ALFA'
                     ? 'Peserta terindikasi ALFA pada salah satu kegiatan'
-                    : 'Peserta hadir di semua kegiatan',
+                    : 'Peserta hadir di semua kegiatan yang sesuai aturan',
                 'detail_presensi' => $detailPresensi,
             ]
         ], 200);
     }
+
 
     public function sensus_report_pdf(Request $request)
     {
