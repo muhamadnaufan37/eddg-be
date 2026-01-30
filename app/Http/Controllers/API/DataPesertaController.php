@@ -7,7 +7,6 @@ use App\Models\dataDaerah;
 use App\Models\dataDesa;
 use App\Models\dataKelompok;
 use App\Models\dataSensusPeserta;
-use App\Models\tblCppdb;
 use App\Models\tblPekerjaan;
 use App\Models\User;
 use Carbon\Carbon;
@@ -19,14 +18,29 @@ use Jenssegers\Agent\Agent;
 use App\Models\logs;
 use App\Models\presensi;
 use App\Models\presensiKegiatan;
+use Illuminate\Support\Facades\Storage;
 
 class DataPesertaController extends Controller
 {
+
+    private function determineJenisDataByAge($umur)
+    {
+        if ($umur >= 19) {
+            return 'SENSUS';
+        }
+
+        if ($umur >= 15 && $umur <= 18) {
+            return 'REMAJA';
+        }
+
+        return 'LAINNYA';
+    }
+
     public function dashboard_sensus(Request $request)
     {
-        $modelDataDaerah = $request->get('data_daerah');
-        $modelDataDesa = $request->get('data_desa');
-        $modelDataKelompok = $request->get('data_kelompok');
+        $modelDataDaerah = $request->get('filter_daerah');
+        $modelDataDesa = $request->get('filter_desa');
+        $modelDataKelompok = $request->get('filter_kelompok');
         $jenisData = $request->get('jenis_data');
 
         $customMessages = [
@@ -42,9 +56,9 @@ class DataPesertaController extends Controller
         ];
 
         $request->validate([
-            'data_daerah' => 'required|string',
-            'data_desa' => 'nullable',
-            'data_kelompok' => 'nullable',
+            'filter_daerah' => 'required|string',
+            'filter_desa' => 'nullable',
+            'filter_kelompok' => 'nullable',
             'jenis_data' => 'nullable',
         ], $customMessages);
 
@@ -129,7 +143,7 @@ class DataPesertaController extends Controller
             $query->where('tabel_kelompok.id', '=', $modelDataKelompok);
         }
 
-        if (!is_null($modelDataKelompok)) {
+        if (!is_null($jenisData)) {
             $query->where('data_peserta.jenis_data', '=', $jenisData);
         }
 
@@ -204,6 +218,20 @@ class DataPesertaController extends Controller
         ], 200);
     }
 
+    public function list_thn_lahir()
+    {
+        $tahunLahir = dataSensusPeserta::selectRaw('YEAR(tanggal_lahir) as tahun_lahir')
+            ->distinct()
+            ->orderBy('tahun_lahir', 'asc')
+            ->get();
+
+        return response()->json([
+            'message' => 'Sukses',
+            'data_thn_lahir' => $tahunLahir,
+            'success' => true,
+        ], 200);
+    }
+
     public function list_users_sensus()
     {
         $users = User::select(['id', 'nama_lengkap'])
@@ -220,6 +248,7 @@ class DataPesertaController extends Controller
 
     public function list(Request $request)
     {
+        // Mengambil parameter dari request
         $keyword = $request->get('keyword', null);
         $perPage = $request->get('per-page', 10);
         $kolom = $request->get('kolom', null);
@@ -228,11 +257,18 @@ class DataPesertaController extends Controller
         $statusAtletAsad = $request->get('status_atlet_asad', null);
         $jenisKelamin = $request->get('jenis_kelamin', null);
         $jenisData = $request->get('jenis_data', null);
+        $umurMin = $request->get('umur_min', null);
+        $umurMax = $request->get('umur_max', null);
+        $filterDaerah = $request->get('filter_daerah', null);
+        $filterDesa = $request->get('filter_desa', null);
+        $filterKelompok = $request->get('filter_kelompok', null);
 
+        // Batasan Per Page
         if ($perPage > 100) {
             $perPage = 100;
         }
 
+        // Memulai Query Builder
         $query = dataSensusPeserta::select([
             'data_peserta.id',
             'data_peserta.kode_cari_data',
@@ -242,52 +278,93 @@ class DataPesertaController extends Controller
             'tabel_kelompok.nama_kelompok',
             'data_peserta.status_atlet_asad',
             'data_peserta.tanggal_lahir',
+            // Menghitung umur dan menentukan status_kelas
+            DB::raw("TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) AS umur"),
             DB::raw("CASE
-                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 3 AND 6 THEN 'Paud'
-                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 7 AND 12 THEN 'Caberawit'
-                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 13 AND 15 THEN 'Pra-remaja'
-                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 16 AND 18 THEN 'Remaja'
-                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) >= 19 THEN 'Muda - mudi / Usia Nikah'
-                ELSE 'Tidak dalam rentang usia'
-            END AS status_kelas"),
+            WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 3 AND 6 THEN 'Paud'
+            WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 7 AND 12 THEN 'Caberawit'
+            WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 13 AND 15 THEN 'Pra-remaja'
+            WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 16 AND 18 THEN 'Remaja'
+            WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) >= 19 THEN 'Muda - mudi / Usia Nikah'
+            ELSE 'Tidak dalam rentang usia'
+        END AS status_kelas"),
             'data_peserta.status_sambung',
             'data_peserta.status_pernikahan',
             'users.nama_lengkap AS user_petugas',
             'data_peserta.jenis_data',
+            'data_peserta.tmpt_daerah',
+            'data_peserta.tmpt_desa',
+            'data_peserta.tmpt_kelompok',
             'data_peserta.created_at',
         ])
+            // Melakukan Join
             ->join('tabel_daerah', 'tabel_daerah.id', '=', DB::raw('CAST(data_peserta.tmpt_daerah AS UNSIGNED)'))
             ->join('tabel_desa', 'tabel_desa.id', '=', DB::raw('CAST(data_peserta.tmpt_desa AS UNSIGNED)'))
             ->join('tabel_kelompok', 'tabel_kelompok.id', '=', DB::raw('CAST(data_peserta.tmpt_kelompok AS UNSIGNED)'))
             ->join('users', 'users.id', '=', DB::raw('CAST(data_peserta.user_id AS UNSIGNED)'));
 
-        // Apply orderByRaw before executing the query
+        // Apply orderByRaw sebelum eksekusi query
         $query->orderByRaw('data_peserta.created_at IS NULL, data_peserta.created_at DESC');
 
-        // $query->where('data_peserta.status_pernikahan', '!=', true)
-        //     ->where('data_peserta.status_sambung', '!=', 0);
+        // --- Filter Berdasarkan Kolom ---
 
+        // Filter Status Pernikahan
         if (!is_null($statusPernikahan)) {
             $query->where('data_peserta.status_pernikahan', '=', $statusPernikahan);
         }
 
+        // Filter Status Sambung
         if (!is_null($statusSambung)) {
             $query->where('data_peserta.status_sambung', '=', $statusSambung);
         }
 
+        // Filter Status Atlet Asad
         if (!is_null($statusAtletAsad)) {
             $query->where('data_peserta.status_atlet_asad', '=', $statusAtletAsad);
         }
 
+        // Filter Jenis Kelamin
         if (!is_null($jenisKelamin)) {
             $query->where('data_peserta.jenis_kelamin', '=', $jenisKelamin);
         }
 
+        // Filter Jenis Data
         if (!is_null($jenisData)) {
             $query->where('data_peserta.jenis_data', '=', $jenisData);
         }
 
+        // Filter Rentang Umur (Penambahan baru)
+        if (!is_null($umurMin) || !is_null($umurMax)) {
+            // Definisi ekspresi SQL untuk menghitung umur
+            $umurSql = "TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE())";
+
+            if (!is_null($umurMin)) {
+                // Menggunakan whereRaw untuk filter WHERE yang langsung memproses ekspresi SQL
+                $query->whereRaw("{$umurSql} >= ?", [$umurMin]);
+            }
+
+            if (!is_null($umurMax)) {
+                // Menggunakan whereRaw lagi untuk filter WHERE yang langsung memproses ekspresi SQL
+                $query->whereRaw("{$umurSql} <= ?", [$umurMax]);
+            }
+        }
+
+        if (!is_null($filterDaerah)) {
+            $query->where('data_peserta.tmpt_daerah', '=', $filterDaerah);
+        }
+
+        if (!is_null($filterDesa)) {
+            $query->where('data_peserta.tmpt_desa', '=', $filterDesa);
+        }
+
+        if (!is_null($filterKelompok)) {
+            $query->where('data_peserta.tmpt_kelompok', '=', $filterKelompok);
+        }
+
+        // --- Pencarian Berdasarkan Keyword ---
+
         if (!empty($keyword) && empty($kolom)) {
+            // Pencarian di berbagai kolom jika kolom spesifik tidak ditentukan
             $query->where(function ($q) use ($keyword) {
                 $q->where('data_peserta.nama_lengkap', 'LIKE', '%' . $keyword . '%')
                     ->orWhere('data_peserta.kode_cari_data', 'LIKE', '%' . $keyword . '%')
@@ -295,33 +372,61 @@ class DataPesertaController extends Controller
                     ->orWhere('tabel_desa.nama_desa', 'LIKE', '%' . $keyword . '%')
                     ->orWhere('tabel_kelompok.nama_kelompok', 'LIKE', '%' . $keyword . '%')
                     ->orWhere(DB::raw("
-                        CASE
-                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 3 AND 6 THEN 'Paud'
-                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 7 AND 12 THEN 'Caberawit'
-                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 13 AND 15 THEN 'Pra-remaja'
-                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 16 AND 18 THEN 'Remaja'
-                WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) >= 19 THEN 'Muda - mudi / Usia Nikah'
-                ELSE 'Tidak dalam rentang usia'
-            END
-                    "), 'LIKE', '%' . $keyword . '%')
+                    CASE
+                        WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 3 AND 6 THEN 'Paud'
+                        WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 7 AND 12 THEN 'Caberawit'
+                        WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 13 AND 15 THEN 'Pra-remaja'
+                        WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 16 AND 18 THEN 'Remaja'
+                        WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) >= 19 THEN 'Muda - mudi / Usia Nikah'
+                        ELSE 'Tidak dalam rentang usia'
+                    END
+                "), 'LIKE', '%' . $keyword . '%')
                     ->orWhere('users.nama_lengkap', 'LIKE', '%' . $keyword . '%')
                     ->orWhere('data_peserta.nama_panggilan', 'LIKE', '%' . $keyword . '%');
             });
         } elseif (!empty($keyword) && !empty($kolom)) {
-            if ($kolom == 'kode_cari_data') {
-                $kolom = 'data_peserta.kode_cari_data';
-            } else {
-                $kolom = 'data_peserta.kode_cari_data';
+            // Pencarian spesifik di kolom tertentu
+            // Melindungi dari injeksi, hanya izinkan kolom yang diizinkan untuk pencarian
+            $allowedColumns = [
+                'nama_lengkap',
+                'kode_cari_data',
+                'nama_daerah',
+                'nama_desa',
+                'nama_kelompok',
+                'user_petugas',
+                'nama_panggilan'
+            ];
+
+            $searchColumn = null;
+
+            if (in_array($kolom, $allowedColumns)) {
+                // Map kolom ke nama kolom di database (dengan prefix tabel jika perlu)
+                if ($kolom == 'nama_daerah') {
+                    $searchColumn = 'tabel_daerah.nama_daerah';
+                } elseif ($kolom == 'nama_desa') {
+                    $searchColumn = 'tabel_desa.nama_desa';
+                } elseif ($kolom == 'nama_kelompok') {
+                    $searchColumn = 'tabel_kelompok.nama_kelompok';
+                } elseif ($kolom == 'user_petugas') {
+                    $searchColumn = 'users.nama_lengkap';
+                } else {
+                    $searchColumn = 'data_peserta.' . $kolom;
+                }
             }
 
-            $query->where($kolom, 'LIKE', '%' . $keyword . '%');
+            if (!is_null($searchColumn)) {
+                $query->where($searchColumn, 'LIKE', '%' . $keyword . '%');
+            } else {
+                // Jika kolom tidak diizinkan, lakukan pencarian default di kode_cari_data
+                $query->where('data_peserta.kode_cari_data', 'LIKE', '%' . $keyword . '%');
+            }
         }
 
+        // Eksekusi Query dan Paginasi
         $sensus = $query->paginate($perPage);
 
-        $sensus->appends([
-            'per-page' => $perPage,
-        ]);
+        // Menambahkan parameter ke URL Paginasi
+        $sensus->appends($request->except('page'));
 
         return response()->json([
             'message' => 'Data Ditemukan',
@@ -818,66 +923,73 @@ class DataPesertaController extends Controller
         $agent = new Agent();
 
         $request->validate([
-            'id' => 'required|numeric|digits_between:1,5',
+            'id' => 'required|numeric',
         ]);
 
-        $sensus = dataSensusPeserta::where('id', '=', $request->id)
-            ->first();
+        $idPeserta = intval($request->id);
 
-        if (!empty($sensus)) {
-            $existsInCppdb = tblCppdb::where('id_peserta', $request->id)->exists();
-            $existsInPresensi = presensi::where('id_peserta', $request->id)->exists();
+        // Pastikan data sensus ada
+        $sensus = dataSensusPeserta::find($idPeserta);
 
-            if ($existsInCppdb && $existsInPresensi) {
-                return response()->json([
-                    'message' => 'Data sensus tidak dapat dihapus karena sudah terdaftar dan digunakan di tabel lain',
-                    'success' => false,
-                ], 409);
-            }
-
-            try {
-                // Hapus file gambar jika ada
-                if (!empty($sensus->img)) {
-                    $filePath = storage_path('app/' . $sensus->img); // Path lengkap file
-                    if (file_exists($filePath)) {
-                        unlink($filePath); // Hapus file dari folder
-                    }
-                }
-
-                $deletedData = $sensus->toArray();
-
-                // Lanjutkan untuk menghapus data Peserta Didik
-                $sensus->delete();
-
-                $logAccount = [
-                    'user_id' => $userId,
-                    'ip_address' => $request->ip(),
-                    'aktifitas' => 'Delete Data Sensus - [' . $deletedData['id'] . '] - [' . $deletedData['nama_lengkap'] . ']',
-                    'status_logs' => 'successfully',
-                    'browser' => $agent->browser(),
-                    'os' => $agent->platform(),
-                    'device' => $agent->device(),
-                    'engine_agent' => $request->header('user-agent'),
-                ];
-                logs::create($logAccount);
-
-                return response()->json([
-                    'message' => 'Data Peserta Didik berhasil dihapus beserta file terkait',
-                    'success' => true,
-                ], 200);
-            } catch (\Exception $exception) {
-                // Kembalikan respons kesalahan jika penghapusan gagal
-                return response()->json([
-                    'message' => 'Gagal menghapus Data: ' . $exception->getMessage(),
-                    'success' => false,
-                ], 500);
-            }
+        if (!$sensus) {
+            return response()->json([
+                'message' => 'Data tidak ditemukan',
+                'success' => false,
+            ], 404);
         }
 
-        return response()->json([
-            'message' => 'Data tidak ditemukan',
-            'success' => false,
-        ], 200);
+        /**
+         * 🔥 PERBAIKAN PENTING:
+         * Gunakan DB::table() agar tidak terpengaruh casting model
+         * dan memastikan pengecekan foreign key benar-benar akurat.
+         */
+        $existsInCppdb = DB::table('cppdb')->where('id_peserta', $idPeserta)->exists();
+        $existsInPresensi = DB::table('presensi')->where('id_peserta', $idPeserta)->exists();
+
+        if ($existsInCppdb || $existsInPresensi) {
+            return response()->json([
+                'message' => 'Data tidak dapat dihapus karena sudah digunakan di tabel lain',
+                'success' => false,
+            ], 409);
+        }
+
+        try {
+            // Hapus file gambar jika ada
+            if (!empty($sensus->img)) {
+                $filePath = storage_path('app/' . $sensus->img);
+                if (file_exists($filePath)) {
+                    unlink($filePath);
+                }
+            }
+
+            $deletedData = $sensus->toArray();
+
+            // Hapus data utama
+            $sensus->delete();
+
+            // Catat log
+            logs::create([
+                'user_id' => $userId,
+                'ip_address' => $request->ip(),
+                'aktifitas' => "Delete Data Sensus - [{$deletedData['id']}] - [{$deletedData['nama_lengkap']}]",
+                'status_logs' => 'successfully',
+                'browser' => $agent->browser(),
+                'os' => $agent->platform(),
+                'device' => $agent->device(),
+                'engine_agent' => $request->header('user-agent'),
+            ]);
+
+            return response()->json([
+                'message' => 'Data berhasil dihapus',
+                'success' => true,
+            ], 200);
+        } catch (\Exception $exception) {
+
+            return response()->json([
+                'message' => 'Gagal menghapus data: ' . $exception->getMessage(),
+                'success' => false,
+            ], 500);
+        }
     }
 
     public function presensi_peserta(Request $request)
@@ -982,17 +1094,18 @@ class DataPesertaController extends Controller
         ], 200);
     }
 
-
     public function sensus_report_pdf(Request $request)
     {
-        $modelDataDaerah = $request->get('data_daerah');
-        $modelDataDesa = $request->get('data_desa');
-        $modelDataKelompok = $request->get('data_kelompok');
+        $modelDataDaerah = $request->get('filter_daerah');
+        $modelDataDesa = $request->get('filter_desa');
+        $modelDataKelompok = $request->get('filter_kelompok');
         $statusPernikahan = $request->get('status_pernikahan', null);
         $statusSambung = $request->get('status_sambung', null);
         $statusAtletAsad = $request->get('status_atlet_asad', null);
         $jenisKelamin = $request->get('jenis_kelamin', null);
         $jenisData = $request->get('jenis_data', null);
+        $umurMin = $request->get('umur_min', null);
+        $umurMax = $request->get('umur_max', null);
 
         // Define the query with the necessary joins and selections
         $query = dataSensusPeserta::select([
@@ -1071,6 +1184,22 @@ class DataPesertaController extends Controller
             $query->where('data_peserta.jenis_data', '=', $jenisData);
         }
 
+        // Filter Rentang Umur (Penambahan baru)
+        if (!is_null($umurMin) || !is_null($umurMax)) {
+            // Definisi ekspresi SQL untuk menghitung umur
+            $umurSql = "TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE())";
+
+            if (!is_null($umurMin)) {
+                // Menggunakan whereRaw untuk filter WHERE yang langsung memproses ekspresi SQL
+                $query->whereRaw("{$umurSql} >= ?", [$umurMin]);
+            }
+
+            if (!is_null($umurMax)) {
+                // Menggunakan whereRaw lagi untuk filter WHERE yang langsung memproses ekspresi SQL
+                $query->whereRaw("{$umurSql} <= ?", [$umurMax]);
+            }
+        }
+
         $statistikQuery = clone $query;
 
         // Hitung statistik status_sambung
@@ -1110,5 +1239,98 @@ class DataPesertaController extends Controller
             'success' => true,
 
         ], 200);
+    }
+
+    public function checkDuplicateNama()
+    {
+        // Cari nama yang dinormalisasi lalu dihitung duplikasinya
+        $duplicateNames = DB::table('data_peserta')
+            ->selectRaw("
+            LOWER(TRIM(REGEXP_REPLACE(nama_lengkap, '\\s+', ' '))) AS normalized_name
+        ")
+            ->groupBy('normalized_name')
+            ->havingRaw('COUNT(*) > 1')
+            ->pluck('normalized_name');
+
+        if ($duplicateNames->isEmpty()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Tidak ada duplikasi nama.',
+                'data' => []
+            ]);
+        }
+
+        // Ambil data peserta berdasarkan nama yang sudah dinormalisasi
+        $duplicateList = DB::table('data_peserta')
+            ->select('kode_cari_data', 'nama_lengkap')
+            ->whereRaw("
+            LOWER(TRIM(REGEXP_REPLACE(nama_lengkap, '\\s+', ' '))) IN ( '" .
+                $duplicateNames->implode("','") . "' )
+        ")
+            ->orderBy('nama_lengkap')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Daftar peserta dengan nama duplikat.',
+            'duplicates_normalized' => $duplicateNames,
+            'data' => $duplicateList
+        ]);
+    }
+
+    public function checkJenisData(Request $request)
+    {
+        $request->validate([
+            'tanggal_lahir' => 'required',
+            'jenis_data' => 'required|string|in:SENSUS,REMAJA',
+        ]);
+
+        $inputTanggal = $request->tanggal_lahir;
+
+        // Deteksi apakah input hanya tahun (YYYY)
+        if (preg_match('/^\d{4}$/', $inputTanggal)) {
+            $tahun = intval($inputTanggal);
+            $tanggalLahir = Carbon::createFromDate($tahun, 1, 1);
+            $searchByYear = true;
+
+            // Ambil semua peserta lahir pada tahun tsb
+            $pesertaList = dataSensusPeserta::whereYear('tanggal_lahir', $tahun)->get();
+        } else {
+            $tanggalLahir = Carbon::parse($inputTanggal);
+            $searchByYear = false;
+
+            // Ambil semua peserta lahir pada tanggal tsb
+            $pesertaList = dataSensusPeserta::whereDate('tanggal_lahir', $inputTanggal)->get();
+        }
+
+        $jenisDataInput = strtoupper($request->jenis_data);
+
+        // 🔥 Perhitungan harus per peserta (bukan 1 umur saja)
+        $pesertaResponse = $pesertaList->map(function ($peserta) use ($jenisDataInput) {
+
+            $umurPeserta = Carbon::parse($peserta->tanggal_lahir)->age;
+            $correctJenis = $this->determineJenisDataByAge($umurPeserta);
+
+            return [
+                'kode_cari_data' => $peserta->kode_cari_data,
+                'nama_lengkap' => $peserta->nama_lengkap,
+                'tanggal_lahir' => $peserta->tanggal_lahir,
+                'umur' => $umurPeserta,
+                'jenis_data_input' => $jenisDataInput,
+                'jenis_data_seharusnya' => $correctJenis,
+                'status_kesesuaian' => $jenisDataInput === $correctJenis ? 'sesuai' : 'tidak_sesuai',
+            ];
+        });
+
+        // Tentukan apakah SEMUA peserta sesuai
+        $allValid = $pesertaResponse->every(fn($p) => $p['status_kesesuaian'] === 'sesuai');
+
+        return response()->json([
+            'search_mode' => $searchByYear ? "tahun" : "tanggal",
+            'jenis_data_input' => $jenisDataInput,
+            'valid' => $allValid,
+            'jumlah_peserta_ditemukan' => $pesertaList->count(),
+            'data_peserta' => $pesertaResponse,
+        ], $allValid ? 200 : 400);
     }
 }

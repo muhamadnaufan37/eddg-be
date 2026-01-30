@@ -5,7 +5,7 @@ use App\Http\Controllers\API\CalonPPDBController;
 use App\Http\Controllers\API\DaerahController;
 use App\Http\Controllers\API\dataCaiController;
 use App\Http\Controllers\API\DataPesertaController;
-use App\Http\Controllers\API\DataPointController;
+// use App\Http\Controllers\API\DataPointController;
 use App\Http\Controllers\API\DesaController;
 use App\Http\Controllers\API\KalenderPesertaController;
 use App\Http\Controllers\API\KelasPesertaController;
@@ -27,6 +27,7 @@ use App\Http\Controllers\API\UserController;
 use App\Http\Controllers\API\WalletKasController;
 use App\Http\Controllers\API\WhatsAppController as APIWhatsAppController;
 use App\Http\Controllers\DataSensusController;
+use App\Http\Controllers\PdfController;
 use App\Http\Controllers\StatistikTmptSmbngController;
 use App\Http\Controllers\TempatSambungController;
 use Illuminate\Http\Request;
@@ -54,6 +55,13 @@ Route::post('/generate-uuid', [AuthController::class, 'generateUuid']);
 Route::get('/list_nama_peserta', [DataSensusController::class, 'list_nama_peserta']);
 Route::post('record_presensi_manual', [DataSensusController::class, 'record_presensi_manual']);
 Route::get('/data_tempat_sambung', [StatistikTmptSmbngController::class, 'data_tempat_sambung']);
+
+// PDF Routes - Endpoint untuk generate PDF
+Route::prefix('pdf')->group(function () {
+    Route::get('/generate', [PdfController::class, 'generatePdf']);
+    Route::post('/generate-custom', [PdfController::class, 'generateCustomPdf']);
+    Route::get('/stream', [PdfController::class, 'streamPdf']);
+});
 
 Route::prefix('v1/sambara')->group(function () {
     Route::post('/info-pkb', [SambaraController::class, 'infoPajak']);
@@ -84,7 +92,7 @@ Route::group(['prefix' => '/v1/otp/'], function () {
     Route::post('/device-status', [APIWhatsAppController::class, 'getDeviceStatus']);
 });
 
-Route::middleware(['auth:sanctum', 'check.token.expiration'])->group(function () {
+Route::middleware(['jwt.auth', 'check.token.expiration'])->group(function () {
     // User Management
     Route::group(['prefix' => '/user/'], function () {
         Route::get('list', [UserController::class, 'list'])->middleware('role:1');
@@ -165,6 +173,9 @@ Route::middleware(['auth:sanctum', 'check.token.expiration'])->group(function ()
         Route::delete('delete', [DataPesertaController::class, 'delete'])->middleware('role:1,2');
         Route::post('presensi_peserta', [DataPesertaController::class, 'presensi_peserta'])->middleware('role:1,2');
         Route::post('sensus_report_pdf', [DataPesertaController::class, 'sensus_report_pdf'])->middleware('role:1,2');
+        Route::post('checkJenisData', [DataPesertaController::class, 'checkJenisData'])->middleware('role:1');
+        Route::get('checkDuplicateNama', [DataPesertaController::class, 'checkDuplicateNama'])->middleware('role:1');
+        Route::get('list_thn_lahir', [DataPesertaController::class, 'list_thn_lahir'])->middleware('role:1');
     });
 
     // Profile Management
@@ -316,8 +327,8 @@ Route::middleware(['auth:sanctum', 'check.token.expiration'])->group(function ()
     });
 
     // Logs
-    Route::group(['prefix' => '/points/'], function () {
-        Route::get('list', [DataPointController::class, 'list']);
-        Route::post('create', [DataPointController::class, 'create']);
-    });
+    // Route::group(['prefix' => '/points/'], function () {
+    //     Route::get('list', [DataPointController::class, 'list']);
+    //     Route::post('create', [DataPointController::class, 'create']);
+    // });
 });

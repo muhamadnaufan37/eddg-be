@@ -19,7 +19,7 @@ class RolesSeeder extends Seeder
         ]);
 
         Role::create([
-            'name' => 'Petugas Data Sensus',
+            'name' => 'Operator Sensus',
             'guard_name' => 'web',
             'description' => 'Untuk Role Petugas Pendataan Sensus',
         ]);
@@ -31,9 +31,27 @@ class RolesSeeder extends Seeder
         ]);
 
         Role::create([
-            'name' => 'Admin KBM',
+            'name' => 'Operator KBM',
             'guard_name' => 'web',
             'description' => 'Untuk Role Petugas Pengelolaan Data PPG',
+        ]);
+
+        Role::create([
+            'name' => 'Operator Admin Data Center',
+            'guard_name' => 'web',
+            'description' => 'Untuk Role Petugas Pengelolaan Data Sensus',
+        ]);
+
+        Role::create([
+            'name' => 'Pengurus',
+            'guard_name' => 'web',
+            'description' => 'Untuk Role pengurus',
+        ]);
+
+        Role::create([
+            'name' => 'Operator Presensi',
+            'guard_name' => 'web',
+            'description' => 'Untuk Role Petugas absensi',
         ]);
     }
 }

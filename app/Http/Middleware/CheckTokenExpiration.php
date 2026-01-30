@@ -5,7 +5,10 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Carbon\Carbon;
+use Tymon\JWTAuth\Facades\JWTAuth;
+use Tymon\JWTAuth\Exceptions\TokenExpiredException;
+use Tymon\JWTAuth\Exceptions\TokenInvalidException;
+use Tymon\JWTAuth\Exceptions\JWTException;
 
 class CheckTokenExpiration
 {
@@ -16,18 +19,19 @@ class CheckTokenExpiration
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $token = $request->user()->currentAccessToken();
+        try {
+            // Verifikasi token JWT
+            $user = JWTAuth::parseToken()->authenticate();
 
-        if (!$token) {
-            return response()->json(['message' => 'Token tidak ditemukan'], 401);
-        }
-
-        // Ambil timestamp kedaluwarsa dari token
-        $expiresAt = Carbon::parse($token->created_at)->addHours(8);
-
-        if (Carbon::now()->greaterThan($expiresAt)) {
-            $token->delete(); // Hapus token yang sudah expired
+            if (!$user) {
+                return response()->json(['message' => 'User tidak ditemukan'], 401);
+            }
+        } catch (TokenExpiredException $e) {
             return response()->json(['message' => 'Token expired, silakan login ulang'], 401);
+        } catch (TokenInvalidException $e) {
+            return response()->json(['message' => 'Token tidak valid'], 401);
+        } catch (JWTException $e) {
+            return response()->json(['message' => 'Token tidak ditemukan'], 401);
         }
 
         return $next($request);
