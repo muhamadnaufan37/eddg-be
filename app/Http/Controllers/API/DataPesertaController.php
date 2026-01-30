@@ -757,7 +757,7 @@ class DataPesertaController extends Controller
         if ($sensus) {
             // Generate the correct URL for the image
             $sensus->img_url = $sensus->img
-                ? url(Storage::url($sensus->img))
+                ? asset('storage/' . str_replace('public/', '', $sensus->img))
                 : null;
 
             unset($sensus->created_at, $sensus->updated_at);
