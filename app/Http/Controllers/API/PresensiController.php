@@ -24,6 +24,60 @@ class PresensiController extends Controller
         $this->fonnteService = $fonnteService;
     }
 
+    private function compareUsia($usia, $operator, $batas)
+    {
+        switch ($operator) {
+            case '<':
+                return $usia < $batas;
+            case '<=':
+                return $usia <= $batas;
+            case '>':
+                return $usia > $batas;
+            case '>=':
+                return $usia >= $batas;
+            case '=':
+                return $usia == $batas;
+            case '!=':
+                return $usia != $batas;
+            default:
+                return false;
+        }
+    }
+
+    private function validateUsiaPeserta($usia, $operator, $batas)
+    {
+        if (empty($operator) || empty($batas)) {
+            return true; // tidak ada aturan → selalu lolos
+        }
+
+        // ============================
+        // VALIDASI RANGE USIA
+        // ============================
+        if ($operator === 'range') {
+            if (!str_contains($batas, '-')) return false;
+
+            [$min, $max] = explode('-', $batas);
+            $min = intval($min);
+            $max = intval($max);
+
+            return $usia >= $min && $usia <= $max;
+        }
+
+        // ============================
+        // VALIDASI OPERATOR STANDARD
+        // ============================
+        $allowed = ['>=', '<=', '>', '<', '=='];
+        if (!in_array($operator, $allowed)) return false;
+
+        return match ($operator) {
+            '>=' => $usia >= $batas,
+            '<=' => $usia <= $batas,
+            '>'  => $usia >  $batas,
+            '<'  => $usia <  $batas,
+            '==' => $usia == $batas,
+        };
+    }
+
     public function list_nama_peserta()
     {
         // Get data sensus
@@ -192,7 +246,6 @@ class PresensiController extends Controller
         ], 200);
     }
 
-
     public function record_presensi_qrcode(Request $request)
     {
         $agent = new Agent();
@@ -213,47 +266,42 @@ class PresensiController extends Controller
             ], 404);
         }
 
-        $currentTime = Carbon::now();
-        if (empty($kegiatan->tgl_kegiatan) || empty($kegiatan->jam_kegiatan)) {
-            return response()->json([
-                'message' => 'Tanggal atau jam kegiatan tidak valid.',
-                'success' => false,
-            ], 400);
-        }
+        $currentTime = now();
 
+        // Parsing waktu kegiatan
         try {
-            // Parsing waktu kegiatan
             $waktuKegiatan = Carbon::parse("{$kegiatan->tgl_kegiatan} {$kegiatan->jam_kegiatan}");
-            $waktuMulaiPresensi = $waktuKegiatan->copy()->subMinutes(90);
+            $startScanTime = $waktuKegiatan->copy()->subMinutes(90);
 
-            // Periksa apakah waktu presensi belum dimulai
-            if ($currentTime->lt($waktuMulaiPresensi)) {
+            if ($currentTime->lt($startScanTime)) {
                 return response()->json([
-                    'message' => 'Presensi belum bisa dilakukan. Tunggu hingga waktu kegiatan dimulai pada ' . $waktuKegiatan->format('d-m-Y H:i') . ' waktu setempat.',
+                    'message' => 'Belum waktu presensi. Presensi dimulai pada ' . $waktuKegiatan->format('d-m-Y H:i'),
                     'success' => false,
                 ], 403);
             }
         } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Terjadi kesalahan saat memproses waktu kegiatan.',
-                'error' => $e->getMessage(),
+                'message' => 'Waktu kegiatan tidak valid',
                 'success' => false,
-            ], 500);
+            ], 400);
         }
 
-        if (now()->greaterThan($kegiatan->expired_date_time)) {
+        // Cek expired waktu presensi
+        if ($currentTime->greaterThan($kegiatan->expired_date_time)) {
             return response()->json([
                 'message' => 'Presensi sudah tidak bisa dilakukan, waktu telah berakhir',
                 'success' => false,
             ], 403);
         }
 
+        // Ambil data peserta
         $peserta = dataSensusPeserta::select([
             'data_peserta.id',
             'data_peserta.kode_cari_data',
             'data_peserta.nama_lengkap',
             DB::raw('TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) AS usia'),
             'data_peserta.jenis_kelamin',
+            'data_peserta.jenis_data as status_kelas',
             'tbl_pekerjaan.nama_pekerjaan AS pekerjaan',
             DB::raw("CASE
                 WHEN TIMESTAMPDIFF(YEAR, data_peserta.tanggal_lahir, CURDATE()) BETWEEN 3 AND 6 THEN 'Paud'
@@ -272,109 +320,106 @@ class PresensiController extends Controller
             'data_peserta.status_sambung',
             'data_peserta.status_pernikahan',
         ])
-            ->join('tbl_pekerjaan', function ($join) {
-                $join->on('tbl_pekerjaan.id', '=', DB::raw('CAST(data_peserta.pekerjaan AS UNSIGNED)'));
-            })
-            ->join('tabel_daerah', function ($join) {
-                $join->on('tabel_daerah.id', '=', DB::raw('CAST(data_peserta.tmpt_daerah AS UNSIGNED)'));
-            })
-            ->join('tabel_desa', function ($join) {
-                $join->on('tabel_desa.id', '=', DB::raw('CAST(data_peserta.tmpt_desa AS UNSIGNED)'));
-            })
-            ->join('tabel_kelompok', function ($join) {
-                $join->on('tabel_kelompok.id', '=', DB::raw('CAST(data_peserta.tmpt_kelompok AS UNSIGNED)'));
-            })
-            ->join('users', function ($join) {
-                $join->on('users.id', '=', DB::raw('CAST(data_peserta.user_id AS UNSIGNED)'));
-            })
+            ->join('tbl_pekerjaan', 'tbl_pekerjaan.id', '=', DB::raw('CAST(data_peserta.pekerjaan AS UNSIGNED)'))
+            ->join('tabel_daerah', 'tabel_daerah.id', '=', DB::raw('CAST(data_peserta.tmpt_daerah AS UNSIGNED)'))
+            ->join('tabel_desa', 'tabel_desa.id', '=', DB::raw('CAST(data_peserta.tmpt_desa AS UNSIGNED)'))
+            ->join('tabel_kelompok', 'tabel_kelompok.id', '=', DB::raw('CAST(data_peserta.tmpt_kelompok AS UNSIGNED)'))
             ->where('data_peserta.kode_cari_data', $request->kode_cari_data)
-            ->when($kegiatan->tmpt_daerah, function ($query) use ($kegiatan) {
-                return $query->where('data_peserta.tmpt_daerah', $kegiatan->tmpt_daerah);
-            })
-            ->when($kegiatan->tmpt_desa, function ($query) use ($kegiatan) {
-                return $query->where('data_peserta.tmpt_desa', $kegiatan->tmpt_desa);
-            })
-            ->when($kegiatan->tmpt_kelompok, function ($query) use ($kegiatan) {
-                return $query->where('data_peserta.tmpt_kelompok', $kegiatan->tmpt_kelompok);
-            })
+            ->when($kegiatan->tmpt_daerah, fn($q) => $q->where('data_peserta.tmpt_daerah', $kegiatan->tmpt_daerah))
+            ->when($kegiatan->tmpt_desa, fn($q) => $q->where('data_peserta.tmpt_desa', $kegiatan->tmpt_desa))
+            ->when($kegiatan->tmpt_kelompok, fn($q) => $q->where('data_peserta.tmpt_kelompok', $kegiatan->tmpt_kelompok))
             ->first();
 
         if (!$peserta) {
             return response()->json([
-                'message' => 'Peserta tidak ditemukan atau data peserta presensi tidak bisa diakses di tempat sambung ini',
+                'message' => 'Peserta tidak ditemukan atau tidak sesuai lokasi sambung',
                 'success' => false,
             ], 404);
         }
 
+        // Validasi sambung & pernikahan
         if ($peserta->status_sambung != 1 || $peserta->status_pernikahan != 0) {
             return response()->json([
-                'message' => 'Presensi Ditolak, Peserta sudah pindah sambung atau sudah menikah',
+                'message' => 'Presensi ditolak, peserta tidak aktif atau sudah menikah',
                 'success' => false,
             ], 403);
         }
 
-        $usiaOperator = $kegiatan->usia_operator;
-        $usiaBatas = $kegiatan->usia_batas;
+        // ============================
+        // VALIDASI USIA (NEW VERSION)
+        // ============================
+        if (!$this->validateUsiaPeserta($peserta->usia, $kegiatan->usia_operator, $kegiatan->usia_batas)) {
+            return response()->json([
+                'message' => 'Peserta tidak memenuhi kriteria usia untuk kegiatan ini',
+                'success' => false,
+            ], 403);
+        }
 
-        if (!empty($usiaOperator) && !empty($usiaBatas)) {
-            $usia = $peserta->usia;
+        $usiaPeserta = $peserta->usia;
 
-            if (!eval("return {$usia} {$usiaOperator} {$usiaBatas};")) {
+        if ($kegiatan->usia_mode === 'single') {
+            if ($usiaPeserta != $kegiatan->usia_min) {
                 return response()->json([
-                    'message' => 'Peserta tidak memenuhi kriteria usia',
+                    'message' => "Usia peserta tidak memenuhi syarat",
+                    'usia' => $usiaPeserta,
                     'success' => false,
                 ], 403);
             }
         }
 
-        $alreadyPresensi = presensi::where('id_kegiatan', $kegiatan->id)
+        if ($kegiatan->usia_mode === 'range') {
+            if ($usiaPeserta < $kegiatan->usia_min || $usiaPeserta > $kegiatan->usia_max) {
+                return response()->json([
+                    'message' => "Usia peserta harus antara {$kegiatan->usia_min} - {$kegiatan->usia_max} tahun",
+                    'success' => false,
+                ], 403);
+            }
+        }
+
+        // Cek double presensi
+        $already = presensi::where('id_kegiatan', $kegiatan->id)
             ->where('id_peserta', $peserta->id)
             ->exists();
 
-        if ($alreadyPresensi) {
+        if ($already) {
             return response()->json([
-                'message' => 'Peserta sudah melakukan presensi sebelumnya.',
+                'message' => 'Peserta sudah melakukan presensi',
                 'success' => false,
             ], 409);
         }
 
-        $waktuToleransi = $waktuKegiatan->copy()->addMinutes(30);
+        // Tentukan status hadir / telat
+        $late = $currentTime->greaterThan($waktuKegiatan->copy()->addMinutes(30));
 
-        $isLate = now()->greaterThan($waktuToleransi);
+        $presensi = presensi::create([
+            'id_kegiatan' => $request->id_kegiatan,
+            'id_peserta' => $peserta->id,
+            'id_petugas' => $request->id_petugas,
+            'status_presensi' => $late ? "TELAT HADIR" : "HADIR",
+            'keterangan' => $late ? "TELAT HADIR" : "HADIR",
+            'waktu_presensi' => now(),
+        ]);
 
-        $presensi = new presensi();
-        $presensi->id_kegiatan = $request->id_kegiatan;
-        $presensi->id_peserta = $peserta->id;
-        $presensi->id_petugas = $request->id_petugas;
-        $presensi->status_presensi = $isLate ? "TELAT HADIR" : "HADIR";
-        $presensi->waktu_presensi = now();
-        $presensi->keterangan = $isLate ? "TELAT HADIR" : "HADIR";
         // $phone = $request->phone;
         // $countryCode = '62';
 
-        // $templates = [
-        //     'attendance' => "✅ *Absensi Berhasil Dicatat!*\n\n"
-        //         . "📌 *Nama:* " . ($peserta->nama_lengkap ?? '*Peserta Tidak Diketahui*') . "\n"
-        //         . "📅 *Tgl. Absen:* " . $presensi->waktu_presensi . "\n"
-        //         . "📢 *Kegiatan:* " . ($kegiatan->nama_kegiatan ?? '*Tidak Diketahui*') . "\n"
-        //         . "📍 *Tempat:* " . ($kegiatan->tmpt_kegiatan ?? '*Tidak Diketahui*') . "\n"
-        //         . "🛠️ *Method:* Scan QR\n"
-        //         . "📝 *Keterangan:* *" . $presensi->keterangan . "*\n\n"
-        //         . "🙏 Terima kasih telah melakukan absensi. *Semoga harimu menyenangkan!* 😊"
-        // ];
-
-        // Pilih template yang diinginkan (default ke 'attendance')
-        // $message = $templates['attendance'];
+        // // Kirim WA
+        // $message = "✅ *Absensi Berhasil!*\n\n"
+        //     . "📌 *Nama:* {$peserta->nama_lengkap}\n"
+        //     . "📅 *Waktu:* {$presensi->waktu_presensi}\n"
+        //     . "📢 *Kegiatan:* {$kegiatan->nama_kegiatan}\n"
+        //     . "📍 *Tempat:* {$kegiatan->tmpt_kegiatan}\n"
+        //     . "📝 *Status:* *{$presensi->keterangan}*\n";
 
         try {
             $presensi->save();
-
             // $Seender = $this->fonnteService->sendWhatsAppMessage($phone, $message, $countryCode);
 
+            // LOGGING
             logs::create([
                 'user_id' => $userId,
                 'ip_address' => $request->ip(),
-                'aktifitas' => "Absensi Scan QR - [{$peserta->id}] - [{$peserta->nama_lengkap}]",
+                'aktifitas' => "Absensi Scan QR - [{$peserta->id}] - {$peserta->nama_lengkap}",
                 'status_logs' => 'successfully',
                 'browser' => $agent->browser(),
                 'os' => $agent->platform(),
@@ -561,8 +606,9 @@ class PresensiController extends Controller
             'tmpt_daerah' => 'required',
             'tmpt_desa' => 'nullable',
             'tmpt_kelompok' => 'nullable',
-            'usia_batas' => 'nullable',
-            'usia_operator' => 'nullable',
+            'usia_mode' => 'nullable|in:single,range',
+            'usia_min' => 'nullable|integer|min:1|max:120',
+            'usia_max' => 'nullable|integer|min:1|max:120',
             'add_by_petugas' => 'required',
         ], $customMessages);
 
@@ -597,8 +643,9 @@ class PresensiController extends Controller
         $presensi->tmpt_daerah = $request->tmpt_daerah;
         $presensi->tmpt_desa = $request->tmpt_desa;
         $presensi->tmpt_kelompok = $request->tmpt_kelompok;
-        $presensi->usia_batas = $request->usia_batas;
-        $presensi->usia_operator = $request->usia_operator;
+        $presensi->usia_mode = $request->usia_mode;
+        $presensi->usia_min = $request->usia_min;
+        $presensi->usia_max = $request->usia_max;
         $presensi->add_by_petugas = $request->add_by_petugas;
         try {
             $presensi->save();

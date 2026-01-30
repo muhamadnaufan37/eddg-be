@@ -14,6 +14,7 @@ use Spatie\Permission\Models\Role;
 // use Illuminate\Support\Facades\Http;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class AuthController extends Controller
 {
@@ -220,26 +221,45 @@ class AuthController extends Controller
             'akses_kelompok' => $user['role_kelompok'],
         ];
 
-        $token = $user->createToken('token', [], Carbon::now()->addHours(8))->plainTextToken;
+        $credentials = [
+            'username' => $request->username,
+            'password' => $request->password,
+        ];
+
+        if (!$token = JWTAuth::attempt($credentials)) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        // Ambil TTL dari config (dalam menit) dan konversi ke jam
+        $ttl = config('jwt.ttl', 480); // default 480 menit = 8 jam
+        $expiresAt = Carbon::now()->addMinutes($ttl);
 
         return response()->json([
             'message' => 'Login Berhasil',
             'user' => $user_balikan,
             'token' => $token,
-            'expires_at' => Carbon::now()->addHours(8)->toDateTimeString(),
+            'expires_at' => $expiresAt->toDateTimeString(),
             'success' => true,
         ], 200);
     }
 
     public function logout(Request $request)
     {
-        $user = $request->user();
-        $user->currentAccessToken()->delete();
+        try {
+            // Invalidate JWT token
+            JWTAuth::invalidate(JWTAuth::getToken());
 
-        return response()->json([
-            'message' => 'Berhasil logout',
-            'success' => true,
-        ]);
+            return response()->json([
+                'message' => 'Berhasil logout',
+                'success' => true,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Gagal logout',
+                'error' => $e->getMessage(),
+                'success' => false,
+            ], 500);
+        }
     }
 
     public function generateKodeUnik()
