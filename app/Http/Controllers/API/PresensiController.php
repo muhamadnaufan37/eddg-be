@@ -24,26 +24,6 @@ class PresensiController extends Controller
         $this->fonnteService = $fonnteService;
     }
 
-    private function compareUsia($usia, $operator, $batas)
-    {
-        switch ($operator) {
-            case '<':
-                return $usia < $batas;
-            case '<=':
-                return $usia <= $batas;
-            case '>':
-                return $usia > $batas;
-            case '>=':
-                return $usia >= $batas;
-            case '=':
-                return $usia == $batas;
-            case '!=':
-                return $usia != $batas;
-            default:
-                return false;
-        }
-    }
-
     private function validateUsiaPeserta($usia, $operator, $batas)
     {
         if (empty($operator) || empty($batas)) {

@@ -339,15 +339,6 @@ class DataSensusController extends Controller
         }
 
         $currentTime = now();
-        $waktuKegiatan = Carbon::parse("{$kegiatan->tgl_kegiatan} {$kegiatan->jam_kegiatan}");
-
-        if ($currentTime->lt($waktuKegiatan)) {
-            return response()->json([
-                'message' => 'Presensi belum bisa dilakukan. Tunggu hingga kegiatan dimulai pada '
-                    . $kegiatan->tgl_kegiatan . ' jam ' . $kegiatan->jam_kegiatan,
-                'success' => false,
-            ], 403);
-        }
 
         if ($currentTime->greaterThan($kegiatan->expired_date_time)) {
             return response()->json([
@@ -404,7 +395,7 @@ class DataSensusController extends Controller
 
             if (!eval("return {$usia} {$usiaOperator} {$usiaBatas};")) {
                 return response()->json([
-                    'message' => 'Peserta tidak memenuhi kriteria usia.',
+                    'message' => 'Peserta tidak memenuhi kriteria usia. usia peserta: ' . $usia . ' tahun.',
                     'success' => false,
                 ], 403);
             }
