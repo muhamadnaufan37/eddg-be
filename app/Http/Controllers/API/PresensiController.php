@@ -325,26 +325,13 @@ class PresensiController extends Controller
             ], 403);
         }
 
-        // ============================
-        // VALIDASI USIA (NEW VERSION)
-        // ============================
-        if (!$this->validateUsiaPeserta($peserta->usia, $kegiatan->usia_operator, $kegiatan->usia_batas)) {
-            return response()->json([
-                'message' => 'Peserta tidak memenuhi kriteria usia untuk kegiatan ini',
-                'success' => false,
-            ], 403);
-        }
-
         $usiaPeserta = $peserta->usia;
 
-        if ($kegiatan->usia_mode === 'single') {
-            if ($usiaPeserta != $kegiatan->usia_min) {
-                return response()->json([
-                    'message' => "Usia peserta tidak memenuhi syarat",
-                    'usia' => $usiaPeserta,
-                    'success' => false,
-                ], 403);
-            }
+        if (!$this->validateUsiaPeserta($peserta->usia, $kegiatan->usia_operator, $kegiatan->usia_batas)) {
+            return response()->json([
+                'message' => 'Peserta tidak memenuhi kriteria usia untuk kegiatan ini, usia peserta: ' . $peserta->usia . ' tahun, aturan usia: ' . ($kegiatan->usia_operator === 'range' ? "antara {$kegiatan->usia_batas}" : "{$kegiatan->usia_operator} {$kegiatan->usia_batas} tahun"),
+                'success' => false,
+            ], 403);
         }
 
         if ($kegiatan->usia_mode === 'range') {
